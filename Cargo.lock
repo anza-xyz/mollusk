@@ -4556,14 +4556,24 @@ dependencies = [
 name = "test-program-cpi-target"
 version = "0.1.0"
 dependencies = [
- "solana-program",
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
 ]
 
 [[package]]
 name = "test-program-primary"
 version = "0.1.0"
 dependencies = [
- "solana-program",
+ "solana-account-info",
+ "solana-cpi",
+ "solana-instruction",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+ "solana-sdk-ids",
+ "solana-system-interface",
 ]
 
 [[package]]

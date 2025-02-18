@@ -1,13 +1,12 @@
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    program_error::ProgramError,
-    pubkey::Pubkey,
+use {
+    solana_account_info::{next_account_info, AccountInfo},
+    solana_program_error::{ProgramError, ProgramResult},
+    solana_pubkey::Pubkey,
 };
 
-solana_program::declare_id!("MD24T7azhc2q9ZXaeskbLpmVA41k7StzTGgcfvGcpHj");
+solana_pubkey::declare_id!("MD24T7azhc2q9ZXaeskbLpmVA41k7StzTGgcfvGcpHj");
 
-solana_program::entrypoint!(process_instruction);
+solana_program_entrypoint::entrypoint!(process_instruction);
 
 fn process_instruction(
     program_id: &Pubkey,
