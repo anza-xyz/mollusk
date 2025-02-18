@@ -1783,7 +1783,7 @@ dependencies = [
 name = "mollusk-svm-error"
 version = "0.0.15"
 dependencies = [
- "solana-sdk",
+ "solana-pubkey",
  "thiserror 1.0.68",
 ]
 

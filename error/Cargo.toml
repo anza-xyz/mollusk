@@ -10,5 +10,5 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-solana-sdk = { workspace = true }
+solana-pubkey = { workspace = true }
 thiserror = { workspace = true }
