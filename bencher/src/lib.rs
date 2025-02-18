@@ -61,7 +61,9 @@ mod result;
 use {
     mollusk_svm::{result::ProgramResult, Mollusk},
     result::{write_results, MolluskComputeUnitBenchResult},
-    solana_sdk::{account::Account, instruction::Instruction, pubkey::Pubkey},
+    solana_account::Account,
+    solana_instruction::Instruction,
+    solana_pubkey::Pubkey,
     std::path::PathBuf,
 };
 

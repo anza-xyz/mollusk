@@ -1,7 +1,6 @@
 use {
-    mollusk_svm::Mollusk,
-    mollusk_svm_bencher::MolluskComputeUnitBencher,
-    solana_sdk::{instruction::Instruction, pubkey::Pubkey},
+    mollusk_svm::Mollusk, mollusk_svm_bencher::MolluskComputeUnitBencher,
+    solana_instruction::Instruction, solana_pubkey::Pubkey,
 };
 
 #[test]
