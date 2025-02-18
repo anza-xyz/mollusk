@@ -8,7 +8,7 @@ use {
     clap::{Parser, Subcommand},
     config::ConfigFile,
     mollusk_svm::{result::Compare, Mollusk},
-    solana_sdk::{bpf_loader_upgradeable, pubkey::Pubkey},
+    solana_pubkey::Pubkey,
     std::{fs, path::Path, str::FromStr},
 };
 
@@ -107,7 +107,11 @@ fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std:
 
 fn add_elf_to_mollusk(mollusk: &mut Mollusk, elf_path: &str, program_id: &Pubkey) {
     let elf = mollusk_svm::file::read_file(elf_path);
-    mollusk.add_program_with_elf_and_loader(program_id, &elf, &bpf_loader_upgradeable::id());
+    mollusk.add_program_with_elf_and_loader(
+        program_id,
+        &elf,
+        &solana_sdk_ids::bpf_loader_upgradeable::id(),
+    );
 }
 
 #[tokio::main]

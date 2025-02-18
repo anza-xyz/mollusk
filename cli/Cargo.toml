@@ -17,7 +17,8 @@ mollusk-svm-fuzz-fixture = { workspace = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true }
 mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd", "serde"] }
 solana-logger = { workspace = true }
-solana-sdk = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-sdk-ids = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 
 [[bin]]
