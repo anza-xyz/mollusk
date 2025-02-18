@@ -41,7 +41,7 @@ jobs:
           toolchain: ${{ env.NIGHTLY_TOOLCHAIN }}
           components: clippy
       - name: Run clippy
-        run: cargo +${{ env.NIGHTLY_TOOLCHAIN }} clippy --all --all-features --tests -- --deny=warnings
+        run: cargo +${{ env.NIGHTLY_TOOLCHAIN }} clippy --all --all-features --all-targets -- --deny=warnings
 
   cargo_build_test:
     name: Cargo Build and Test

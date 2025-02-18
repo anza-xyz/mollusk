@@ -2,9 +2,7 @@ use {
     mollusk_svm::{result::Check, Mollusk},
     rand0_7::thread_rng,
     solana_account::{Account, WritableAccount},
-    solana_ed25519_program,
     solana_pubkey::Pubkey,
-    solana_secp256k1_program,
 };
 
 fn precompile_account() -> Account {
