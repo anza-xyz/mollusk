@@ -1,9 +1,6 @@
-use {
-    mollusk_svm::Mollusk,
-    solana_sdk::{account::Account, pubkey::Pubkey},
-};
+use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey};
 
-pub const ID: Pubkey = solana_sdk::pubkey!("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo");
+pub const ID: Pubkey = solana_pubkey::pubkey!("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo");
 
 pub const ELF: &[u8] = include_bytes!("elf/memo-v1.so");
 

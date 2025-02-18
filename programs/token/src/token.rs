@@ -1,9 +1,6 @@
-use {
-    mollusk_svm::Mollusk,
-    solana_sdk::{account::Account, pubkey::Pubkey},
-};
+use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey};
 
-pub const ID: Pubkey = solana_sdk::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+pub const ID: Pubkey = solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
 pub const ELF: &[u8] = include_bytes!("elf/token.so");
 

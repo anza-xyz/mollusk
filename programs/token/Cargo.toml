@@ -17,4 +17,5 @@ token-2022 = []
 
 [dependencies]
 mollusk-svm = { workspace = true }
-solana-sdk = { workspace = true }
+solana-account = { workspace = true }
+solana-pubkey = { workspace = true }

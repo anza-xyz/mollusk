@@ -1879,7 +1879,8 @@ name = "mollusk-svm-programs-memo"
 version = "0.0.15"
 dependencies = [
  "mollusk-svm",
- "solana-sdk",
+ "solana-account",
+ "solana-pubkey",
 ]
 
 [[package]]
@@ -1887,7 +1888,8 @@ name = "mollusk-svm-programs-token"
 version = "0.0.15"
 dependencies = [
  "mollusk-svm",
- "solana-sdk",
+ "solana-account",
+ "solana-pubkey",
 ]
 
 [[package]]
