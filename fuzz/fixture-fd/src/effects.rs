@@ -1,9 +1,8 @@
 //! Post-invocation effects of an instruction.
 
 use {
-    super::proto::InstrEffects as ProtoEffects,
-    crate::account::SeedAddress,
-    solana_sdk::{account::Account, keccak::Hasher, pubkey::Pubkey},
+    super::proto::InstrEffects as ProtoEffects, crate::account::SeedAddress,
+    solana_account::Account, solana_keccak_hasher::Hasher, solana_pubkey::Pubkey,
 };
 
 /// Represents the effects of a single instruction.

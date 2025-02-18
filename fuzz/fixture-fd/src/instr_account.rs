@@ -1,8 +1,8 @@
 //! Instruction account.
 
 use {
-    super::proto::InstrAcct as ProtoInstrAccount,
-    solana_sdk::{keccak::Hasher, transaction_context::InstructionAccount},
+    super::proto::InstrAcct as ProtoInstrAccount, solana_keccak_hasher::Hasher,
+    solana_transaction_context::InstructionAccount,
 };
 
 impl From<ProtoInstrAccount> for InstructionAccount {

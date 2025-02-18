@@ -2,7 +2,9 @@
 
 use {
     super::proto::{AcctState as ProtoAccount, SeedAddress as ProtoSeedAddress},
-    solana_sdk::{account::Account, keccak::Hasher, pubkey::Pubkey},
+    solana_account::Account,
+    solana_keccak_hasher::Hasher,
+    solana_pubkey::Pubkey,
 };
 
 #[derive(Clone, Debug, Default, PartialEq)]

@@ -1820,8 +1820,11 @@ dependencies = [
  "prost-build",
  "serde",
  "serde_json",
- "solana-compute-budget",
- "solana-sdk",
+ "solana-account",
+ "solana-feature-set",
+ "solana-keccak-hasher",
+ "solana-pubkey",
+ "solana-transaction-context",
  "which",
 ]
 

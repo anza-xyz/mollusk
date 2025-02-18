@@ -1,6 +1,6 @@
 //! Program invocation metadata.
 
-use {super::proto::FixtureMetadata as ProtoFixtureMetadata, solana_sdk::keccak::Hasher};
+use {super::proto::FixtureMetadata as ProtoFixtureMetadata, solana_keccak_hasher::Hasher};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Metadata {

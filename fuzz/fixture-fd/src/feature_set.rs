@@ -1,14 +1,14 @@
 //! Runtime feature set.
 
 use {
-    super::proto::FeatureSet as ProtoFeatureSet,
-    solana_sdk::{feature_set::FeatureSet, keccak::Hasher, pubkey::Pubkey},
+    super::proto::FeatureSet as ProtoFeatureSet, solana_feature_set::FeatureSet,
+    solana_keccak_hasher::Hasher, solana_pubkey::Pubkey,
 };
 
 // Omit "test features" (they have the same u64 ID).
 pub static OMITTED_FEATURES: &[Pubkey] = &[
-    solana_sdk::feature_set::disable_sbpf_v0_execution::id(),
-    solana_sdk::feature_set::reenable_sbpf_v0_execution::id(),
+    solana_feature_set::disable_sbpf_v0_execution::id(),
+    solana_feature_set::reenable_sbpf_v0_execution::id(),
 ];
 
 impl From<ProtoFeatureSet> for FeatureSet {

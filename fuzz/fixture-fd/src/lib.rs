@@ -24,7 +24,7 @@ use {
         context::Context, effects::Effects, metadata::Metadata, proto::InstrFixture as ProtoFixture,
     },
     mollusk_svm_fuzz_fs::{FsHandler, IntoSerializableFixture, SerializableFixture},
-    solana_sdk::keccak::{Hash, Hasher},
+    solana_keccak_hasher::{Hash, Hasher},
 };
 
 /// A fixture for invoking a single instruction against a simulated SVM
@@ -112,10 +112,11 @@ mod tests {
             metadata::Metadata,
         },
         mollusk_svm_fuzz_fs::SerializableFixture,
-        solana_sdk::{
-            account::Account, feature_set::FeatureSet, keccak::Hash, pubkey::Pubkey,
-            transaction_context::InstructionAccount,
-        },
+        solana_account::Account,
+        solana_feature_set::FeatureSet,
+        solana_keccak_hasher::Hash,
+        solana_pubkey::Pubkey,
+        solana_transaction_context::InstructionAccount,
     };
 
     fn produce_hash(fixture: &Fixture) -> Hash {

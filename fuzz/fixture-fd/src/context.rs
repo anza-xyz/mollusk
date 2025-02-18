@@ -4,10 +4,11 @@ use {
         SlotContext as ProtoSlotContext,
     },
     crate::account::SeedAddress,
-    solana_sdk::{
-        account::Account, feature_set::FeatureSet, keccak::Hasher, pubkey::Pubkey,
-        transaction_context::InstructionAccount,
-    },
+    solana_account::Account,
+    solana_feature_set::FeatureSet,
+    solana_keccak_hasher::Hasher,
+    solana_pubkey::Pubkey,
+    solana_transaction_context::InstructionAccount,
 };
 
 #[derive(Clone, Debug, Default, PartialEq)]

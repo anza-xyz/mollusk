@@ -11,10 +11,13 @@ version = { workspace = true }
 [dependencies]
 mollusk-svm-fuzz-fs = { workspace = true }
 prost = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-solana-compute-budget = { workspace = true }
-solana-sdk = { workspace = true }
+solana-account = { workspace = true }
+solana-feature-set = { workspace = true }
+solana-keccak-hasher = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-transaction-context = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }
