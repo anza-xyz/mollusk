@@ -9,12 +9,10 @@ use {
         },
         keys::KeyMap,
     },
-    solana_sdk::{
-        account::{Account, WritableAccount},
-        instruction::Instruction,
-        pubkey::Pubkey,
-        transaction_context::{InstructionAccount, TransactionAccount},
-    },
+    solana_account::{Account, WritableAccount},
+    solana_instruction::Instruction,
+    solana_pubkey::Pubkey,
+    solana_transaction_context::{InstructionAccount, TransactionAccount},
 };
 
 pub struct CompiledAccounts {

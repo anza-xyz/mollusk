@@ -14,15 +14,13 @@ use {
         context::Context as FuzzContext, effects::Effects as FuzzEffects,
         sysvars::Sysvars as FuzzSysvars, Fixture as FuzzFixture,
     },
+    solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_sdk::{
-        account::Account,
-        feature_set::FeatureSet,
-        instruction::{Instruction, InstructionError},
-        pubkey::Pubkey,
-        slot_hashes::SlotHashes,
-        sysvar::last_restart_slot::LastRestartSlot,
-    },
+    solana_feature_set::FeatureSet,
+    solana_instruction::{error::InstructionError, Instruction},
+    solana_pubkey::Pubkey,
+    solana_slot_hashes::SlotHashes,
+    solana_sysvar::last_restart_slot::LastRestartSlot,
 };
 
 impl From<&Sysvars> for FuzzSysvars {

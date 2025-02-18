@@ -32,15 +32,33 @@ mollusk-svm-fuzz-fixture = { workspace = true, optional = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true, optional = true }
 mollusk-svm-fuzz-fs = { workspace = true, optional = true }
 mollusk-svm-keys = { workspace = true }
+solana-account = { workspace = true }
 solana-bpf-loader-program = { workspace = true }
+solana-clock = { workspace = true }
 solana-compute-budget = { workspace = true }
+solana-epoch-rewards = { workspace = true }
+solana-epoch-schedule = { workspace = true }
+solana-feature-set = { workspace = true }
+solana-fee-structure = { workspace = true }
+solana-hash = { workspace = true }
+solana-instruction = { workspace = true }
+solana-loader-v3-interface = { workspace = true }
 solana-log-collector = { workspace = true }
 solana-logger = { workspace = true }
+solana-precompiles = { workspace = true }
+solana-program-error = { workspace = true }
 solana-program-runtime = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-rent = { workspace = true }
+solana-sdk-ids = { workspace = true }
+solana-slot-hashes = { workspace = true }
+solana-stake-interface = { workspace = true }
 solana-stake-program = { workspace = true, optional = true }
 solana-system-program = { workspace = true }
-solana-sdk = { workspace = true }
+solana-sysvar = { workspace = true }
+solana-sysvar-id = { workspace = true }
 solana-timings = { workspace = true }
+solana-transaction-context = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -49,6 +67,10 @@ libsecp256k1 = { workspace = true }
 rand0-7 = { workspace = true }
 rayon = { workspace = true }
 serial_test = { workspace = true }
+solana-ed25519-program = { workspace = true }
+solana-native-token = { workspace = true }
+solana-secp256k1-program = { workspace = true }
+solana-system-interface = { workspace = true }
 
 [[bench]]
 name = "ips"

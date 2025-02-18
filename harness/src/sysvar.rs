@@ -1,19 +1,18 @@
 //! Module for working with Solana sysvars.
 
 use {
+    solana_account::{Account, ReadableAccount},
+    solana_clock::{Clock, Slot},
+    solana_epoch_rewards::EpochRewards,
+    solana_epoch_schedule::EpochSchedule,
+    solana_hash::Hash,
     solana_program_runtime::sysvar_cache::SysvarCache,
-    solana_sdk::{
-        account::{Account, ReadableAccount},
-        clock::{Clock, Slot},
-        epoch_rewards::EpochRewards,
-        epoch_schedule::EpochSchedule,
-        hash::Hash,
-        pubkey::Pubkey,
-        rent::Rent,
-        slot_hashes::{self, SlotHashes},
-        stake_history::{StakeHistory, StakeHistoryEntry},
-        sysvar::{self, last_restart_slot::LastRestartSlot, Sysvar, SysvarId},
-    },
+    solana_pubkey::Pubkey,
+    solana_rent::Rent,
+    solana_slot_hashes::{SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
+    solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
+    solana_sysvar::{self, last_restart_slot::LastRestartSlot, Sysvar},
+    solana_sysvar_id::SysvarId,
 };
 
 // Agave's sysvar cache is difficult to work with, so Mollusk offers a wrapper
@@ -38,7 +37,7 @@ impl Default for Sysvars {
         let rent = Rent::default();
 
         let slot_hashes = {
-            let mut default_slot_hashes = vec![(0, Hash::default()); slot_hashes::MAX_ENTRIES];
+            let mut default_slot_hashes = vec![(0, Hash::default()); SLOT_HASHES_MAX_ENTRIES];
             default_slot_hashes[0] = (clock.slot, Hash::default());
             SlotHashes::new(&default_slot_hashes)
         };
@@ -66,7 +65,7 @@ impl Sysvars {
         let account = Account {
             lamports,
             data,
-            owner: sysvar::id(),
+            owner: solana_sdk_ids::sysvar::id(),
             executable: false,
             ..Default::default()
         };
@@ -123,8 +122,8 @@ impl Sysvars {
         };
 
         // Then update `SlotHashes`.
-        if slot_delta > slot_hashes::MAX_ENTRIES as u64 {
-            let final_hash_slot = slot - slot_hashes::MAX_ENTRIES as u64;
+        if slot_delta > SLOT_HASHES_MAX_ENTRIES as u64 {
+            let final_hash_slot = slot - SLOT_HASHES_MAX_ENTRIES as u64;
 
             let slot_hash_entries = (final_hash_slot..slot)
                 .rev()
@@ -219,7 +218,7 @@ impl From<&Sysvars> for SysvarCache {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, solana_sdk::stake_history::StakeHistoryEntry, std::ops::Deref};
+    use {super::*, solana_stake_interface::stake_history::StakeHistoryEntry, std::ops::Deref};
 
     #[test]
     fn test_warp_to_slot() {
@@ -230,9 +229,9 @@ mod tests {
         assert_eq!(sysvars.clock.epoch, sysvars.epoch_schedule.get_epoch(slot));
         assert_eq!(
             sysvars.slot_hashes.as_slice(),
-            &[(slot, Hash::default()); slot_hashes::MAX_ENTRIES]
+            &[(slot, Hash::default()); SLOT_HASHES_MAX_ENTRIES]
         );
-        assert_eq!(sysvars.slot_hashes.len(), slot_hashes::MAX_ENTRIES);
+        assert_eq!(sysvars.slot_hashes.len(), SLOT_HASHES_MAX_ENTRIES);
 
         let mut warp_and_check = |slot: Slot| {
             sysvars.warp_to_slot(slot);
@@ -242,7 +241,7 @@ mod tests {
                 sysvars.slot_hashes.first(),
                 Some(&(slot - 1, Hash::default())),
             );
-            assert_eq!(sysvars.slot_hashes.len(), slot_hashes::MAX_ENTRIES);
+            assert_eq!(sysvars.slot_hashes.len(), SLOT_HASHES_MAX_ENTRIES);
         };
 
         warp_and_check(200);

@@ -1,10 +1,10 @@
 //! Results of Mollusk program execution.
 
-use solana_sdk::{
-    account::{Account, ReadableAccount},
-    instruction::InstructionError,
-    program_error::ProgramError,
-    pubkey::Pubkey,
+use {
+    solana_account::{Account, ReadableAccount},
+    solana_instruction::error::InstructionError,
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
 };
 
 macro_rules! compare {

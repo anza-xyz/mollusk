@@ -1,9 +1,8 @@
 use {
     mollusk_svm::{result::Check, Mollusk},
-    solana_sdk::{
-        account::Account, instruction::InstructionError, pubkey::Pubkey, system_instruction,
-        system_program,
-    },
+    solana_account::Account,
+    solana_instruction::error::InstructionError,
+    solana_pubkey::Pubkey,
     solana_system_program::system_processor::DEFAULT_COMPUTE_UNITS,
 };
 
@@ -15,15 +14,16 @@ fn test_transfer() {
     let base_lamports = 100_000_000u64;
     let transfer_amount = 42_000u64;
 
-    let instruction = system_instruction::transfer(&sender, &recipient, transfer_amount);
+    let instruction =
+        solana_system_interface::instruction::transfer(&sender, &recipient, transfer_amount);
     let accounts = [
         (
             sender,
-            Account::new(base_lamports, 0, &system_program::id()),
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
         ),
         (
             recipient,
-            Account::new(base_lamports, 0, &system_program::id()),
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
         ),
     ];
     let checks = vec![
@@ -48,17 +48,18 @@ fn test_transfer_account_ordering() {
     let base_lamports = 100_000_000u64;
     let transfer_amount = 42_000u64;
 
-    let instruction = system_instruction::transfer(&sender, &recipient, transfer_amount);
+    let instruction =
+        solana_system_interface::instruction::transfer(&sender, &recipient, transfer_amount);
 
     // Ordering of provided accounts doesn't matter.
     let accounts = [
         (
             recipient,
-            Account::new(base_lamports, 0, &system_program::id()),
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
         ),
         (
             sender,
-            Account::new(base_lamports, 0, &system_program::id()),
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
         ),
     ];
     let checks = vec![
@@ -83,7 +84,8 @@ fn test_transfer_bad_owner() {
     let base_lamports = 100_000_000u64;
     let transfer_amount = 42_000u64;
 
-    let instruction = system_instruction::transfer(&sender, &recipient, transfer_amount);
+    let instruction =
+        solana_system_interface::instruction::transfer(&sender, &recipient, transfer_amount);
     let accounts = [
         (
             sender,
@@ -91,7 +93,7 @@ fn test_transfer_bad_owner() {
         ),
         (
             recipient,
-            Account::new(base_lamports, 0, &system_program::id()),
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
         ),
     ];
     let checks = vec![

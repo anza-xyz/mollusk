@@ -3,10 +3,10 @@
 use {
     mollusk_svm::{result::Check, Mollusk},
     serial_test::serial,
-    solana_sdk::{
-        account::Account, feature_set::FeatureSet, instruction::Instruction, pubkey::Pubkey,
-        system_instruction, system_program,
-    },
+    solana_account::Account,
+    solana_feature_set::FeatureSet,
+    solana_instruction::Instruction,
+    solana_pubkey::Pubkey,
     std::path::Path,
 };
 
@@ -81,15 +81,16 @@ impl<'a> TestSetup<'a> {
     fn new(sender: &'a Pubkey, recipient: &'a Pubkey) -> Self {
         let mollusk = Mollusk::default();
 
-        let instruction = system_instruction::transfer(sender, recipient, TRANSFER_AMOUNT);
+        let instruction =
+            solana_system_interface::instruction::transfer(sender, recipient, TRANSFER_AMOUNT);
         let accounts = vec![
             (
                 *sender,
-                Account::new(BASE_LAMPORTS, 0, &system_program::id()),
+                Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
             ),
             (
                 *recipient,
-                Account::new(BASE_LAMPORTS, 0, &system_program::id()),
+                Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
             ),
         ];
         let checks = vec![

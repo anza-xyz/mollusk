@@ -6,7 +6,9 @@ pub mod mollusk;
 use {
     crate::{result::InstructionResult, Mollusk},
     mollusk_svm_fuzz_fs::FsHandler,
-    solana_sdk::{account::Account, instruction::Instruction, pubkey::Pubkey},
+    solana_account::Account,
+    solana_instruction::Instruction,
+    solana_pubkey::Pubkey,
 };
 
 pub fn generate_fixtures_from_mollusk_test(

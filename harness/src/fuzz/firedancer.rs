@@ -19,36 +19,26 @@ use {
         metadata::Metadata as FuzzMetadata,
         Fixture as FuzzFixture,
     },
+    solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_sdk::{
-        account::Account,
-        feature_set::FeatureSet,
-        instruction::{AccountMeta, Instruction, InstructionError},
-        pubkey::Pubkey,
-    },
+    solana_feature_set::FeatureSet,
+    solana_instruction::{error::InstructionError, AccountMeta, Instruction},
+    solana_pubkey::Pubkey,
 };
 
-mod zk_token_proof_program {
-    solana_sdk::declare_id!("ZkTokenProof1111111111111111111111111111111");
-}
-
-mod zk_elgamal_proof_program {
-    solana_sdk::declare_id!("ZkE1Gama1Proof11111111111111111111111111111");
-}
-
 static BUILTIN_PROGRAM_IDS: &[Pubkey] = &[
-    solana_sdk::system_program::id(),
-    solana_sdk::vote::program::id(),
-    solana_sdk::stake::program::id(),
-    solana_sdk::config::program::id(),
-    solana_sdk::bpf_loader_deprecated::id(),
-    solana_sdk::bpf_loader::id(),
-    solana_sdk::bpf_loader_upgradeable::id(),
-    solana_sdk::compute_budget::id(),
-    solana_sdk::address_lookup_table::program::id(),
-    zk_token_proof_program::id(),
-    solana_sdk::loader_v4::id(),
-    zk_elgamal_proof_program::id(),
+    solana_sdk_ids::system_program::id(),
+    solana_sdk_ids::vote::id(),
+    solana_sdk_ids::stake::id(),
+    solana_sdk_ids::config::id(),
+    solana_sdk_ids::bpf_loader_deprecated::id(),
+    solana_sdk_ids::bpf_loader::id(),
+    solana_sdk_ids::bpf_loader_upgradeable::id(),
+    solana_sdk_ids::compute_budget::id(),
+    solana_sdk_ids::address_lookup_table::id(),
+    solana_sdk_ids::zk_token_proof_program::id(),
+    solana_sdk_ids::loader_v4::id(),
+    solana_sdk_ids::zk_elgamal_proof_program::id(),
 ];
 
 fn instr_err_to_num(error: &InstructionError) -> i32 {
@@ -74,7 +64,7 @@ fn build_fixture_context(
     slot: u64,
 ) -> FuzzContext {
     let loader_key = if BUILTIN_PROGRAM_IDS.contains(&instruction.program_id) {
-        solana_sdk::native_loader::id()
+        solana_sdk_ids::native_loader::id()
     } else {
         DEFAULT_LOADER_KEY
     };

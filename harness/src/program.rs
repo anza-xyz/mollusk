@@ -1,22 +1,23 @@
 //! Module for working with Solana programs.
 
 use {
+    solana_account::Account,
     solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1,
     solana_compute_budget::compute_budget::ComputeBudget,
+    solana_feature_set::FeatureSet,
+    solana_loader_v3_interface::state::UpgradeableLoaderState,
     solana_program_runtime::{
         invoke_context::BuiltinFunctionWithContext,
         loaded_programs::{LoadProgramMetrics, ProgramCacheEntry, ProgramCacheForTxBatch},
     },
-    solana_sdk::{
-        account::Account, bpf_loader_upgradeable::UpgradeableLoaderState, feature_set::FeatureSet,
-        native_loader, pubkey::Pubkey, rent::Rent,
-    },
+    solana_pubkey::Pubkey,
+    solana_rent::Rent,
     std::sync::{Arc, RwLock},
 };
 
 /// Loader keys, re-exported from `solana_sdk` for convenience.
 pub mod loader_keys {
-    pub use solana_sdk::{
+    pub use solana_sdk_ids::{
         bpf_loader::ID as LOADER_V2, bpf_loader_deprecated::ID as LOADER_V1,
         bpf_loader_upgradeable::ID as LOADER_V3, loader_v4::ID as LOADER_V4,
         native_loader::ID as NATIVE_LOADER,
@@ -24,8 +25,8 @@ pub mod loader_keys {
 }
 
 pub mod precompile_keys {
-    use solana_sdk::pubkey::Pubkey;
-    pub use solana_sdk::{
+    use solana_pubkey::Pubkey;
+    pub use solana_sdk_ids::{
         ed25519_program::ID as ED25519_PROGRAM,
         secp256k1_program::ID as SECP256K1_PROGRAM,
         // secp256r1_program::ID as SECP256R1_PROGRAM, // Add me when patch version for 2.1 is
@@ -140,7 +141,7 @@ static BUILTINS: &[Builtin] = &[
     },
     #[cfg(feature = "all-builtins")]
     Builtin {
-        program_id: solana_sdk::stake::program::id(),
+        program_id: solana_sdk_ids::stake::id(),
         name: "solana_stake_program",
         entrypoint: solana_stake_program::stake_instruction::Entrypoint::vm,
     },
@@ -157,7 +158,7 @@ pub fn create_keyed_account_for_builtin_program(
     let account = Account {
         lamports,
         data,
-        owner: native_loader::id(),
+        owner: loader_keys::NATIVE_LOADER,
         executable: true,
         ..Default::default()
     };
