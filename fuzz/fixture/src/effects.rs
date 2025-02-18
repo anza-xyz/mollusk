@@ -2,7 +2,9 @@
 
 use {
     super::proto::{AcctState as ProtoAccount, InstrEffects as ProtoEffects},
-    solana_sdk::{account::Account, keccak::Hasher, pubkey::Pubkey},
+    solana_account::Account,
+    solana_keccak_hasher::Hasher,
+    solana_pubkey::Pubkey,
 };
 
 /// Represents the effects of a single instruction.

@@ -8,16 +8,14 @@ use {
         StakeHistory as ProtoStakeHistory, StakeHistoryEntry as ProtoStakeHistoryEntry,
         SysvarContext as ProtoSysvars,
     },
-    solana_sdk::{
-        clock::Clock,
-        epoch_rewards::EpochRewards,
-        epoch_schedule::EpochSchedule,
-        hash::Hash,
-        keccak::Hasher,
-        rent::Rent,
-        slot_hashes::{SlotHash, SlotHashes},
-        stake_history::{StakeHistory, StakeHistoryEntry},
-    },
+    solana_clock::Clock,
+    solana_epoch_rewards::EpochRewards,
+    solana_epoch_schedule::EpochSchedule,
+    solana_hash::Hash,
+    solana_keccak_hasher::Hasher,
+    solana_rent::Rent,
+    solana_slot_hashes::{SlotHash, SlotHashes},
+    solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
 };
 
 /// A fixture of runtime sysvars.

@@ -2,7 +2,7 @@
 
 use {
     super::proto::ComputeBudget as ProtoComputeBudget,
-    solana_compute_budget::compute_budget::ComputeBudget, solana_sdk::keccak::Hasher,
+    solana_compute_budget::compute_budget::ComputeBudget, solana_keccak_hasher::Hasher,
 };
 
 impl From<ProtoComputeBudget> for ComputeBudget {

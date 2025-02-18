@@ -5,11 +5,12 @@ use {
         proto::{InstrAcct as ProtoInstructionAccount, InstrContext as ProtoContext},
         sysvars::Sysvars,
     },
+    solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_sdk::{
-        account::Account, feature_set::FeatureSet, instruction::AccountMeta, keccak::Hasher,
-        pubkey::Pubkey,
-    },
+    solana_feature_set::FeatureSet,
+    solana_instruction::AccountMeta,
+    solana_keccak_hasher::Hasher,
+    solana_pubkey::Pubkey,
 };
 
 /// Instruction context fixture.
