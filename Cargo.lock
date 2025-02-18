@@ -1822,7 +1822,7 @@ dependencies = [
  "prost",
  "serde",
  "serde_json",
- "solana-sdk",
+ "solana-keccak-hasher",
 ]
 
 [[package]]

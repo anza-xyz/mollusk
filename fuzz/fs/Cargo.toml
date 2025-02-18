@@ -13,4 +13,4 @@ bs58 = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-solana-sdk = { workspace = true }
+solana-keccak-hasher = { workspace = true }

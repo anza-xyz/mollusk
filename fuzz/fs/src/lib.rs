@@ -24,7 +24,7 @@ pub trait SerializableFixture: Default + DeserializeOwned + Message + Serialize 
     }
 
     /// Hash the fixture's contents into a Keccak hash.
-    fn hash(&self) -> solana_sdk::keccak::Hash;
+    fn hash(&self) -> solana_keccak_hasher::Hash;
 }
 
 /// Represents a fixture that can be converted into a serializable fixture.
