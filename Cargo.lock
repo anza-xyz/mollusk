@@ -1830,7 +1830,10 @@ name = "mollusk-svm-keys"
 version = "0.0.15"
 dependencies = [
  "mollusk-svm-error",
- "solana-sdk",
+ "solana-account",
+ "solana-instruction",
+ "solana-pubkey",
+ "solana-transaction-context",
 ]
 
 [[package]]

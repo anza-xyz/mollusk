@@ -3,12 +3,10 @@
 use {
     crate::keys::KeyMap,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
-    solana_sdk::{
-        account::{Account, AccountSharedData},
-        instruction::Instruction,
-        pubkey::Pubkey,
-        transaction_context::{IndexOfAccount, InstructionAccount, TransactionAccount},
-    },
+    solana_account::{Account, AccountSharedData},
+    solana_instruction::Instruction,
+    solana_pubkey::Pubkey,
+    solana_transaction_context::{IndexOfAccount, InstructionAccount, TransactionAccount},
 };
 
 // Helper struct to avoid cloning instruction data.
