@@ -7,7 +7,7 @@ on:
     branches: [main, solana-v2.0, solana-v1.18]
 
 env:
-  NIGHTLY_TOOLCHAIN: nightly-2024-05-02
+  NIGHTLY_TOOLCHAIN: nightly-2024-11-22
   SOLANA_VERSION: 2.1.0
 
 jobs:
