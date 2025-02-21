@@ -2,7 +2,7 @@
 
 set -e
 
-agave-install init 2.1.0
+agave-install init 2.2.0
 rm -rf target
 cargo build
 ./scripts/build-test-programs.sh
