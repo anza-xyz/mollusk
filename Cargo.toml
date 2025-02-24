@@ -84,6 +84,7 @@ solana-transaction-context = "2.2"
 thiserror = "1.0.64"
 tokio = "1.37.0"
 which = "=4.4.0"
+chrono = "0.4.38"
 
 [workspace.lints.rust.unexpected_cfgs]
 level = "warn"

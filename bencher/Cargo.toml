@@ -10,7 +10,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-chrono = "0.4.38"
+chrono = { workspace = true }
 num-format = { workspace = true }
 serde_json = { workspace = true }
 mollusk-svm = { workspace = true }
