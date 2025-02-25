@@ -151,7 +151,7 @@ fn test_transfer() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2504),
+            Check::compute_units(2500),
             Check::account(&payer)
                 .lamports(payer_lamports - transfer_amount)
                 .build(),
@@ -209,7 +209,7 @@ fn test_close_account() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2585),
+            Check::compute_units(2581),
             Check::account(&key)
                 .closed() // The rest is unnecessary, just testing.
                 .data(&[])
@@ -265,7 +265,7 @@ fn test_cpi() {
             &[
                 // This is the error thrown by SVM. It also emits the message
                 // "Program is not cached".
-                Check::err(ProgramError::InvalidAccountData),
+                Check::instruction_err(InstructionError::UnsupportedProgramId),
             ],
         );
     }
@@ -329,7 +329,7 @@ fn test_cpi() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2288),
+            Check::compute_units(2289),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)

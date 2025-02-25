@@ -108,10 +108,18 @@ impl Default for InstructionResult {
     }
 }
 
-#[derive(Default)]
 pub struct Config {
     pub panic: bool,
     pub verbose: bool,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            panic: true,
+            verbose: false,
+        }
+    }
 }
 
 impl InstructionResult {
