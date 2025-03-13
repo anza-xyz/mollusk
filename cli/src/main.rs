@@ -176,9 +176,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 verbose,
             );
 
+            let mut failures = 0;
             for fixture_path in search_paths(&fixture, "fix")? {
-                runner.run(&mut mollusk_ground, Some(&mut mollusk_test), &fixture_path)?;
+                let result =
+                    runner.run(&mut mollusk_ground, Some(&mut mollusk_test), &fixture_path)?;
+                if !result {
+                    failures += 1;
+                }
             }
+
+            println!();
+            println!("[DONE][TEST RESULT]: {} failures", failures);
         }
     }
     Ok(())

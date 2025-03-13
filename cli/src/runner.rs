@@ -71,7 +71,7 @@ impl Runner {
         ground: &mut Mollusk,
         target: Option<&mut Mollusk>,
         fixture_path: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         // Disable stdout logging of program logs if not specified.
         if !self.program_logs {
             solana_logger::setup_with("");
@@ -110,7 +110,7 @@ impl Runner {
 
             let (target_result, _) = self.run_fixture(target, fixture_path);
 
-            if self.inputs_only || self.verbose {
+            if self.verbose {
                 println!("[TARGET]: RESULT:\n{:?}", &target_result);
             }
 
@@ -143,6 +143,6 @@ impl Runner {
             println!("FAIL: {}", &fixture_path);
         }
 
-        Ok(())
+        Ok(pass)
     }
 }
