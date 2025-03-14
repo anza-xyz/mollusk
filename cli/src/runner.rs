@@ -80,17 +80,35 @@ impl Runner {
         let mut pass = true;
 
         if self.verbose {
+            println!("----------------------------------------");
             println!("[GROUND]: FIX: {}", fixture_path);
+        }
+
+        if self.program_logs {
+            println!("[GROUND]: Program logs:");
+            println!();
         }
 
         let (ground_result, effects) = self.run_fixture(ground, fixture_path);
 
-        if self.inputs_only && self.verbose {
-            println!("[GROUND]: RESULT:\n{:?}", &ground_result);
+        if self.program_logs {
+            println!();
+        }
+
+        if self.verbose {
+            println!("[GROUND]: Result:");
+            println!();
+            println!("{:?}", &ground_result);
+            println!();
         }
 
         if !self.inputs_only {
             // Compare against the effects.
+            if self.verbose {
+                println!("[GROUND]: Comparing against fixture effects...");
+                println!();
+            }
+
             pass &= ground_result.compare_with_config(
                 &effects,
                 &self.checks,
@@ -108,14 +126,31 @@ impl Runner {
                 println!("[TARGET]: FIX: {}", &fixture_path);
             }
 
+            if self.program_logs {
+                println!("[TARGET]: Program logs:");
+                println!();
+            }
+
             let (target_result, _) = self.run_fixture(target, fixture_path);
 
+            if self.program_logs {
+                println!();
+            }
+
             if self.verbose {
-                println!("[TARGET]: RESULT:\n{:?}", &target_result);
+                println!("[TARGET]: Result:");
+                println!();
+                println!("{:?}", &target_result);
+                println!();
             }
 
             if !self.inputs_only {
                 // Compare against the effects.
+                if self.verbose {
+                    println!("[TARGET]: Comparing against fixture effects...");
+                    println!();
+                }
+
                 pass &= target_result.compare_with_config(
                     &effects,
                     &self.checks,
@@ -127,6 +162,11 @@ impl Runner {
             }
 
             // Compare the two results.
+            if self.verbose {
+                println!("[TEST]: Comparing the two results...");
+                println!();
+            }
+
             pass &= ground_result.compare_with_config(
                 &target_result,
                 &self.checks,
@@ -137,12 +177,43 @@ impl Runner {
             );
         }
 
+        if self.verbose {
+            println!();
+        }
+
         if pass {
             println!("PASS: {}", &fixture_path);
         } else {
             println!("FAIL: {}", &fixture_path);
         }
 
+        if self.verbose {
+            println!("----------------------------------------");
+            println!();
+        }
+
         Ok(pass)
+    }
+
+    pub fn run_all(
+        &self,
+        ground: &mut Mollusk,
+        mut target: Option<&mut Mollusk>,
+        fixtures: &[String],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut failures = 0;
+
+        for fixture_path in fixtures {
+            let result = self.run(ground, target.as_deref_mut(), fixture_path)?;
+
+            if !result {
+                failures += 1;
+            }
+        }
+
+        println!();
+        println!("[DONE][TEST RESULT]: {} failures", failures);
+
+        Ok(())
     }
 }

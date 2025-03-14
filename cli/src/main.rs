@@ -137,11 +137,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Compare::everything()
             };
 
-            let runner = Runner::new(checks, inputs_only, program_logs, proto, verbose);
+            let fixtures = search_paths(&fixture, "fix")?;
 
-            for fixture_path in search_paths(&fixture, "fix")? {
-                runner.run(&mut mollusk, None, &fixture_path)?;
-            }
+            Runner::new(checks, inputs_only, program_logs, proto, verbose).run_all(
+                &mut mollusk,
+                None,
+                &fixtures,
+            )?
         }
         SubCommand::RunTest {
             elf_path_source,
@@ -168,25 +170,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Compare::everything()
             };
 
-            let runner = Runner::new(
+            let fixtures = search_paths(&fixture, "fix")?;
+
+            Runner::new(
                 checks,
                 /* inputs_only */ true,
                 program_logs,
                 proto,
                 verbose,
-            );
-
-            let mut failures = 0;
-            for fixture_path in search_paths(&fixture, "fix")? {
-                let result =
-                    runner.run(&mut mollusk_ground, Some(&mut mollusk_test), &fixture_path)?;
-                if !result {
-                    failures += 1;
-                }
-            }
-
-            println!();
-            println!("[DONE][TEST RESULT]: {} failures", failures);
+            )
+            .run_all(&mut mollusk_ground, Some(&mut mollusk_test), &fixtures)?
         }
     }
     Ok(())

@@ -18,7 +18,7 @@ macro_rules! compare {
                 panic!("{}", msg);
             } else {
                 if $c.verbose {
-                    eprintln!("{}", msg);
+                    println!("{}", msg);
                 }
                 return false;
             }
