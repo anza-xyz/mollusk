@@ -37,6 +37,7 @@ mollusk-svm-keys = { path = "keys", version = "0.1.2" }
 mollusk-svm-programs-memo = { path = "programs/memo", version = "0.1.2" }
 mollusk-svm-programs-token = { path = "programs/token", version = "0.1.2" }
 num-format = "0.4.4"
+openssl = "0.10"
 prost = "0.9"
 prost-build = "0.9"
 prost-types = "0.9"
@@ -72,6 +73,7 @@ solana-pubkey = "2.2"
 solana-rent = "2.2"
 solana-sdk-ids = "2.2"
 solana-secp256k1-program = "2.2"
+solana-secp256r1-program = "2.2"
 solana-slot-hashes = "2.2"
 solana-stake-interface = "1.0"
 solana-stake-program = "2.2"

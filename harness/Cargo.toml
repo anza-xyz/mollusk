@@ -64,12 +64,14 @@ solana-transaction-context = { workspace = true }
 criterion = { workspace = true }
 ed25519-dalek = { workspace = true }
 libsecp256k1 = { workspace = true }
+openssl = { workspace = true }
 rand0-7 = { workspace = true }
 rayon = { workspace = true }
 serial_test = { workspace = true }
 solana-ed25519-program = { workspace = true }
 solana-native-token = { workspace = true }
 solana-secp256k1-program = { workspace = true }
+solana-secp256r1-program = { workspace = true }
 solana-system-interface = { workspace = true }
 
 [[bench]]

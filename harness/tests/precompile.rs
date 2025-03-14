@@ -46,5 +46,24 @@ fn test_ed25519() {
 
 #[test]
 fn test_secp256r1() {
-    // Add me when patch version for 2.1 is advanced!
+    use openssl::{
+        ec::{EcGroup, EcKey},
+        nid::Nid,
+    };
+
+    let mollusk = Mollusk::default();
+    let secret_key = {
+        let curve_name = Nid::X9_62_PRIME256V1;
+        let group = EcGroup::from_curve_name(curve_name).unwrap();
+        EcKey::generate(&group).unwrap()
+    };
+
+    mollusk.process_and_validate_instruction(
+        &solana_secp256r1_program::new_secp256r1_instruction(b"hello", secret_key).unwrap(),
+        &[
+            (Pubkey::new_unique(), Account::default()),
+            (solana_sdk_ids::ed25519_program::id(), precompile_account()),
+        ],
+        &[Check::success()],
+    );
 }
