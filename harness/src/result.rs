@@ -689,6 +689,16 @@ impl Compare {
         }
     }
 
+    /// Validate everything but compute unit consumption.
+    pub fn everything_but_cus() -> Vec<Self> {
+        vec![
+            // Self::ExecutionTime, // TODO: Intentionally omitted for now...
+            Self::ProgramResult,
+            Self::ReturnData,
+            Self::all_resulting_accounts(),
+        ]
+    }
+
     /// Validate everything.
     pub fn everything() -> Vec<Self> {
         vec![

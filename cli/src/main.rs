@@ -30,6 +30,13 @@ enum SubCommand {
         /// Path to the config file for validation checks.
         #[arg(short, long)]
         config: Option<String>,
+        /// Skip comparing compute unit consumption, but compare everything
+        /// else.
+        ///
+        /// Note this flag is ignored if `inputs_only` is set, and will
+        /// override a `Compare::ComputeUnits` check in the config file.
+        #[arg(long)]
+        ignore_compute_units: bool,
         /// Just execute the fixture without any validation.
         #[arg(short, long)]
         inputs_only: bool,
@@ -65,6 +72,13 @@ enum SubCommand {
         /// Path to the config file for validation checks.
         #[arg(short, long)]
         config: Option<String>,
+        /// Skip comparing compute unit consumption, but compare everything
+        /// else.
+        ///
+        /// Note this flag will override a `Compare::ComputeUnits` check in the
+        /// config file.
+        #[arg(long)]
+        ignore_compute_units: bool,
         /// Enable emission of program logs to stdout. Disabled by default.
         #[arg(long)]
         program_logs: bool,
@@ -122,6 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fixture,
             program_id,
             config,
+            ignore_compute_units,
             inputs_only,
             program_logs,
             proto,
@@ -132,6 +147,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let checks = if let Some(config_path) = config {
                 ConfigFile::try_load(&config_path)?.checks
+            } else if ignore_compute_units {
+                Compare::everything_but_cus()
             } else {
                 // Defaults to all checks.
                 Compare::everything()
@@ -151,6 +168,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fixture,
             program_id,
             config,
+            ignore_compute_units,
             program_logs,
             proto,
             verbose,
@@ -165,6 +183,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let checks = if let Some(config_path) = config {
                 ConfigFile::try_load(&config_path)?.checks
+            } else if ignore_compute_units {
+                Compare::everything_but_cus()
             } else {
                 // Defaults to all checks.
                 Compare::everything()
