@@ -214,6 +214,10 @@ impl Runner {
         println!();
         println!("[DONE][TEST RESULT]: {} failures", failures);
 
+        if failures > 0 {
+            std::process::exit(1);
+        }
+
         Ok(())
     }
 }
