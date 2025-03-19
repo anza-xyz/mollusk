@@ -157,8 +157,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let fixtures = search_paths(&fixture, "fix")?;
 
             Runner::new(checks, inputs_only, program_logs, proto, verbose).run_all(
-                &mut mollusk,
                 None,
+                &mut mollusk,
                 &fixtures,
             )?
         }
@@ -199,7 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 proto,
                 verbose,
             )
-            .run_all(&mut mollusk_ground, Some(&mut mollusk_test), &fixtures)?
+            .run_all(Some(&mut mollusk_ground), &mut mollusk_test, &fixtures)?
         }
     }
     Ok(())

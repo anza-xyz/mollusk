@@ -68,8 +68,8 @@ impl Runner {
 
     pub fn run(
         &self,
-        ground: &mut Mollusk,
-        target: Option<&mut Mollusk>,
+        ground: Option<&mut Mollusk>,
+        target: &mut Mollusk,
         fixture_path: &str,
     ) -> Result<bool, Box<dyn std::error::Error>> {
         // Disable stdout logging of program logs if not specified.
@@ -81,77 +81,41 @@ impl Runner {
 
         if self.verbose {
             println!("----------------------------------------");
-            println!("[GROUND]: FIX: {}", fixture_path);
         }
 
-        if self.program_logs {
-            println!("[GROUND]: Program logs:");
-            println!();
-        }
-
-        let (ground_result, effects) = self.run_fixture(ground, fixture_path);
-
-        if self.program_logs {
-            println!();
-        }
-
-        if self.verbose {
-            println!("[GROUND]: Result:");
-            println!();
-            println!("{:?}", &ground_result);
-            println!();
-        }
-
-        if !self.inputs_only {
-            // Compare against the effects.
-            if self.verbose {
-                println!("[GROUND]: Comparing against fixture effects...");
-                println!();
-            }
-
-            pass &= ground_result.compare_with_config(
-                &effects,
-                &self.checks,
-                &Config {
-                    panic: false,
-                    verbose: self.verbose,
-                },
-            );
-        }
-
-        if let Some(target) = target {
+        let ground_result = ground.map(|ground| {
             // Command `run-test`.
 
             if self.verbose {
-                println!("[TARGET]: FIX: {}", &fixture_path);
+                println!("[GROUND]: FIX: {}", fixture_path);
             }
 
             if self.program_logs {
-                println!("[TARGET]: Program logs:");
+                println!("[GROUND]: Program logs:");
                 println!();
             }
 
-            let (target_result, _) = self.run_fixture(target, fixture_path);
+            let (ground_result, effects) = self.run_fixture(ground, fixture_path);
 
             if self.program_logs {
                 println!();
             }
 
             if self.verbose {
-                println!("[TARGET]: Result:");
+                println!("[GROUND]: Result:");
                 println!();
-                println!("{:?}", &target_result);
+                println!("{:?}", &ground_result);
                 println!();
             }
 
             if !self.inputs_only {
                 // Compare against the effects.
                 if self.verbose {
-                    println!("[TARGET]: Comparing against fixture effects...");
+                    println!("[GROUND]: Comparing against fixture effects...");
                     println!();
                 }
 
-                pass &= target_result.compare_with_config(
+                pass &= ground_result.compare_with_config(
                     &effects,
                     &self.checks,
                     &Config {
@@ -161,6 +125,51 @@ impl Runner {
                 );
             }
 
+            ground_result
+        });
+
+        // All commands have a target.
+
+        if self.verbose {
+            println!("[TARGET]: FIX: {}", &fixture_path);
+        }
+
+        if self.program_logs {
+            println!("[TARGET]: Program logs:");
+            println!();
+        }
+
+        let (target_result, effects) = self.run_fixture(target, fixture_path);
+
+        if self.program_logs {
+            println!();
+        }
+
+        if self.verbose {
+            println!("[TARGET]: Result:");
+            println!();
+            println!("{:?}", &target_result);
+            println!();
+        }
+
+        if !self.inputs_only {
+            // Compare against the effects.
+            if self.verbose {
+                println!("[TARGET]: Comparing against fixture effects...");
+                println!();
+            }
+
+            pass &= target_result.compare_with_config(
+                &effects,
+                &self.checks,
+                &Config {
+                    panic: false,
+                    verbose: self.verbose,
+                },
+            );
+        }
+
+        if let Some(ground_result) = ground_result {
             // Compare the two results.
             if self.verbose {
                 println!("[TEST]: Comparing the two results...");
@@ -197,14 +206,14 @@ impl Runner {
 
     pub fn run_all(
         &self,
-        ground: &mut Mollusk,
-        mut target: Option<&mut Mollusk>,
+        mut ground: Option<&mut Mollusk>,
+        target: &mut Mollusk,
         fixtures: &[String],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut failures = 0;
 
         for fixture_path in fixtures {
-            let result = self.run(ground, target.as_deref_mut(), fixture_path)?;
+            let result = self.run(ground.as_deref_mut(), target, fixture_path)?;
 
             if !result {
                 failures += 1;
