@@ -64,7 +64,7 @@ use {
     solana_account::Account,
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
-    std::path::PathBuf,
+    std::{path::PathBuf, process::Command},
 };
 
 /// A bench is a tuple of a name, an instruction, and a list of accounts.
@@ -113,6 +113,7 @@ impl<'a> MolluskComputeUnitBencher<'a> {
 
     /// Execute the benches.
     pub fn execute(&mut self) {
+        let solana_version = get_solana_version();
         let bench_results = std::mem::take(&mut self.benches)
             .into_iter()
             .map(|(name, instruction, accounts)| {
@@ -131,6 +132,15 @@ impl<'a> MolluskComputeUnitBencher<'a> {
                 MolluskComputeUnitBenchResult::new(name, result)
             })
             .collect::<Vec<_>>();
-        write_results(&self.out_dir, bench_results);
+        write_results(&self.out_dir, &solana_version, bench_results);
+    }
+}
+
+fn get_solana_version() -> String {
+    match Command::new("solana").arg("--version").output() {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        }
+        _ => "Unknown".to_string(),
     }
 }

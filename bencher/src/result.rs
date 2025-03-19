@@ -19,7 +19,11 @@ impl<'a> MolluskComputeUnitBenchResult<'a> {
     }
 }
 
-pub(crate) fn write_results(out_dir: &Path, results: Vec<MolluskComputeUnitBenchResult>) {
+pub(crate) fn write_results(
+    out_dir: &Path,
+    solana_version: &str,
+    results: Vec<MolluskComputeUnitBenchResult>,
+) {
     let path = out_dir.join("compute_units.md");
 
     // Load the existing bench content and parse the most recent table.
@@ -34,7 +38,7 @@ pub(crate) fn write_results(out_dir: &Path, results: Vec<MolluskComputeUnitBench
         .map(|content| parse_last_md_table(content));
 
     // Prepare to write a new table.
-    let mut md_table = md_header();
+    let mut md_table = md_header(solana_version);
 
     // Evaluate the results against the previous table, if any.
     // If there are changes, write a new table.
@@ -76,15 +80,17 @@ pub(crate) fn write_results(out_dir: &Path, results: Vec<MolluskComputeUnitBench
     }
 }
 
-fn md_header() -> String {
+fn md_header(solana_version: &str) -> String {
     let now: DateTime<Utc> = Utc::now();
     format!(
         r#"#### Compute Units: {}
 
+Solana CLI Version: {}
+
 | Name | CUs | Delta |
 |------|------|-------|
 "#,
-        now
+        now, solana_version,
     )
 }
 
