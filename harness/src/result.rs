@@ -75,7 +75,7 @@ impl From<Result<(), InstructionError>> for ProgramResult {
 }
 
 /// The overall result of the instruction.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InstructionResult {
     /// The number of compute units consumed by the instruction.
     pub compute_units_consumed: u64,

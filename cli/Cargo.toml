@@ -13,6 +13,7 @@ clap = { workspace = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+mollusk-svm-bencher = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true }
 mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd", "serde"] }

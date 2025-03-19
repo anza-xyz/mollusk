@@ -56,7 +56,7 @@
 //! | bench3 | 2,811 | +2,361 |
 //! ```
 
-mod result;
+pub mod result;
 
 use {
     mollusk_svm::{result::ProgramResult, Mollusk},
@@ -136,7 +136,7 @@ impl<'a> MolluskComputeUnitBencher<'a> {
     }
 }
 
-fn get_solana_version() -> String {
+pub fn get_solana_version() -> String {
     match Command::new("solana").arg("--version").output() {
         Ok(output) if output.status.success() => {
             String::from_utf8_lossy(&output.stdout).trim().to_string()

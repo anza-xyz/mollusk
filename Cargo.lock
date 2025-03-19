@@ -1616,6 +1616,7 @@ version = "0.1.3"
 dependencies = [
  "clap",
  "mollusk-svm",
+ "mollusk-svm-bencher",
  "mollusk-svm-fuzz-fixture",
  "mollusk-svm-fuzz-fixture-firedancer",
  "serde",

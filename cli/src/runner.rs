@@ -6,6 +6,8 @@ use {
         result::{Compare, Config, InstructionResult},
         Mollusk,
     },
+    mollusk_svm_bencher::{get_solana_version, result::MolluskComputeUnitBenchResult},
+    std::path::PathBuf,
 };
 
 #[derive(Clone, Debug, Default, ValueEnum)]
@@ -19,6 +21,7 @@ pub enum ProtoLayout {
 
 pub struct Runner {
     checks: Vec<Compare>,
+    cus_report: Option<String>,
     inputs_only: bool,
     program_logs: bool,
     proto: ProtoLayout,
@@ -28,6 +31,7 @@ pub struct Runner {
 impl Runner {
     pub fn new(
         checks: Vec<Compare>,
+        cus_report: Option<String>,
         inputs_only: bool,
         program_logs: bool,
         proto: ProtoLayout,
@@ -35,6 +39,7 @@ impl Runner {
     ) -> Self {
         Self {
             checks,
+            cus_report,
             inputs_only,
             program_logs,
             proto,
@@ -78,6 +83,7 @@ impl Runner {
         }
 
         let mut pass = true;
+        let mut bench_results = Vec::new();
 
         if self.verbose {
             println!("----------------------------------------");
@@ -141,6 +147,13 @@ impl Runner {
 
         let (target_result, effects) = self.run_fixture(target, fixture_path);
 
+        if self.cus_report.is_some() {
+            let fixture_name = parse_fixture_name(fixture_path);
+            let bench_result =
+                MolluskComputeUnitBenchResult::new(fixture_name, target_result.clone());
+            bench_results.push(bench_result);
+        }
+
         if self.program_logs {
             println!();
         }
@@ -201,6 +214,15 @@ impl Runner {
             println!();
         }
 
+        if let Some(cus_report) = &self.cus_report {
+            let solana_version = get_solana_version();
+            mollusk_svm_bencher::result::write_results(
+                &PathBuf::from(cus_report),
+                &solana_version,
+                bench_results,
+            );
+        }
+
         Ok(pass)
     }
 
@@ -229,4 +251,12 @@ impl Runner {
 
         Ok(())
     }
+}
+
+fn parse_fixture_name(fixture_path: &str) -> &str {
+    fixture_path
+        .rsplit_once('/')
+        .map_or(fixture_path, |(_, name)| name)
+        .split_once('.')
+        .map_or_else(|| fixture_path, |(name, _)| name)
 }

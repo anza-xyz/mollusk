@@ -30,6 +30,9 @@ enum SubCommand {
         /// Path to the config file for validation checks.
         #[arg(short, long)]
         config: Option<String>,
+        /// Directory to write a compute unit consumption report.
+        #[arg(long)]
+        cus_report: Option<String>,
         /// Skip comparing compute unit consumption, but compare everything
         /// else.
         ///
@@ -72,6 +75,9 @@ enum SubCommand {
         /// Path to the config file for validation checks.
         #[arg(short, long)]
         config: Option<String>,
+        /// Directory to write a compute unit consumption report.
+        #[arg(long)]
+        cus_report: Option<String>,
         /// Skip comparing compute unit consumption, but compare everything
         /// else.
         ///
@@ -136,6 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fixture,
             program_id,
             config,
+            cus_report,
             ignore_compute_units,
             inputs_only,
             program_logs,
@@ -156,11 +163,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let fixtures = search_paths(&fixture, "fix")?;
 
-            Runner::new(checks, inputs_only, program_logs, proto, verbose).run_all(
-                None,
-                &mut mollusk,
-                &fixtures,
-            )?
+            Runner::new(
+                checks,
+                cus_report,
+                inputs_only,
+                program_logs,
+                proto,
+                verbose,
+            )
+            .run_all(None, &mut mollusk, &fixtures)?
         }
         SubCommand::RunTest {
             elf_path_source,
@@ -168,6 +179,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fixture,
             program_id,
             config,
+            cus_report,
             ignore_compute_units,
             program_logs,
             proto,
@@ -194,6 +206,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             Runner::new(
                 checks,
+                cus_report,
                 /* inputs_only */ true,
                 program_logs,
                 proto,

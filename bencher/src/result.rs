@@ -7,7 +7,7 @@ use {
     std::path::Path,
 };
 
-pub(crate) struct MolluskComputeUnitBenchResult<'a> {
+pub struct MolluskComputeUnitBenchResult<'a> {
     name: &'a str,
     cus_consumed: u64,
 }
@@ -19,7 +19,7 @@ impl<'a> MolluskComputeUnitBenchResult<'a> {
     }
 }
 
-pub(crate) fn write_results(
+pub fn write_results(
     out_dir: &Path,
     solana_version: &str,
     results: Vec<MolluskComputeUnitBenchResult>,
