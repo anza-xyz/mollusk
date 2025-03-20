@@ -32,6 +32,11 @@ impl CusReport {
     }
 }
 
+pub struct RunResult<'a> {
+    pub pass: bool,
+    pub bench_result: Option<MolluskComputeUnitBenchResult<'a>>,
+}
+
 pub struct Runner {
     checks: Vec<Compare>,
     cus_report: Option<CusReport>,
@@ -84,19 +89,18 @@ impl Runner {
         }
     }
 
-    pub fn run(
+    fn run<'a>(
         &self,
         ground: Option<&mut Mollusk>,
         target: &mut Mollusk,
-        fixture_path: &str,
-    ) -> Result<bool, Box<dyn std::error::Error>> {
+        fixture_path: &'a str,
+    ) -> Result<RunResult<'a>, Box<dyn std::error::Error>> {
         // Disable stdout logging of program logs if not specified.
         if !self.program_logs {
             solana_logger::setup_with("");
         }
 
         let mut pass = true;
-        let mut bench_results = Vec::new();
 
         if self.verbose {
             println!("----------------------------------------");
@@ -160,12 +164,15 @@ impl Runner {
 
         let (target_result, effects) = self.run_fixture(target, fixture_path);
 
-        if self.cus_report.is_some() {
-            let fixture_name = parse_fixture_name(fixture_path);
-            let bench_result =
-                MolluskComputeUnitBenchResult::new(fixture_name, target_result.clone());
-            bench_results.push(bench_result);
-        }
+        // Record a bench result for the CU report, if specified.
+        let bench_result = if self.cus_report.is_some() {
+            Some(MolluskComputeUnitBenchResult::new(
+                parse_fixture_name(fixture_path),
+                target_result.clone(),
+            ))
+        } else {
+            None
+        };
 
         if self.program_logs {
             println!();
@@ -227,17 +234,7 @@ impl Runner {
             println!();
         }
 
-        if let Some(cus_report) = &self.cus_report {
-            let solana_version = get_solana_version();
-            mollusk_svm_bencher::result::write_results(
-                &PathBuf::from(&cus_report.path),
-                &cus_report.table_header,
-                &solana_version,
-                bench_results,
-            );
-        }
-
-        Ok(pass)
+        Ok(RunResult { pass, bench_result })
     }
 
     pub fn run_all(
@@ -247,11 +244,16 @@ impl Runner {
         fixtures: &[String],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut failures = 0;
+        let mut bench_results = Vec::new();
 
         for fixture_path in fixtures {
-            let result = self.run(ground.as_deref_mut(), target, fixture_path)?;
+            let mut result = self.run(ground.as_deref_mut(), target, fixture_path)?;
 
-            if !result {
+            if let Some(bench_result) = result.bench_result.take() {
+                bench_results.push(bench_result);
+            }
+
+            if !result.pass {
                 failures += 1;
             }
         }
@@ -261,6 +263,16 @@ impl Runner {
 
         if failures > 0 {
             std::process::exit(1);
+        }
+
+        if let Some(cus_report) = &self.cus_report {
+            let solana_version = get_solana_version();
+            mollusk_svm_bencher::result::write_results(
+                &PathBuf::from(&cus_report.path),
+                &cus_report.table_header,
+                &solana_version,
+                bench_results,
+            );
         }
 
         Ok(())
