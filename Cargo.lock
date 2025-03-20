@@ -1614,6 +1614,7 @@ dependencies = [
 name = "mollusk-svm-cli"
 version = "0.1.3"
 dependencies = [
+ "chrono",
  "clap",
  "mollusk-svm",
  "mollusk-svm-bencher",

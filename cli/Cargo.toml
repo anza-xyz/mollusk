@@ -9,6 +9,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
+chrono = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

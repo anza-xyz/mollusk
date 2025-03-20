@@ -1,6 +1,7 @@
 //! CLI runner. Many jobs share the same pattern but do different core actions.
 
 use {
+    chrono::Utc,
     clap::ValueEnum,
     mollusk_svm::{
         result::{Compare, Config, InstructionResult},
@@ -19,9 +20,21 @@ pub enum ProtoLayout {
     Firedancer,
 }
 
+pub struct CusReport {
+    pub path: String,
+    pub table_header: String,
+}
+
+impl CusReport {
+    pub fn new(path: String, table_header: Option<String>) -> Self {
+        let table_header = table_header.unwrap_or_else(|| Utc::now().to_string());
+        Self { path, table_header }
+    }
+}
+
 pub struct Runner {
     checks: Vec<Compare>,
-    cus_report: Option<String>,
+    cus_report: Option<CusReport>,
     inputs_only: bool,
     program_logs: bool,
     proto: ProtoLayout,
@@ -31,7 +44,7 @@ pub struct Runner {
 impl Runner {
     pub fn new(
         checks: Vec<Compare>,
-        cus_report: Option<String>,
+        cus_report: Option<CusReport>,
         inputs_only: bool,
         program_logs: bool,
         proto: ProtoLayout,
@@ -217,7 +230,8 @@ impl Runner {
         if let Some(cus_report) = &self.cus_report {
             let solana_version = get_solana_version();
             mollusk_svm_bencher::result::write_results(
-                &PathBuf::from(cus_report),
+                &PathBuf::from(&cus_report.path),
+                &cus_report.table_header,
                 &solana_version,
                 bench_results,
             );

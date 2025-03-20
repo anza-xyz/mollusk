@@ -59,6 +59,7 @@
 pub mod result;
 
 use {
+    chrono::Utc,
     mollusk_svm::{result::ProgramResult, Mollusk},
     result::{write_results, MolluskComputeUnitBenchResult},
     solana_account::Account,
@@ -113,6 +114,7 @@ impl<'a> MolluskComputeUnitBencher<'a> {
 
     /// Execute the benches.
     pub fn execute(&mut self) {
+        let table_header = Utc::now().to_string();
         let solana_version = get_solana_version();
         let bench_results = std::mem::take(&mut self.benches)
             .into_iter()
@@ -132,7 +134,7 @@ impl<'a> MolluskComputeUnitBencher<'a> {
                 MolluskComputeUnitBenchResult::new(name, result)
             })
             .collect::<Vec<_>>();
-        write_results(&self.out_dir, &solana_version, bench_results);
+        write_results(&self.out_dir, &table_header, &solana_version, bench_results);
     }
 }
 
