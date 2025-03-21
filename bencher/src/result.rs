@@ -96,7 +96,7 @@ Solana CLI Version: {}
 fn parse_last_md_table(content: &str) -> Vec<MolluskComputeUnitBenchResult> {
     let mut results = vec![];
 
-    for line in content.lines().skip(4) {
+    for line in content.lines().skip(6) {
         if line.starts_with("####") || line.is_empty() {
             break;
         }
