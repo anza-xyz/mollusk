@@ -94,10 +94,10 @@ mod tests {
     use {
         super::{proto::InstrFixture, Fixture},
         crate::{context::Context, effects::Effects, sysvars::Sysvars},
+        agave_feature_set::FeatureSet,
         mollusk_svm_fuzz_fs::SerializableFixture,
         solana_account::Account,
         solana_compute_budget::compute_budget::ComputeBudget,
-        solana_feature_set::FeatureSet,
         solana_instruction::AccountMeta,
         solana_keccak_hasher::Hash,
         solana_pubkey::Pubkey,

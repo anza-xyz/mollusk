@@ -9,12 +9,12 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
+agave-feature-set = { workspace = true }
 mollusk-svm-fuzz-fs = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 solana-account = { workspace = true }
-solana-feature-set = { workspace = true }
 solana-keccak-hasher = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-transaction-context = { workspace = true }

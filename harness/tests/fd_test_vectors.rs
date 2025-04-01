@@ -1,6 +1,7 @@
 #![cfg(feature = "fuzz-fd")]
 
 use {
+    agave_feature_set::FeatureSet,
     mollusk_svm::{
         fuzz::firedancer::{
             build_fixture_from_mollusk_test, load_firedancer_fixture, ParsedFixtureContext,
@@ -10,7 +11,6 @@ use {
     mollusk_svm_fuzz_fixture_firedancer::{account::SeedAddress, Fixture},
     rayon::prelude::*,
     solana_account::Account,
-    solana_feature_set::FeatureSet,
     solana_pubkey::Pubkey,
     solana_transaction_context::InstructionAccount,
     std::{assert_eq, fs, path::Path, process::Command},
@@ -161,9 +161,9 @@ fn compare_instruction_accounts(a: &[InstructionAccount], b: &[InstructionAccoun
 }
 
 fn compare_feature_sets(from_fixture: &FeatureSet, from_mollusk: &FeatureSet) {
-    assert_eq!(from_fixture.active.len(), from_mollusk.active.len());
-    assert_eq!(from_fixture.inactive.len(), from_mollusk.inactive.len());
-    for f in from_fixture.active.keys() {
-        assert!(from_mollusk.active.contains_key(f));
+    assert_eq!(from_fixture.active().len(), from_mollusk.active().len());
+    assert_eq!(from_fixture.inactive().len(), from_mollusk.inactive().len());
+    for f in from_fixture.active().keys() {
+        assert!(from_mollusk.active().contains_key(f));
     }
 }

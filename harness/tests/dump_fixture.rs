@@ -1,10 +1,10 @@
 #![cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 
 use {
+    agave_feature_set::FeatureSet,
     mollusk_svm::{result::Check, Mollusk},
     serial_test::serial,
     solana_account::Account,
-    solana_feature_set::FeatureSet,
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
     std::path::Path,
@@ -53,10 +53,10 @@ fn clear(dir: &str) {
 }
 
 fn compare_feature_sets(from_fixture: &FeatureSet, from_mollusk: &FeatureSet) {
-    assert_eq!(from_fixture.active.len(), from_mollusk.active.len());
-    assert_eq!(from_fixture.inactive.len(), from_mollusk.inactive.len());
-    for f in from_fixture.active.keys() {
-        assert!(from_mollusk.active.contains_key(f));
+    assert_eq!(from_fixture.active().len(), from_mollusk.active().len());
+    assert_eq!(from_fixture.inactive().len(), from_mollusk.inactive().len());
+    for f in from_fixture.active().keys() {
+        assert!(from_mollusk.active().contains_key(f));
     }
 }
 

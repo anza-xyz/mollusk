@@ -390,15 +390,15 @@ use {
         sysvar::Sysvars,
     },
     accounts::CompiledAccounts,
+    agave_feature_set::FeatureSet,
+    agave_precompiles::get_precompile,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     result::Config,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_feature_set::FeatureSet,
     solana_fee_structure::FeeStructure,
     solana_hash::Hash,
     solana_instruction::Instruction,
-    solana_precompiles::get_precompile,
     solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
     solana_pubkey::Pubkey,
     solana_timings::ExecuteTimings,
@@ -436,10 +436,10 @@ impl Default for Mollusk {
         let feature_set = {
             // Omit "test features" (they have the same u64 ID).
             let mut fs = FeatureSet::all_enabled();
-            fs.active
-                .remove(&solana_feature_set::disable_sbpf_v0_execution::id());
-            fs.active
-                .remove(&solana_feature_set::reenable_sbpf_v0_execution::id());
+            fs.active_mut()
+                .remove(&agave_feature_set::disable_sbpf_v0_execution::id());
+            fs.active_mut()
+                .remove(&agave_feature_set::reenable_sbpf_v0_execution::id());
             fs
         };
         #[cfg(not(feature = "fuzz"))]

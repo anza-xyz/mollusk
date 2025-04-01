@@ -25,6 +25,8 @@ fuzz-fd = [
 serde = ["dep:serde"]
 
 [dependencies]
+agave-feature-set = { workspace = true }
+agave-precompiles = { workspace = true }
 bincode = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 mollusk-svm-error = { workspace = true }
@@ -38,14 +40,12 @@ solana-clock = { workspace = true }
 solana-compute-budget = { workspace = true }
 solana-epoch-rewards = { workspace = true }
 solana-epoch-schedule = { workspace = true }
-solana-feature-set = { workspace = true }
 solana-fee-structure = { workspace = true }
 solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
 solana-loader-v3-interface = { workspace = true }
 solana-log-collector = { workspace = true }
 solana-logger = { workspace = true }
-solana-precompiles = { workspace = true }
 solana-program-error = { workspace = true }
 solana-program-runtime = { workspace = true }
 solana-pubkey = { workspace = true }
@@ -70,7 +70,7 @@ rayon = { workspace = true }
 serial_test = { workspace = true }
 solana-ed25519-program = { workspace = true }
 solana-native-token = { workspace = true }
-solana-secp256k1-program = { workspace = true }
+solana-secp256k1-program = { workspace = true, features = ["bincode"] }
 solana-secp256r1-program = { workspace = true }
 solana-system-interface = { workspace = true }
 

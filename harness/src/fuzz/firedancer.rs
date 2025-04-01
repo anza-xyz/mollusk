@@ -10,6 +10,7 @@ use {
         result::InstructionResult,
         Mollusk, DEFAULT_LOADER_KEY,
     },
+    agave_feature_set::FeatureSet,
     mollusk_svm_fuzz_fixture_firedancer::{
         context::{
             Context as FuzzContext, EpochContext as FuzzEpochContext,
@@ -21,7 +22,6 @@ use {
     },
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_feature_set::FeatureSet,
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_pubkey::Pubkey,
 };

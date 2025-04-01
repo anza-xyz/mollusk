@@ -1,20 +1,20 @@
 //! Runtime feature set.
 
 use {
-    super::proto::FeatureSet as ProtoFeatureSet, solana_feature_set::FeatureSet,
+    super::proto::FeatureSet as ProtoFeatureSet, agave_feature_set::FeatureSet,
     solana_keccak_hasher::Hasher, solana_pubkey::Pubkey,
 };
 
 // Omit "test features" (they have the same u64 ID).
 pub static OMITTED_FEATURES: &[Pubkey] = &[
-    solana_feature_set::disable_sbpf_v0_execution::id(),
-    solana_feature_set::reenable_sbpf_v0_execution::id(),
+    agave_feature_set::disable_sbpf_v0_execution::id(),
+    agave_feature_set::reenable_sbpf_v0_execution::id(),
 ];
 
 impl From<ProtoFeatureSet> for FeatureSet {
     fn from(value: ProtoFeatureSet) -> Self {
         let mut feature_set = Self::default();
-        let mut inactive = std::mem::take(&mut feature_set.inactive);
+        let mut inactive = feature_set.inactive().clone();
         OMITTED_FEATURES.iter().for_each(|f| {
             inactive.remove(f);
         });
@@ -36,7 +36,7 @@ impl From<ProtoFeatureSet> for FeatureSet {
 impl From<FeatureSet> for ProtoFeatureSet {
     fn from(value: FeatureSet) -> Self {
         let features = value
-            .active
+            .active()
             .keys()
             .filter_map(|feature_id| {
                 if OMITTED_FEATURES.contains(feature_id) {
