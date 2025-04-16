@@ -65,7 +65,7 @@ use {
     solana_account::Account,
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
-    std::{path::PathBuf, process::Command},
+    std::{path::PathBuf, process::Command, str::FromStr},
 };
 
 /// A bench is a tuple of a name, an instruction, and a list of accounts.
@@ -119,6 +119,8 @@ impl<'a> MolluskComputeUnitBencher<'a> {
         let bench_results = std::mem::take(&mut self.benches)
             .into_iter()
             .map(|(name, instruction, accounts)| {
+                let logger = self.mollusk.logger.clone();
+                let log_idx = logger.as_ref().map(|logger| logger.borrow().messages.len());
                 let result = self.mollusk.process_instruction(instruction, accounts);
                 match result.program_result {
                     ProgramResult::Success => (),
@@ -131,11 +133,69 @@ impl<'a> MolluskComputeUnitBencher<'a> {
                         }
                     }
                 }
-                MolluskComputeUnitBenchResult::new(name, result)
+                let cpi_cus = logger.zip(log_idx).map(|(logger, log_idx)| {
+                    calculate_cpi_cus(
+                        logger
+                            .borrow()
+                            .messages
+                            .iter()
+                            .skip(log_idx)
+                            .filter_map(parse_log)
+                            .collect(),
+                    )
+                });
+
+                MolluskComputeUnitBenchResult::new(name, result, cpi_cus)
             })
             .collect::<Vec<_>>();
         write_results(&self.out_dir, &table_header, &solana_version, bench_results);
     }
+}
+
+pub enum LogFrame {
+    Opened { pubkey: Pubkey },
+    Closed { pubkey: Pubkey, consumed: u64 },
+}
+pub fn parse_log(log: impl AsRef<str>) -> Option<LogFrame> {
+    let mut tokens = log.as_ref().split_whitespace();
+
+    let program_id = tokens
+        .next()
+        .filter(|token| *token == "Program")
+        .and_then(|_| tokens.next().map(Pubkey::from_str)?.ok())?;
+
+    match tokens.next() {
+        Some("invoke") => Some(LogFrame::Opened { pubkey: program_id }),
+        Some("consumed") => {
+            let consumed = tokens.next().and_then(|token| u64::from_str(token).ok())?;
+            Some(LogFrame::Closed {
+                pubkey: program_id,
+                consumed,
+            })
+        }
+        _ => None,
+    }
+}
+
+pub fn calculate_cpi_cus(logs: Vec<LogFrame>) -> u64 {
+    let mut depth = 0;
+    let mut cpi_cus = 0;
+
+    for log in logs {
+        match log {
+            LogFrame::Opened { .. } => {
+                depth += 1;
+            }
+            LogFrame::Closed { consumed, .. } => {
+                depth -= 1;
+                if depth == 1 {
+                    cpi_cus += consumed;
+                }
+            }
+        }
+    }
+
+    cpi_cus
 }
 
 pub fn get_solana_version() -> String {
