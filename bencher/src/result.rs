@@ -7,18 +7,18 @@ use {
 };
 
 pub struct MolluskComputeUnitBenchResult<'a> {
-    name: &'a str,
-    cus_consumed: u64,
-    cpi_cus_consumed: Option<u64>,
+    pub name: &'a str,
+    pub cus_consumed: u64,
+    pub logs: Option<Vec<String>>,
 }
 
 impl<'a> MolluskComputeUnitBenchResult<'a> {
-    pub fn new(name: &'a str, result: InstructionResult, cpi_cus_consumed: Option<u64>) -> Self {
+    pub fn new(name: &'a str, result: InstructionResult, logs: Option<Vec<String>>) -> Self {
         let cus_consumed = result.compute_units_consumed;
         Self {
             name,
             cus_consumed,
-            cpi_cus_consumed,
+            logs,
         }
     }
 }
@@ -113,7 +113,7 @@ fn parse_last_md_table(content: &str) -> Vec<MolluskComputeUnitBenchResult> {
         results.push(MolluskComputeUnitBenchResult {
             name,
             cus_consumed,
-            cpi_cus_consumed: None,
+            logs: None,
         });
     }
 
