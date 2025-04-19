@@ -114,11 +114,19 @@ impl<'a> MolluskComputeUnitBencher<'a> {
 
     /// Execute the benches.
     pub fn execute(&mut self) {
+        let out_dir = self.out_dir.clone();
         let table_header = Utc::now().to_string();
         let solana_version = get_solana_version();
-        let bench_results = std::mem::take(&mut self.benches)
+        let bench_results = self.execute_without_write();
+        write_results(&out_dir, &table_header, &solana_version, bench_results);
+    }
+
+    pub fn execute_without_write(&mut self) -> Vec<MolluskComputeUnitBenchResult> {
+        std::mem::take(&mut self.benches)
             .into_iter()
             .map(|(name, instruction, accounts)| {
+                let logger = self.mollusk.logger.clone();
+                let log_idx = logger.as_ref().map(|logger| logger.borrow().messages.len());
                 let result = self.mollusk.process_instruction(instruction, accounts);
                 match result.program_result {
                     ProgramResult::Success => (),
@@ -131,10 +139,18 @@ impl<'a> MolluskComputeUnitBencher<'a> {
                         }
                     }
                 }
-                MolluskComputeUnitBenchResult::new(name, result)
+                let logs = logger.zip(log_idx).map(|(logger, log_idx)| {
+                    logger
+                        .borrow()
+                        .messages
+                        .iter()
+                        .skip(log_idx)
+                        .cloned()
+                        .collect()
+                });
+                MolluskComputeUnitBenchResult::new(name, result, logs)
             })
-            .collect::<Vec<_>>();
-        write_results(&self.out_dir, &table_header, &solana_version, bench_results);
+            .collect::<Vec<_>>()
     }
 }
 

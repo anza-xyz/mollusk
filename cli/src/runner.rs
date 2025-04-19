@@ -169,6 +169,7 @@ impl Runner {
             Some(MolluskComputeUnitBenchResult::new(
                 parse_fixture_name(fixture_path),
                 target_result.clone(),
+                None,
             ))
         } else {
             None
