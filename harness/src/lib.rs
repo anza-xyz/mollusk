@@ -468,7 +468,7 @@ impl Mollusk {
     /// # Default Search Paths
     ///
     /// The following locations are checked in order:
-    /// 
+    ///
     /// - `tests/fixtures`
     /// - The directory specified by the `BPF_OUT_DIR` environment variable
     /// - The directory specified by the `SBF_OUT_DIR` environment variable
