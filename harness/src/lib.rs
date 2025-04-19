@@ -464,6 +464,15 @@ impl Mollusk {
     /// Attempts the load the program's ELF file from the default search paths.
     /// Once loaded, adds the program to the program cache and returns the
     /// newly created Mollusk instance.
+    ///
+    /// # Default Search Paths
+    ///
+    /// The following locations are checked in order:
+    /// 
+    /// - `tests/fixtures`
+    /// - The directory specified by the `BPF_OUT_DIR` environment variable
+    /// - The directory specified by the `SBF_OUT_DIR` environment variable
+    /// - The current working directory
     pub fn new(program_id: &Pubkey, program_name: &str) -> Self {
         let mut mollusk = Self::default();
         mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
