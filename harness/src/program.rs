@@ -175,7 +175,7 @@ pub fn keyed_account_for_bpf_loader_v2_program() -> (Pubkey, Account) {
 
 /// Get the key and account for the BPF Loader v3 (Upgradeable) program.
 pub fn keyed_account_for_bpf_loader_v3_program() -> (Pubkey, Account) {
-    create_keyed_account_for_builtin_program(&BUILTINS[1].program_id, BUILTINS[1].name)
+    create_keyed_account_for_builtin_program(&BUILTINS[2].program_id, BUILTINS[2].name)
 }
 
 /* ... */
