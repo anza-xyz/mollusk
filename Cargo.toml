@@ -15,7 +15,7 @@ resolver = "2"
 authors = ["Anza Technology Maintainers <maintainers@anza.xyz>"]
 repository = "https://github.com/anza-xyz/mollusk"
 readme = "README.md"
-license = "Apache-2.0"
+license-file = "LICENSE"
 edition = "2021"
 version = "0.1.5"
 

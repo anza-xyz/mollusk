@@ -4,7 +4,7 @@ description = "Mollusk CLI."
 documentation = "https://docs.rs/mollusk-svm-cli"
 authors = { workspace = true }
 repository = { workspace = true }
-license = { workspace = true }
+license-file ={ workspace = true }
 edition = { workspace = true }
 version = { workspace = true }
 
