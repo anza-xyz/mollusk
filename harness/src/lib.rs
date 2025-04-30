@@ -385,15 +385,14 @@ pub mod sysvar;
 use result::Compare;
 use {
     crate::{
+        compile_accounts::CompiledAccounts,
         program::ProgramCache,
-        result::{Check, InstructionResult},
+        result::{Check, Config, InstructionResult},
         sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
     agave_precompiles::get_precompile,
-    compile_accounts::CompiledAccounts,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
-    result::Config,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_fee_structure::FeeStructure,
