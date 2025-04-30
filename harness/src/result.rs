@@ -442,6 +442,22 @@ impl InstructionResult {
     }
 }
 
+/// The same return type as `InstructionResult`, but without the
+/// `resulting_accounts`. When working with the `MolluskWithAccountStore`,
+/// developers can access resulting accounts from the account store directly.
+pub struct InstructionResultWithoutAccounts {
+    /// The number of compute units consumed by the instruction.
+    pub compute_units_consumed: u64,
+    /// The time taken to execute the instruction.
+    pub execution_time: u64,
+    /// The result code of the program's execution.
+    pub program_result: ProgramResult,
+    /// The raw result of the program's execution.
+    pub raw_result: Result<(), InstructionError>,
+    /// The return data produced by the instruction, if any.
+    pub return_data: Vec<u8>,
+}
+
 enum CheckType<'a> {
     /// Check the number of compute units consumed by the instruction.
     ComputeUnitsConsumed(u64),
