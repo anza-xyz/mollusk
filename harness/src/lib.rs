@@ -387,7 +387,7 @@ use {
     crate::{
         compile_accounts::CompiledAccounts,
         program::ProgramCache,
-        result::{Check, Config, InstructionResult},
+        result::{Check, CheckContext, Config, InstructionResult},
         sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
@@ -454,6 +454,12 @@ impl Default for Mollusk {
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
         }
+    }
+}
+
+impl CheckContext for Mollusk {
+    fn is_rent_exempt(&self, lamports: u64, space: usize) -> bool {
+        self.sysvars.rent.is_exempt(lamports, space)
     }
 }
 
@@ -681,7 +687,7 @@ impl Mollusk {
         #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
         fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &result);
 
-        result.run_checks_with_config(checks, &self.config);
+        result.run_checks(checks, &self.config, self);
         result
     }
 
