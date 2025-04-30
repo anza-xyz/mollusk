@@ -1613,6 +1613,7 @@ dependencies = [
  "solana-hash",
  "solana-instruction",
  "solana-loader-v3-interface",
+ "solana-loader-v4-interface",
  "solana-log-collector",
  "solana-logger",
  "solana-native-token",

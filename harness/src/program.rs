@@ -6,13 +6,19 @@ use {
     solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_loader_v3_interface::state::UpgradeableLoaderState,
+    solana_loader_v4_interface::state::{LoaderV4State, LoaderV4Status},
     solana_program_runtime::{
         invoke_context::BuiltinFunctionWithContext,
         loaded_programs::{LoadProgramMetrics, ProgramCacheEntry, ProgramCacheForTxBatch},
     },
     solana_pubkey::Pubkey,
     solana_rent::Rent,
-    std::sync::{Arc, RwLock},
+    std::{
+        cell::{RefCell, RefMut},
+        collections::HashMap,
+        rc::Rc,
+        sync::Arc,
+    },
 };
 
 /// Loader keys, re-exported from `solana_sdk` for convenience.
@@ -40,33 +46,51 @@ pub mod precompile_keys {
 }
 
 pub struct ProgramCache {
-    cache: RwLock<ProgramCacheForTxBatch>,
+    cache: Rc<RefCell<ProgramCacheForTxBatch>>,
+    // This stinks, but the `ProgramCacheForTxBatch` doesn't offer a way to
+    // access its entries directly. In order to make DX easier for those using
+    // `MolluskWithAccountStore`, we need to track entries added to the cache,
+    // so we can populate the account store with program accounts.
+    // This saves the developer from having to pre-load the account store with
+    // all program accounts they may use, when `Mollusk` has that information
+    // already.
+    //
+    // K: program ID, V: loader key
+    entries_cache: Rc<RefCell<HashMap<Pubkey, Pubkey>>>,
 }
 
 impl Default for ProgramCache {
     fn default() -> Self {
-        let mut cache = ProgramCacheForTxBatch::default();
+        let me = Self {
+            cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::default())),
+            entries_cache: Rc::new(RefCell::new(HashMap::new())),
+        };
         BUILTINS.iter().for_each(|builtin| {
             let program_id = builtin.program_id;
             let entry = builtin.program_cache_entry();
-            cache.replenish(program_id, entry);
+            me.replenish(program_id, entry);
         });
-        Self {
-            cache: RwLock::new(cache),
-        }
+        me
     }
 }
 
 impl ProgramCache {
-    pub(crate) fn cache(&self) -> &RwLock<ProgramCacheForTxBatch> {
-        &self.cache
+    pub(crate) fn cache(&self) -> RefMut<ProgramCacheForTxBatch> {
+        self.cache.borrow_mut()
+    }
+
+    fn replenish(&self, program_id: Pubkey, entry: Arc<ProgramCacheEntry>) {
+        self.entries_cache
+            .borrow_mut()
+            .insert(program_id, entry.account_owner());
+        self.cache.borrow_mut().replenish(program_id, entry);
     }
 
     /// Add a builtin program to the cache.
     pub fn add_builtin(&mut self, builtin: Builtin) {
         let program_id = builtin.program_id;
         let entry = builtin.program_cache_entry();
-        self.cache.write().unwrap().replenish(program_id, entry);
+        self.replenish(program_id, entry);
     }
 
     /// Add a program to the cache.
@@ -82,7 +106,7 @@ impl ProgramCache {
             create_program_runtime_environment_v1(feature_set, compute_budget, false, false)
                 .unwrap(),
         );
-        self.cache.write().unwrap().replenish(
+        self.replenish(
             *program_id,
             Arc::new(
                 ProgramCacheEntry::new(
@@ -101,7 +125,29 @@ impl ProgramCache {
 
     /// Load a program from the cache.
     pub fn load_program(&self, program_id: &Pubkey) -> Option<Arc<ProgramCacheEntry>> {
-        self.cache.read().unwrap().find(program_id)
+        self.cache.borrow().find(program_id)
+    }
+
+    // NOTE: These are only stubs. This will "just work", since Agave's SVM
+    // stubs out program accounts in transaction execution already, noting that
+    // the ELFs are already where they need to be: in the cache.
+    pub(crate) fn get_all_keyed_program_accounts(&self) -> Vec<(Pubkey, Account)> {
+        self.entries_cache
+            .borrow()
+            .iter()
+            .map(|(program_id, loader_key)| match *loader_key {
+                loader_keys::NATIVE_LOADER => {
+                    create_keyed_account_for_builtin_program(program_id, "I'm a stub!")
+                }
+                loader_keys::LOADER_V1 => (*program_id, create_program_account_loader_v1(&[])),
+                loader_keys::LOADER_V2 => (*program_id, create_program_account_loader_v2(&[])),
+                loader_keys::LOADER_V3 => {
+                    (*program_id, create_program_account_loader_v3(program_id))
+                }
+                loader_keys::LOADER_V4 => (*program_id, create_program_account_loader_v4(&[])),
+                _ => panic!("Invalid loader key: {}", loader_key),
+            })
+            .collect()
     }
 }
 
@@ -261,4 +307,30 @@ pub fn create_program_account_pair_loader_v3(
         create_program_account_loader_v3(program_id),
         create_program_data_account_loader_v3(elf),
     )
+}
+
+/// Create a BPF Loader 4 program account.
+pub fn create_program_account_loader_v4(elf: &[u8]) -> Account {
+    let data = unsafe {
+        let elf_offset = LoaderV4State::program_data_offset();
+        let data_len = elf_offset + elf.len();
+        let mut data = vec![0u8; data_len];
+        *std::mem::transmute::<&mut [u8; LoaderV4State::program_data_offset()], &mut LoaderV4State>(
+            (&mut data[0..elf_offset]).try_into().unwrap(),
+        ) = LoaderV4State {
+            slot: 0,
+            authority_address_or_next_version: Pubkey::new_from_array([2; 32]),
+            status: LoaderV4Status::Deployed,
+        };
+        data[elf_offset..].copy_from_slice(elf);
+        data
+    };
+    let lamports = Rent::default().minimum_balance(data.len());
+    Account {
+        lamports,
+        data,
+        owner: loader_keys::LOADER_V3,
+        executable: false,
+        ..Default::default()
+    }
 }
