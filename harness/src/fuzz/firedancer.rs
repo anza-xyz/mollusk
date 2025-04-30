@@ -6,7 +6,7 @@
 
 use {
     crate::{
-        accounts::{compile_accounts, CompiledAccounts},
+        compile_accounts::{compile_accounts, CompiledAccounts},
         result::InstructionResult,
         Mollusk, DEFAULT_LOADER_KEY,
     },

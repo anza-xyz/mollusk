@@ -373,7 +373,7 @@
 //! Fixtures can be loaded from files or decoded from raw blobs. These
 //! capabilities are provided by the respective fixture crates.
 
-mod accounts;
+mod compile_accounts;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
@@ -389,9 +389,9 @@ use {
         result::{Check, InstructionResult},
         sysvar::Sysvars,
     },
-    accounts::CompiledAccounts,
     agave_feature_set::FeatureSet,
     agave_precompiles::get_precompile,
+    compile_accounts::CompiledAccounts,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     result::Config,
     solana_account::Account,
@@ -535,7 +535,7 @@ impl Mollusk {
             program_id_index,
             instruction_accounts,
             transaction_accounts,
-        } = crate::accounts::compile_accounts(instruction, accounts, loader_key);
+        } = crate::compile_accounts::compile_accounts(instruction, accounts, loader_key);
 
         let mut transaction_context = TransactionContext::new(
             transaction_accounts,
