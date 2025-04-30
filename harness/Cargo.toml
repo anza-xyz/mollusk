@@ -44,6 +44,7 @@ solana-fee-structure = { workspace = true }
 solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
 solana-loader-v3-interface = { workspace = true }
+solana-loader-v4-interface = { workspace = true }
 solana-log-collector = { workspace = true }
 solana-logger = { workspace = true }
 solana-program-error = { workspace = true }

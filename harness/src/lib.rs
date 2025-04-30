@@ -554,7 +554,7 @@ impl Mollusk {
         );
 
         let invoke_result = {
-            let mut program_cache = self.program_cache.cache().write().unwrap();
+            let mut program_cache = self.program_cache.cache();
             let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
             let mut invoke_context = InvokeContext::new(
                 &mut transaction_context,
@@ -980,8 +980,18 @@ impl Mollusk {
     /// instance with the provided account store.
     pub fn with_account_store<AS: AccountStore>(
         self,
-        account_store: AS,
+        mut account_store: AS,
     ) -> MolluskWithAccountStore<AS> {
+        // For convenience, load all program accounts into the account store,
+        // but only if they don't exist.
+        self.program_cache
+            .get_all_keyed_program_accounts()
+            .into_iter()
+            .for_each(|(pubkey, account)| {
+                if account_store.get_account(&pubkey).is_none() {
+                    account_store.store_account(pubkey, account);
+                }
+            });
         MolluskWithAccountStore {
             mollusk: self,
             account_store: Rc::new(RefCell::new(account_store)),
