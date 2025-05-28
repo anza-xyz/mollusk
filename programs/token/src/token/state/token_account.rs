@@ -1,8 +1,10 @@
-use solana_account::Account;
-use solana_program_pack::Pack;
-use solana_pubkey::Pubkey;
-use solana_rent::Rent;
-use spl_token::state::{Account as TokenAccount, AccountState};
+use {
+    solana_account::Account,
+    solana_program_pack::Pack,
+    solana_pubkey::Pubkey,
+    solana_rent::Rent,
+    spl_token::state::{Account as TokenAccount, AccountState},
+};
 
 pub struct TokenAccountBuilder<'a> {
     mint: &'a Pubkey,

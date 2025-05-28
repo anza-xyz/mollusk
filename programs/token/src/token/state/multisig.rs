@@ -1,8 +1,10 @@
-use solana_account::Account;
-use solana_program_pack::Pack;
-use solana_pubkey::Pubkey;
-use solana_rent::Rent;
-use spl_token::{instruction::MAX_SIGNERS, state::Multisig};
+use {
+    solana_account::Account,
+    solana_program_pack::Pack,
+    solana_pubkey::Pubkey,
+    solana_rent::Rent,
+    spl_token::{instruction::MAX_SIGNERS, state::Multisig},
+};
 
 pub struct MultisigAccountBuilder {
     m: u8,

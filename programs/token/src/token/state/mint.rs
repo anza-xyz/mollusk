@@ -1,8 +1,7 @@
-use solana_account::Account;
-use solana_program_pack::Pack;
-use solana_pubkey::Pubkey;
-use solana_rent::Rent;
-use spl_token::state::Mint;
+use {
+    solana_account::Account, solana_program_pack::Pack, solana_pubkey::Pubkey, solana_rent::Rent,
+    spl_token::state::Mint,
+};
 
 pub struct MintAccountBuilder<'a> {
     mint_authority: Option<&'a Pubkey>,
