@@ -5,13 +5,13 @@ documentation = "https://docs.rs/mollusk-svm-programs-token"
 authors = { workspace = true }
 repository = { workspace = true }
 readme = { workspace = true }
-license-file ={ workspace = true }
+license-file = { workspace = true }
 edition = { workspace = true }
 version = { workspace = true }
 
 [features]
 default = ["token", "associated-token", "token-2022"]
-token = []
+token = ["dep:spl-token", "dep:solana-program-pack", "dep:solana-rent"]
 associated-token = []
 token-2022 = []
 
@@ -19,3 +19,6 @@ token-2022 = []
 mollusk-svm = { workspace = true }
 solana-account = { workspace = true }
 solana-pubkey = { workspace = true }
+solana-program-pack = { workspace = true, optional = true }
+solana-rent = { workspace = true, optional = true }
+spl-token = { workspace = true, optional = true }

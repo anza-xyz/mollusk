@@ -1,8 +1,10 @@
 use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey};
 
+pub mod state;
+
 pub const ID: Pubkey = solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
-pub const ELF: &[u8] = include_bytes!("elf/token.so");
+pub const ELF: &[u8] = include_bytes!("../elf/token.so");
 
 pub fn add_program(mollusk: &mut Mollusk) {
     // Loader v2
