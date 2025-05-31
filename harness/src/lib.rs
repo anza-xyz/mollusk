@@ -383,6 +383,10 @@ pub mod sysvar;
 
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use result::Compare;
+
+use solana_instruction::error::InstructionError;
+use solana_program_runtime::sysvar_cache::SysvarCache;
+use solana_transaction_context::InstructionAccount;
 use {
     crate::{
         compile_accounts::CompiledAccounts,
@@ -402,7 +406,7 @@ use {
     solana_pubkey::Pubkey,
     solana_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
-    std::{cell::RefCell, rc::Rc, sync::Arc},
+    std::sync::Arc,
 };
 
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
@@ -416,7 +420,7 @@ pub struct Mollusk {
     pub compute_budget: ComputeBudget,
     pub feature_set: FeatureSet,
     pub fee_structure: FeeStructure,
-    pub logger: Option<Rc<RefCell<solana_log_collector::LogCollector>>>,
+    // pub logger: Option<Rc<RefCell<solana_log_collector::LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
     #[cfg(feature = "fuzz-fd")]
@@ -425,12 +429,12 @@ pub struct Mollusk {
 
 impl Default for Mollusk {
     fn default() -> Self {
-        #[rustfmt::skip]
-        solana_logger::setup_with_default(
-            "solana_rbpf::vm=debug,\
-             solana_runtime::message_processor=debug,\
-             solana_runtime::system_instruction_processor=trace",
-        );
+        // #[rustfmt::skip]
+        // solana_logger::setup_with_default(
+        //     "solana_rbpf::vm=debug,\
+        //      solana_runtime::message_processor=debug,\
+        //      solana_runtime::system_instruction_processor=trace",
+        // );
         #[cfg(feature = "fuzz")]
         let feature_set = {
             // Omit "test features" (they have the same u64 ID).
@@ -450,7 +454,7 @@ impl Default for Mollusk {
             fee_structure: FeeStructure::default(),
             program_cache: ProgramCache::default(),
             sysvars: Sysvars::default(),
-            logger: None,
+            // logger: None,
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
         }
@@ -550,7 +554,7 @@ impl Mollusk {
         );
 
         let invoke_result = {
-            let mut program_cache = self.program_cache.cache().write().unwrap();
+            let mut program_cache = self.program_cache.cache.clone();
             let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
             let mut invoke_context = InvokeContext::new(
                 &mut transaction_context,
@@ -563,7 +567,7 @@ impl Mollusk {
                     Arc::new(self.feature_set.clone()),
                     &sysvar_cache,
                 ),
-                self.logger.clone(),
+                None,
                 self.compute_budget,
             );
             if let Some(precompile) = get_precompile(&instruction.program_id, |feature_id| {
@@ -621,6 +625,43 @@ impl Mollusk {
         }
     }
 
+    pub fn process_instruction_v2(
+        &self,
+        sysvar_cache: &SysvarCache,
+        transaction_context: &mut TransactionContext,
+        instruction_accounts: &Vec<InstructionAccount>,
+        instruction_data: &[u8],
+        program_id_index: u16,
+        compute_units_consumed: &mut u64,
+    ) -> Result<(), InstructionError> {
+        // let mut compute_units_consumed = 0;
+        let mut timings = ExecuteTimings::default();
+
+        let mut program_cache = self.program_cache.cache.clone();
+
+        let mut invoke_context = InvokeContext::new(
+            transaction_context,
+            &mut program_cache,
+            EnvironmentConfig::new(
+                Hash::default(),
+                self.fee_structure.lamports_per_signature,
+                0,
+                &|_| 0,
+                Arc::new(self.feature_set.clone()),
+                &sysvar_cache,
+            ),
+            None,
+            ComputeBudget::default(),
+        );
+
+        invoke_context.process_instruction(
+            instruction_data,
+            instruction_accounts,
+            &[program_id_index],
+            compute_units_consumed,
+            &mut timings,
+        )
+    }
     /// Process a chain of instructions using the minified Solana Virtual
     /// Machine (SVM) environment. The returned result is an
     /// `InstructionResult`, containing:

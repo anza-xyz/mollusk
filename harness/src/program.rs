@@ -38,9 +38,8 @@ pub mod precompile_keys {
         )
     }
 }
-
 pub struct ProgramCache {
-    cache: RwLock<ProgramCacheForTxBatch>,
+    pub cache: ProgramCacheForTxBatch,
 }
 
 impl Default for ProgramCache {
@@ -52,21 +51,21 @@ impl Default for ProgramCache {
             cache.replenish(program_id, entry);
         });
         Self {
-            cache: RwLock::new(cache),
+            cache: cache,
         }
     }
 }
 
 impl ProgramCache {
-    pub(crate) fn cache(&self) -> &RwLock<ProgramCacheForTxBatch> {
-        &self.cache
-    }
+    // pub(crate) fn cache(&self) -> &RwLock<ProgramCacheForTxBatch> {
+    //     &self.cache
+    // }
 
     /// Add a builtin program to the cache.
     pub fn add_builtin(&mut self, builtin: Builtin) {
         let program_id = builtin.program_id;
         let entry = builtin.program_cache_entry();
-        self.cache.write().unwrap().replenish(program_id, entry);
+        self.cache.replenish(program_id, entry);
     }
 
     /// Add a program to the cache.
@@ -82,7 +81,7 @@ impl ProgramCache {
             create_program_runtime_environment_v1(feature_set, compute_budget, false, false)
                 .unwrap(),
         );
-        self.cache.write().unwrap().replenish(
+        self.cache.replenish(
             *program_id,
             Arc::new(
                 ProgramCacheEntry::new(
@@ -101,9 +100,74 @@ impl ProgramCache {
 
     /// Load a program from the cache.
     pub fn load_program(&self, program_id: &Pubkey) -> Option<Arc<ProgramCacheEntry>> {
-        self.cache.read().unwrap().find(program_id)
+        self.cache.find(program_id)
     }
 }
+// pub struct ProgramCache {
+//     cache: RwLock<ProgramCacheForTxBatch>,
+// }
+
+// impl Default for ProgramCache {
+//     fn default() -> Self {
+//         let mut cache = ProgramCacheForTxBatch::default();
+//         BUILTINS.iter().for_each(|builtin| {
+//             let program_id = builtin.program_id;
+//             let entry = builtin.program_cache_entry();
+//             cache.replenish(program_id, entry);
+//         });
+//         Self {
+//             cache: RwLock::new(cache),
+//         }
+//     }
+// }
+
+// impl ProgramCache {
+//     pub(crate) fn cache(&self) -> &RwLock<ProgramCacheForTxBatch> {
+//         &self.cache
+//     }
+
+//     /// Add a builtin program to the cache.
+//     pub fn add_builtin(&mut self, builtin: Builtin) {
+//         let program_id = builtin.program_id;
+//         let entry = builtin.program_cache_entry();
+//         self.cache.write().unwrap().replenish(program_id, entry);
+//     }
+
+//     /// Add a program to the cache.
+//     pub fn add_program(
+//         &mut self,
+//         program_id: &Pubkey,
+//         loader_key: &Pubkey,
+//         elf: &[u8],
+//         compute_budget: &ComputeBudget,
+//         feature_set: &FeatureSet,
+//     ) {
+//         let environment = Arc::new(
+//             create_program_runtime_environment_v1(feature_set, compute_budget, false, false)
+//                 .unwrap(),
+//         );
+//         self.cache.write().unwrap().replenish(
+//             *program_id,
+//             Arc::new(
+//                 ProgramCacheEntry::new(
+//                     loader_key,
+//                     environment,
+//                     0,
+//                     0,
+//                     elf,
+//                     elf.len(),
+//                     &mut LoadProgramMetrics::default(),
+//                 )
+//                 .unwrap(),
+//             ),
+//         );
+//     }
+
+//     /// Load a program from the cache.
+//     pub fn load_program(&self, program_id: &Pubkey) -> Option<Arc<ProgramCacheEntry>> {
+//         self.cache.read().unwrap().find(program_id)
+//     }
+// }
 
 pub struct Builtin {
     program_id: Pubkey,

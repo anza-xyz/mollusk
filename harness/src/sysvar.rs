@@ -1,7 +1,7 @@
 //! Module for working with Solana sysvars.
 
 use {
-    solana_account::{Account, ReadableAccount},
+    solana_account::{Account, AccountSharedData, ReadableAccount},
     solana_clock::{Clock, Slot},
     solana_epoch_rewards::EpochRewards,
     solana_epoch_schedule::EpochSchedule,
@@ -148,6 +148,43 @@ impl Sysvars {
     }
 
     pub(crate) fn setup_sysvar_cache(&self, accounts: &[(Pubkey, Account)]) -> SysvarCache {
+        let mut sysvar_cache = SysvarCache::default();
+
+        // First fill any sysvar cache entries from the provided accounts.
+        sysvar_cache.fill_missing_entries(|pubkey, set_sysvar| {
+            if let Some((_, account)) = accounts.iter().find(|(key, _)| key == pubkey) {
+                set_sysvar(account.data())
+            }
+        });
+
+        // Then fill the rest with the entries from `self`.
+        sysvar_cache.fill_missing_entries(|pubkey, set_sysvar| {
+            if pubkey.eq(&Clock::id()) {
+                set_sysvar(&bincode::serialize(&self.clock).unwrap());
+            }
+            if pubkey.eq(&EpochRewards::id()) {
+                set_sysvar(&bincode::serialize(&self.epoch_rewards).unwrap());
+            }
+            if pubkey.eq(&EpochSchedule::id()) {
+                set_sysvar(&bincode::serialize(&self.epoch_schedule).unwrap());
+            }
+            if pubkey.eq(&LastRestartSlot::id()) {
+                set_sysvar(&bincode::serialize(&self.last_restart_slot).unwrap());
+            }
+            if pubkey.eq(&Rent::id()) {
+                set_sysvar(&bincode::serialize(&self.rent).unwrap());
+            }
+            if pubkey.eq(&SlotHashes::id()) {
+                set_sysvar(&bincode::serialize(&self.slot_hashes).unwrap());
+            }
+            if pubkey.eq(&StakeHistory::id()) {
+                set_sysvar(&bincode::serialize(&self.stake_history).unwrap());
+            }
+        });
+
+        sysvar_cache
+    }
+    pub fn setup_sysvar_cache_v2(&self, accounts: &[(Pubkey, AccountSharedData)]) -> SysvarCache {
         let mut sysvar_cache = SysvarCache::default();
 
         // First fill any sysvar cache entries from the provided accounts.
