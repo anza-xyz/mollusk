@@ -217,214 +217,214 @@ fn test_2() {
 
 
 
-// pub fn mollusk() -> Mollusk {
-//     let mut mollusk = Mollusk::new(
-//         &RAYDIUM_AMM, 
-//         "/ssd1/mnt/program/raydium_amm"
-//         // "/ssd1/contract-test/target/sbpf-solana-solana/release/contract_test"
-//     );
-//     mollusk.add_program(
-//         &TOKEN_PROGRAM,
-//         "/ssd1/mollusk/spl_token",
-//         &mollusk_svm::program::loader_keys::LOADER_V3,
-//     );
-//     mollusk
-// }
-// #[test]
-// fn test() {
+pub fn mollusk() -> Mollusk {
+    let mut mollusk = Mollusk::new(
+        &RAYDIUM_AMM, 
+        "/ssd1/mnt/program/raydium_amm"
+        // "/ssd1/contract-test/target/sbpf-solana-solana/release/contract_test"
+    );
+    mollusk.add_program(
+        &TOKEN_PROGRAM,
+        "/ssd1/mollusk/spl_token",
+        &mollusk_svm::program::loader_keys::LOADER_V3,
+    );
+    mollusk
+}
+#[test]
+fn test() {
 
-//     let client = RpcClient::new(RPC_URL.to_owned());
-//     let pks = [
-//         pubkey!("58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"),
-//         pubkey!("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1"),
-//         pubkey!("DQyrAcCrDXQ7NeoqGgDCZwBvWDcYmFCjSb9JtteuvPpz"),
-//         pubkey!("HLmqeL62xR1QoZ1HKKbXRrdN1p3phKpxRMb2VVopvBBz"),
-//         pubkey!("AthF4CEubMxyPVkw8PKbLsPgs9sj6uRHLskGLuBybMpS"),
-//         pubkey!("HNoyj2rSfaKyV8Aynzp81DdUrwMyMxLN5649Fz7Ty77D"),
-//         pubkey!("3nMNd89AxwHUa1AFvQGqohRkxFEQsTsgiEyEyqXFHyyH")
-//     ];
+    let client = RpcClient::new(RPC_URL.to_owned());
+    let pks = [
+        pubkey!("58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"),
+        pubkey!("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1"),
+        pubkey!("DQyrAcCrDXQ7NeoqGgDCZwBvWDcYmFCjSb9JtteuvPpz"),
+        pubkey!("HLmqeL62xR1QoZ1HKKbXRrdN1p3phKpxRMb2VVopvBBz"),
+        pubkey!("AthF4CEubMxyPVkw8PKbLsPgs9sj6uRHLskGLuBybMpS"),
+        pubkey!("HNoyj2rSfaKyV8Aynzp81DdUrwMyMxLN5649Fz7Ty77D"),
+        pubkey!("3nMNd89AxwHUa1AFvQGqohRkxFEQsTsgiEyEyqXFHyyH")
+    ];
 
-//     let accounts = client.get_multiple_accounts(&pks).unwrap();
+    let accounts = client.get_multiple_accounts(&pks).unwrap();
 
-//     let pool_address = pks[0];
-//     let pool_address_account = accounts[0].clone().unwrap();
+    let pool_address = pks[0];
+    let pool_address_account = accounts[0].clone().unwrap();
 
-//     let raydium_authority_v4 = pks[1];
-//     let raydium_authority_v4_account = accounts[1].clone().unwrap();
+    let raydium_authority_v4 = pks[1];
+    let raydium_authority_v4_account = accounts[1].clone().unwrap();
 
-//     let coin_vault = pks[2];
-//     let coin_vault_account = accounts[2].clone().unwrap();
+    let coin_vault = pks[2];
+    let coin_vault_account = accounts[2].clone().unwrap();
 
-//     let pc_vault = pks[3];
-//     let pc_vault_account = accounts[3].clone().unwrap();
+    let pc_vault = pks[3];
+    let pc_vault_account = accounts[3].clone().unwrap();
 
-//     let user_token_source = pks[4];
-//     let user_token_source_account = accounts[4].clone().unwrap();
+    let user_token_source = pks[4];
+    let user_token_source_account = accounts[4].clone().unwrap();
 
-//     let user_token_destination = pks[5];
-//     let user_token_destination_account = accounts[5].clone().unwrap();
+    let user_token_destination = pks[5];
+    let user_token_destination_account = accounts[5].clone().unwrap();
 
-//     let user = pks[6];
-//     let user_account = accounts[6].clone().unwrap();
+    let user = pks[6];
+    let user_account = accounts[6].clone().unwrap();
 
-//     let (token_program, token_account) = (
-//         TOKEN_PROGRAM,
-//         program::create_program_account_loader_v3(&TOKEN_PROGRAM),
-//     );
-//     let mollusk = mollusk();
+    let (token_program, token_account) = (
+        TOKEN_PROGRAM,
+        program::create_program_account_loader_v3(&TOKEN_PROGRAM),
+    );
+    let mollusk = mollusk();
 
-//     let accounts = vec![
-//         // spl token
-//         AccountMeta::new_readonly(TOKEN_PROGRAM, false),
-//         // amm
-//         AccountMeta::new(pool_address, false),
-//         AccountMeta::new_readonly(raydium_authority_v4, false),
-//         AccountMeta::new_readonly(pool_address, false),
-//         // AccountMeta::new(amm_info.open_orders, false),
-//         AccountMeta::new(coin_vault, false),
-//         AccountMeta::new(pc_vault, false),
-//         // market
-//         AccountMeta::new_readonly(pool_address, false),
-//         AccountMeta::new_readonly(pool_address, false),
-//         AccountMeta::new_readonly(pool_address, false),
-//         AccountMeta::new_readonly(pool_address, false),
-//         AccountMeta::new_readonly(pool_address, false),
-//         AccountMeta::new_readonly(pool_address, false),
-//         AccountMeta::new_readonly(pool_address, false),
-//         AccountMeta::new_readonly(pool_address, false),
-//         // user
-//         AccountMeta::new(user_token_source, false),
-//         AccountMeta::new(user_token_destination, false),
-//         AccountMeta::new(user, true),
-//     ];
-//     let mut data = Vec::new();
-//     data.push(9);
-//     data.extend_from_slice(&100_000_0u64.to_le_bytes());
-//     data.extend_from_slice(&1u64.to_le_bytes());
+    let accounts = vec![
+        // spl token
+        AccountMeta::new_readonly(TOKEN_PROGRAM, false),
+        // amm
+        AccountMeta::new(pool_address, false),
+        AccountMeta::new_readonly(raydium_authority_v4, false),
+        AccountMeta::new_readonly(pool_address, false),
+        // AccountMeta::new(amm_info.open_orders, false),
+        AccountMeta::new(coin_vault, false),
+        AccountMeta::new(pc_vault, false),
+        // market
+        AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new_readonly(pool_address, false),
+        // user
+        AccountMeta::new(user_token_source, false),
+        AccountMeta::new(user_token_destination, false),
+        AccountMeta::new(user, true),
+    ];
+    let mut data = Vec::new();
+    data.push(9);
+    data.extend_from_slice(&100_000_0u64.to_le_bytes());
+    data.extend_from_slice(&1u64.to_le_bytes());
 
-//     let instruction = Instruction::new_with_bytes(
-//         RAYDIUM_AMM,
-//         &data,
-//         accounts,
-//     );
+    let instruction = Instruction::new_with_bytes(
+        RAYDIUM_AMM,
+        &data,
+        accounts,
+    );
 
 
-//     for i in 0..1 {
-//         let befer_token_source = 
-//             StateWithExtensions::<Account>::unpack(user_token_source_account.data.as_ref()).unwrap().base;
-//         let befer_token_destination = 
-//             StateWithExtensions::<Account>::unpack(user_token_destination_account.data.as_ref()).unwrap().base;
+    // for i in 0..1 {
+    //     let befer_token_source = 
+    //         StateWithExtensions::<Account>::unpack(user_token_source_account.data.as_ref()).unwrap().base;
+    //     let befer_token_destination = 
+    //         StateWithExtensions::<Account>::unpack(user_token_destination_account.data.as_ref()).unwrap().base;
 
-//         println!("test instruction {}", i);
-//         let accounts = [
-//             (token_program, token_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (raydium_authority_v4, raydium_authority_v4_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (coin_vault, coin_vault_account.clone()),
-//             (pc_vault, pc_vault_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (pool_address, pool_address_account.clone()),
-//             (user_token_source, user_token_source_account.clone()),
-//             (user_token_destination, user_token_destination_account.clone()),
-//             (user, user_account.clone())
-//         ];
-//         let s = std::time::Instant::now();
+    //     println!("test instruction {}", i);
+    //     let accounts = [
+    //         (token_program, token_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (raydium_authority_v4, raydium_authority_v4_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (coin_vault, coin_vault_account.clone()),
+    //         (pc_vault, pc_vault_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (pool_address, pool_address_account.clone()),
+    //         (user_token_source, user_token_source_account.clone()),
+    //         (user_token_destination, user_token_destination_account.clone()),
+    //         (user, user_account.clone())
+    //     ];
+    //     let s = std::time::Instant::now();
 
-//         let (
-//             sysvar_cache,
-//             transaction_context,
-//             instruction_accounts,
-//             program_id_index
-//         ) = mollusk.data_prepare(&instruction, &accounts);
+    //     let (
+    //         sysvar_cache,
+    //         transaction_context,
+    //         instruction_accounts,
+    //         program_id_index
+    //     ) = mollusk.data_prepare(&instruction, &accounts);
 
-//         println!("data_prepare: {:?}", s.elapsed());
+    //     println!("data_prepare: {:?}", s.elapsed());
 
-//         let s = std::time::Instant::now();
-//         let mut transaction_context = transaction_context.clone();
-//         let mut compute_units_consumed = 0;
-//         mollusk.process_instruction_v2(
-//             &sysvar_cache,
-//             &mut transaction_context,
-//             &instruction_accounts,
-//             &instruction.data,
-//             program_id_index,
-//             &mut compute_units_consumed
-//         ).unwrap();
-//         println!("Time: {:?}", s.elapsed());
-//         println!("test instruction {}", i);
-//         println!("compute_units_consumed: {}", compute_units_consumed);
-//         match transaction_context.find_index_of_account(&user_token_destination) {
-//             Some(index) => {
-//                 let a = transaction_context.get_account_at_index(index).unwrap().borrow();
-//                 let after_token_destination = StateWithExtensions::<Account>::unpack(a.data().as_ref()).unwrap().base;
-//                 println!("user_token_destination: {:?}", after_token_destination.amount-befer_token_destination.amount);
-//             },
-//             None => println!("user_token_destination not found"),
-//         }
-//         match transaction_context.find_index_of_account(&user_token_source) {
-//             Some(index) => {
-//                 let a = transaction_context.get_account_at_index(index).unwrap().borrow();
-//                 let after_token_source = StateWithExtensions::<Account>::unpack(a.data().as_ref()).unwrap().base;
-//                 println!("user_token_source: {:?}", befer_token_source.amount-after_token_source.amount);
-//             },
-//             None => println!("user_token_source not found"),
-//         }
-//     }
-//     // for i in 0..10 {
-//     //     let befer_token_source = 
-//     //         StateWithExtensions::<Account>::unpack(user_token_source_account.data.as_ref()).unwrap().base;
-//     //     let befer_token_destination = 
-//     //         StateWithExtensions::<Account>::unpack(user_token_destination_account.data.as_ref()).unwrap().base;
+    //     let s = std::time::Instant::now();
+    //     let mut transaction_context = transaction_context.clone();
+    //     let mut compute_units_consumed = 0;
+    //     mollusk.process_instruction_v2(
+    //         &sysvar_cache,
+    //         &mut transaction_context,
+    //         &instruction_accounts,
+    //         &instruction.data,
+    //         program_id_index,
+    //         &mut compute_units_consumed
+    //     ).unwrap();
+    //     println!("Time: {:?}", s.elapsed());
+    //     println!("test instruction {}", i);
+    //     println!("compute_units_consumed: {}", compute_units_consumed);
+    //     match transaction_context.find_index_of_account(&user_token_destination) {
+    //         Some(index) => {
+    //             let a = transaction_context.get_account_at_index(index).unwrap().borrow();
+    //             let after_token_destination = StateWithExtensions::<Account>::unpack(a.data().as_ref()).unwrap().base;
+    //             println!("user_token_destination: {:?}", after_token_destination.amount-befer_token_destination.amount);
+    //         },
+    //         None => println!("user_token_destination not found"),
+    //     }
+    //     match transaction_context.find_index_of_account(&user_token_source) {
+    //         Some(index) => {
+    //             let a = transaction_context.get_account_at_index(index).unwrap().borrow();
+    //             let after_token_source = StateWithExtensions::<Account>::unpack(a.data().as_ref()).unwrap().base;
+    //             println!("user_token_source: {:?}", befer_token_source.amount-after_token_source.amount);
+    //         },
+    //         None => println!("user_token_source not found"),
+    //     }
+    // }
+    for i in 0..10 {
+        let befer_token_source = 
+            StateWithExtensions::<Account>::unpack(user_token_source_account.data.as_ref()).unwrap().base;
+        let befer_token_destination = 
+            StateWithExtensions::<Account>::unpack(user_token_destination_account.data.as_ref()).unwrap().base;
 
-//     //     println!("test instruction {}", i);
-//     //     let accounts = [
-//     //         (token_program, token_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (raydium_authority_v4, raydium_authority_v4_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (coin_vault, coin_vault_account.clone()),
-//     //         (pc_vault, pc_vault_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (pool_address, pool_address_account.clone()),
-//     //         (user_token_source, user_token_source_account.clone()),
-//     //         (user_token_destination, user_token_destination_account.clone()),
-//     //         (user, user_account.clone())
-//     //     ];
-//     //     let s = std::time::Instant::now();
-//     //     let res = mollusk.process_instruction(
-//     //         &instruction,
-//     //         &accounts,
-//     //         // &[Check::success()],
-//     //     );
-//     //     println!("Time: {:?}", s.elapsed());
-//     //     println!("test instruction {}", i);
-//     //     println!("res: {:?}", res.compute_units_consumed);
-//     //     for (pk, a) in res.resulting_accounts.iter() {
-//     //         if *pk == user_token_source {
-//     //             let after_token_source = StateWithExtensions::<Account>::unpack(a.data.as_ref()).unwrap().base;
-//     //             println!("User token source: {:?}", befer_token_source.amount-after_token_source.amount);
-//     //         } else if *pk == user_token_destination {
-//     //             let after_token_destination = StateWithExtensions::<Account>::unpack(a.data.as_ref()).unwrap().base;
-//     //             println!("user_token_destination: {:?}", after_token_destination.amount-befer_token_destination.amount);
-//     //         }
-//     //     }
-//     // }
+        println!("test instruction {}", i);
+        let accounts = [
+            (token_program, token_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (raydium_authority_v4, raydium_authority_v4_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (coin_vault, coin_vault_account.clone()),
+            (pc_vault, pc_vault_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (pool_address, pool_address_account.clone()),
+            (user_token_source, user_token_source_account.clone()),
+            (user_token_destination, user_token_destination_account.clone()),
+            (user, user_account.clone())
+        ];
+        let s = std::time::Instant::now();
+        let res = mollusk.process_instruction(
+            &instruction,
+            &accounts,
+            // &[Check::success()],
+        );
+        println!("Time: {:?}", s.elapsed());
+        println!("test instruction {}", i);
+        println!("res: {:?}", res.compute_units_consumed);
+        for (pk, a) in res.resulting_accounts.iter() {
+            if *pk == user_token_source {
+                let after_token_source = StateWithExtensions::<Account>::unpack(a.data.as_ref()).unwrap().base;
+                println!("User token source: {:?}", befer_token_source.amount-after_token_source.amount);
+            } else if *pk == user_token_destination {
+                let after_token_destination = StateWithExtensions::<Account>::unpack(a.data.as_ref()).unwrap().base;
+                println!("user_token_destination: {:?}", after_token_destination.amount-befer_token_destination.amount);
+            }
+        }
+    }
 
-//     println!("");
-//     // println!("Result: {:?}", res);
-// }
+    println!("");
+    // println!("Result: {:?}", res);
+}
 
 

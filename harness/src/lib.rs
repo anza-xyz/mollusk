@@ -629,7 +629,7 @@ impl Mollusk {
         &self,
         sysvar_cache: &SysvarCache,
         transaction_context: &mut TransactionContext,
-        instruction_accounts: &Vec<InstructionAccount>,
+        instruction_accounts: &[InstructionAccount],
         instruction_data: &[u8],
         program_id_index: u16,
         compute_units_consumed: &mut u64,
