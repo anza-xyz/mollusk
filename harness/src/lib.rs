@@ -545,6 +545,9 @@ impl Mollusk {
             instruction_accounts,
             transaction_accounts,
         } = crate::compile_accounts::compile_accounts(instruction, accounts, loader_key);
+        println!("program_id_index: {}", program_id_index);
+        println!("instruction_accounts: {:?}", instruction_accounts);
+        println!("transaction_accounts: {:?}", transaction_accounts);
 
         let mut transaction_context = TransactionContext::new(
             transaction_accounts,

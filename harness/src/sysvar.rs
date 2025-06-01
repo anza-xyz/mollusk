@@ -147,7 +147,7 @@ impl Sysvars {
         }
     }
 
-    pub(crate) fn setup_sysvar_cache(&self, accounts: &[(Pubkey, Account)]) -> SysvarCache {
+    pub fn setup_sysvar_cache(&self, accounts: &[(Pubkey, Account)]) -> SysvarCache {
         let mut sysvar_cache = SysvarCache::default();
 
         // First fill any sysvar cache entries from the provided accounts.
