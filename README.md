@@ -272,6 +272,74 @@ constraints on instruction chains, such as loaded account keys or size.
 Developers should recognize that instruction chains are primarily used for
 testing program execution.
 
+## Stateful Testing with MolluskContext
+
+For complex testing scenarios involving multiple instructions or persistent
+state between calls, `MolluskContext` provides a stateful wrapper around
+`Mollusk`. It automatically manages an account store and provides the same
+API methods without requiring explicit account management.
+
+`MolluskContext` is ideal for:
+* Testing instruction chains where account state persists between calls
+* Complex program interactions that require maintaining account state
+* Scenarios where manually managing accounts becomes cumbersome
+
+To use `MolluskContext`, you need to provide an implementation of the
+`AccountStore` trait:
+
+```rust
+use {
+    mollusk_svm::{Mollusk, account_store::AccountStore},
+    solana_account::Account,
+    solana_instruction::Instruction,
+    solana_pubkey::Pubkey,
+    solana_system_interface::instruction as system_instruction,
+    std::collections::HashMap,
+};
+
+// Simple in-memory account store implementation
+#[derive(Default)]
+struct InMemoryAccountStore {
+    accounts: HashMap<Pubkey, Account>,
+}
+
+impl AccountStore for InMemoryAccountStore {
+    fn get_account(&self, pubkey: &Pubkey) -> Option<Account> {
+        self.accounts.get(pubkey).cloned()
+    }
+
+    fn store_account(&mut self, pubkey: Pubkey, account: Account) {
+        self.accounts.insert(pubkey, account);
+    }
+}
+
+let mollusk = Mollusk::default();
+let context = mollusk.with_context(InMemoryAccountStore::default());
+
+let alice = Pubkey::new_unique();
+let bob = Pubkey::new_unique();
+
+// Execute instructions without managing accounts manually
+let instruction1 = system_instruction::transfer(&alice, &bob, 1_000_000);
+let result1 = context.process_instruction(&instruction1);
+
+let instruction2 = system_instruction::transfer(&bob, &alice, 500_000);
+let result2 = context.process_instruction(&instruction2);
+
+// Account state is automatically preserved between calls
+```
+
+The `MolluskContext` API provides the same core methods as `Mollusk`:
+
+* `process_instruction`: Process an instruction with automatic account management
+* `process_instruction_chain`: Process a chain of instructions  
+* `process_and_validate_instruction`: Process and validate an instruction
+* `process_and_validate_instruction_chain`: Process and validate an instruction chain
+
+All methods return `ContextResult` instead of `InstructionResult`, which omits
+the `resulting_accounts` field since accounts are managed by the context's
+account store.
+
 ## Benchmarking Compute Units
 The Mollusk Compute Unit Bencher can be used to benchmark the compute unit
 usage of Solana programs. It provides a simple API for developers to write

@@ -276,6 +276,68 @@
 //! Developers should recognize that instruction chains are primarily used for
 //! testing program execution.
 //!
+//! ## Stateful Testing with MolluskContext
+//!
+//! For complex testing scenarios that involve multiple instructions or require
+//! persistent state between calls, `MolluskContext` provides a stateful wrapper
+//! around `Mollusk`. It automatically manages an account store and provides the
+//! same API methods but without requiring explicit account management.
+//!
+//! ```rust,ignore
+//! use {
+//!     mollusk_svm::{Mollusk, account_store::AccountStore},
+//!     solana_account::Account,
+//!     solana_instruction::Instruction,
+//!     solana_pubkey::Pubkey,
+//!     solana_system_interface::instruction as system_instruction,
+//!     std::collections::HashMap,
+//! };
+//!
+//! // Simple in-memory account store implementation
+//! #[derive(Default)]
+//! struct InMemoryAccountStore {
+//!     accounts: HashMap<Pubkey, Account>,
+//! }
+//!
+//! impl AccountStore for InMemoryAccountStore {
+//!     fn get_account(&self, pubkey: &Pubkey) -> Option<Account> {
+//!         self.accounts.get(pubkey).cloned()
+//!     }
+//!
+//!     fn store_account(&mut self, pubkey: Pubkey, account: Account) {
+//!         self.accounts.insert(pubkey, account);
+//!     }
+//! }
+//!
+//! let mollusk = Mollusk::default();
+//! let context = mollusk.with_context(InMemoryAccountStore::default());
+//!
+//! let alice = Pubkey::new_unique();
+//! let bob = Pubkey::new_unique();
+//!
+//! // Execute instructions without managing accounts manually
+//! let instruction1 = system_instruction::transfer(&alice, &bob, 1_000_000);
+//! let result1 = context.process_instruction(&instruction1);
+//!
+//! let instruction2 = system_instruction::transfer(&bob, &alice, 500_000);
+//! let result2 = context.process_instruction(&instruction2);
+//!
+//! // Account state is automatically preserved between calls
+//! ```
+//!
+//! The `MolluskContext` API provides the same core methods as `Mollusk`:
+//!
+//! * `process_instruction`: Process an instruction with automatic account
+//!   management
+//! * `process_instruction_chain`: Process a chain of instructions
+//! * `process_and_validate_instruction`: Process and validate an instruction
+//! * `process_and_validate_instruction_chain`: Process and validate an
+//!   instruction chain
+//!
+//! All methods return `ContextResult` instead of `InstructionResult`, which
+//! omits the `resulting_accounts` field since accounts are managed by the
+//! context's account store.
+//!
 //! ## Fixtures
 //!
 //! Mollusk also supports working with multiple kinds of fixtures, which can
@@ -389,9 +451,7 @@ use {
         account_store::AccountStore,
         compile_accounts::CompiledAccounts,
         program::ProgramCache,
-        result::{
-            Check, CheckContext, Config, InstructionResult, ContextResult,
-        },
+        result::{Check, CheckContext, Config, ContextResult, InstructionResult},
         sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
@@ -976,12 +1036,14 @@ impl Mollusk {
         result
     }
 
-    /// Convert this `Mollusk` instance into a `MolluskContext`
-    /// instance with the provided account store.
-    pub fn with_context<AS: AccountStore>(
-        self,
-        mut account_store: AS,
-    ) -> MolluskContext<AS> {
+    /// Convert this `Mollusk` instance into a `MolluskContext` for stateful
+    /// testing.
+    ///
+    /// Creates a context wrapper that manages persistent state between
+    /// instruction executions, starting with the provided account store.
+    ///
+    /// See [`MolluskContext`] for more details on how to use it.
+    pub fn with_context<AS: AccountStore>(self, mut account_store: AS) -> MolluskContext<AS> {
         // For convenience, load all program accounts into the account store,
         // but only if they don't exist.
         self.program_cache
@@ -999,18 +1061,23 @@ impl Mollusk {
     }
 }
 
-/// Wraps a `Mollusk` instance with an account store (implements
-/// `AccountStore`), which allows the developer to call into methods like
-/// `process_instruction` and `process_instruction_chain` without having to
-/// provide a slice of accounts.
+/// A stateful wrapper around `Mollusk` that provides additional context and
+/// convenience features for testing programs.
 ///
-/// The `MolluskContext` API internally updates the account store
-/// after each successful instruction execution, making it an ideal candidate
-/// for longer-form testing across many instructions, most likely chains.
+/// `MolluskContext` maintains persistent state between instruction executions,
+/// starting with an account store that automatically manages account
+/// lifecycles. This makes it ideal for complex testing scenarios involving
+/// multiple instructions, instruction chains, and stateful program
+/// interactions.
 ///
-/// Besides the omission of the `accounts` input parameter and the
-/// `resulting_accounts` return field, the API is functionally identical to the
-/// `Mollusk` API.
+/// Note: Account state is only persisted if the instruction execution
+/// was successful. If an instruction fails, the account state will not
+/// be updated.
+///
+/// The API is functionally identical to `Mollusk` but with enhanced state
+/// management and a streamlined interface. Namely, the input `accounts` slice
+/// is no longer required, and the returned result does not contain a
+/// `resulting_accounts` field.
 pub struct MolluskContext<AS: AccountStore> {
     pub mollusk: Mollusk,
     pub account_store: Rc<RefCell<AS>>,
@@ -1040,10 +1107,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
         accounts
     }
 
-    fn consume_mollusk_result(
-        &self,
-        result: InstructionResult,
-    ) -> ContextResult {
+    fn consume_mollusk_result(&self, result: InstructionResult) -> ContextResult {
         let InstructionResult {
             compute_units_consumed,
             execution_time,
@@ -1069,10 +1133,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
 
     /// Process an instruction using the minified Solana Virtual Machine (SVM)
     /// environment. Simply returns the result.
-    pub fn process_instruction(
-        &self,
-        instruction: &Instruction,
-    ) -> ContextResult {
+    pub fn process_instruction(&self, instruction: &Instruction) -> ContextResult {
         let accounts = self.load_accounts_for_instructions(once(instruction));
         let result = self.mollusk.process_instruction(instruction, &accounts);
         self.consume_mollusk_result(result)
@@ -1080,10 +1141,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
 
     /// Process a chain of instructions using the minified Solana Virtual
     /// Machine (SVM) environment.
-    pub fn process_instruction_chain(
-        &self,
-        instructions: &[Instruction],
-    ) -> ContextResult {
+    pub fn process_instruction_chain(&self, instructions: &[Instruction]) -> ContextResult {
         let accounts = self.load_accounts_for_instructions(instructions.iter());
         let result = self
             .mollusk
