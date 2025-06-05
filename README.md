@@ -340,6 +340,10 @@ All methods return `ContextResult` instead of `InstructionResult`, which omits
 the `resulting_accounts` field since accounts are managed by the context's
 account store.
 
+Note that `HashMap<Pubkey, Account>` implements `AccountStore` directly,
+so you can use it as a simple in-memory account store without needing
+to implement your own.
+
 ## Benchmarking Compute Units
 The Mollusk Compute Unit Bencher can be used to benchmark the compute unit
 usage of Solana programs. It provides a simple API for developers to write

@@ -338,6 +338,10 @@
 //! omits the `resulting_accounts` field since accounts are managed by the
 //! context's account store.
 //!
+//! Note that `HashMap<Pubkey, Account>` implements `AccountStore` directly,
+//! so you can use it as a simple in-memory account store without needing
+//! to implement your own.
+//!
 //! ## Fixtures
 //!
 //! Mollusk also supports working with multiple kinds of fixtures, which can
