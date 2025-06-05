@@ -1,9 +1,9 @@
 //! A trait for implementing an account store, to be used with the
-/// `MolluskWithAccountStore`.
+/// `MolluskContext`.
 use {solana_account::Account, solana_pubkey::Pubkey};
 
 /// A trait for implementing an account store, to be used with the
-/// `MolluskWithAccountStore`.
+/// `MolluskContext`.
 pub trait AccountStore {
     /// Returns the default account to be used when an account is not found.
     fn default_account(&self, _pubkey: &Pubkey) -> Account {

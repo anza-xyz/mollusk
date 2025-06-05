@@ -390,7 +390,7 @@ use {
         compile_accounts::CompiledAccounts,
         program::ProgramCache,
         result::{
-            Check, CheckContext, Config, InstructionResult, InstructionResultWithoutAccounts,
+            Check, CheckContext, Config, InstructionResult, ContextResult,
         },
         sysvar::Sysvars,
     },
@@ -976,12 +976,12 @@ impl Mollusk {
         result
     }
 
-    /// Convert this `Mollusk` instance into a `MolluskWithAccountStore`
+    /// Convert this `Mollusk` instance into a `MolluskContext`
     /// instance with the provided account store.
-    pub fn with_account_store<AS: AccountStore>(
+    pub fn with_context<AS: AccountStore>(
         self,
         mut account_store: AS,
-    ) -> MolluskWithAccountStore<AS> {
+    ) -> MolluskContext<AS> {
         // For convenience, load all program accounts into the account store,
         // but only if they don't exist.
         self.program_cache
@@ -992,7 +992,7 @@ impl Mollusk {
                     account_store.store_account(pubkey, account);
                 }
             });
-        MolluskWithAccountStore {
+        MolluskContext {
             mollusk: self,
             account_store: Rc::new(RefCell::new(account_store)),
         }
@@ -1004,19 +1004,19 @@ impl Mollusk {
 /// `process_instruction` and `process_instruction_chain` without having to
 /// provide a slice of accounts.
 ///
-/// The `MolluskWithAccountStore` API internally updates the account store
+/// The `MolluskContext` API internally updates the account store
 /// after each successful instruction execution, making it an ideal candidate
 /// for longer-form testing across many instructions, most likely chains.
 ///
 /// Besides the omission of the `accounts` input parameter and the
 /// `resulting_accounts` return field, the API is functionally identical to the
 /// `Mollusk` API.
-pub struct MolluskWithAccountStore<AS: AccountStore> {
+pub struct MolluskContext<AS: AccountStore> {
     pub mollusk: Mollusk,
     pub account_store: Rc<RefCell<AS>>,
 }
 
-impl<AS: AccountStore> MolluskWithAccountStore<AS> {
+impl<AS: AccountStore> MolluskContext<AS> {
     fn load_accounts_for_instructions<'a>(
         &self,
         instructions: impl Iterator<Item = &'a Instruction>,
@@ -1043,7 +1043,7 @@ impl<AS: AccountStore> MolluskWithAccountStore<AS> {
     fn consume_mollusk_result(
         &self,
         result: InstructionResult,
-    ) -> InstructionResultWithoutAccounts {
+    ) -> ContextResult {
         let InstructionResult {
             compute_units_consumed,
             execution_time,
@@ -1058,7 +1058,7 @@ impl<AS: AccountStore> MolluskWithAccountStore<AS> {
             store.store_account(pubkey, account);
         }
 
-        InstructionResultWithoutAccounts {
+        ContextResult {
             compute_units_consumed,
             execution_time,
             program_result,
@@ -1072,7 +1072,7 @@ impl<AS: AccountStore> MolluskWithAccountStore<AS> {
     pub fn process_instruction(
         &self,
         instruction: &Instruction,
-    ) -> InstructionResultWithoutAccounts {
+    ) -> ContextResult {
         let accounts = self.load_accounts_for_instructions(once(instruction));
         let result = self.mollusk.process_instruction(instruction, &accounts);
         self.consume_mollusk_result(result)
@@ -1083,7 +1083,7 @@ impl<AS: AccountStore> MolluskWithAccountStore<AS> {
     pub fn process_instruction_chain(
         &self,
         instructions: &[Instruction],
-    ) -> InstructionResultWithoutAccounts {
+    ) -> ContextResult {
         let accounts = self.load_accounts_for_instructions(instructions.iter());
         let result = self
             .mollusk
@@ -1097,7 +1097,7 @@ impl<AS: AccountStore> MolluskWithAccountStore<AS> {
         &self,
         instruction: &Instruction,
         checks: &[Check],
-    ) -> InstructionResultWithoutAccounts {
+    ) -> ContextResult {
         let accounts = self.load_accounts_for_instructions(once(instruction));
         let result = self
             .mollusk
@@ -1110,7 +1110,7 @@ impl<AS: AccountStore> MolluskWithAccountStore<AS> {
     pub fn process_and_validate_instruction_chain(
         &self,
         instructions: &[(&Instruction, &[Check])],
-    ) -> InstructionResultWithoutAccounts {
+    ) -> ContextResult {
         let accounts = self.load_accounts_for_instructions(
             instructions.iter().map(|(instruction, _)| *instruction),
         );

@@ -443,9 +443,9 @@ impl InstructionResult {
 }
 
 /// The same return type as `InstructionResult`, but without the
-/// `resulting_accounts`. When working with the `MolluskWithAccountStore`,
+/// `resulting_accounts`. When working with the `MolluskContext`,
 /// developers can access resulting accounts from the account store directly.
-pub struct InstructionResultWithoutAccounts {
+pub struct ContextResult {
     /// The number of compute units consumed by the instruction.
     pub compute_units_consumed: u64,
     /// The time taken to execute the instruction.
