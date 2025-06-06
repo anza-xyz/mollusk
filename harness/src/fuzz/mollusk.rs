@@ -11,7 +11,7 @@ use {
         context::Context as FuzzContext, effects::Effects as FuzzEffects,
         sysvars::Sysvars as FuzzSysvars, Fixture as FuzzFixture,
     },
-    mollusk_svm_result::result::InstructionResult,
+    mollusk_svm_result::InstructionResult,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::Instruction,
