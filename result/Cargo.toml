@@ -1,0 +1,24 @@
+[package]
+name = "mollusk-svm-result"
+description = "SVM program execution results and validation."
+documentation = "https://docs.rs/mollusk-svm-result"
+authors = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+license-file ={ workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+mollusk-svm-fuzz-fixture = { workspace = true, optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+solana-account = { workspace = true }
+solana-instruction = { workspace = true }
+solana-program-error = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-rent = { workspace = true }
+
+[features]
+default = []
+fuzz = ["dep:mollusk-svm-fuzz-fixture"]
+serde = ["dep:serde"]

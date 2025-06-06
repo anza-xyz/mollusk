@@ -1597,6 +1597,7 @@ dependencies = [
  "mollusk-svm-fuzz-fixture-firedancer",
  "mollusk-svm-fuzz-fs",
  "mollusk-svm-keys",
+ "mollusk-svm-result",
  "openssl",
  "rand 0.7.3",
  "rayon",
@@ -1755,6 +1756,19 @@ dependencies = [
  "mollusk-svm",
  "solana-account",
  "solana-pubkey",
+]
+
+[[package]]
+name = "mollusk-svm-result"
+version = "0.1.5"
+dependencies = [
+ "mollusk-svm-fuzz-fixture",
+ "serde",
+ "solana-account",
+ "solana-instruction",
+ "solana-program-error",
+ "solana-pubkey",
+ "solana-rent",
 ]
 
 [[package]]

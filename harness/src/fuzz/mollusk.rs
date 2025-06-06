@@ -5,19 +5,16 @@
 //! Only available when the `fuzz` feature is enabled.
 
 use {
-    crate::{
-        result::{InstructionResult, ProgramResult},
-        sysvar::Sysvars,
-        Mollusk,
-    },
+    crate::{sysvar::Sysvars, Mollusk},
     agave_feature_set::FeatureSet,
     mollusk_svm_fuzz_fixture::{
         context::Context as FuzzContext, effects::Effects as FuzzEffects,
         sysvars::Sysvars as FuzzSysvars, Fixture as FuzzFixture,
     },
+    mollusk_svm_result::result::InstructionResult,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_instruction::{error::InstructionError, Instruction},
+    solana_instruction::Instruction,
     solana_pubkey::Pubkey,
     solana_slot_hashes::SlotHashes,
     solana_sysvar::last_restart_slot::LastRestartSlot,
@@ -48,57 +45,6 @@ impl From<&FuzzSysvars> for Sysvars {
             rent: input.rent.clone(),
             slot_hashes,
             stake_history: input.stake_history.clone(),
-        }
-    }
-}
-
-impl From<&InstructionResult> for FuzzEffects {
-    fn from(input: &InstructionResult) -> Self {
-        let compute_units_consumed = input.compute_units_consumed;
-        let execution_time = input.execution_time;
-        let return_data = input.return_data.clone();
-
-        let program_result = match &input.program_result {
-            ProgramResult::Success => 0,
-            ProgramResult::Failure(e) => u64::from(e.clone()),
-            ProgramResult::UnknownError(_) => u64::MAX, //TODO
-        };
-
-        let resulting_accounts = input.resulting_accounts.clone();
-
-        Self {
-            compute_units_consumed,
-            execution_time,
-            program_result,
-            return_data,
-            resulting_accounts,
-        }
-    }
-}
-
-impl From<&FuzzEffects> for InstructionResult {
-    fn from(input: &FuzzEffects) -> Self {
-        let compute_units_consumed = input.compute_units_consumed;
-        let execution_time = input.execution_time;
-        let return_data = input.return_data.clone();
-
-        let raw_result = if input.program_result == 0 {
-            Ok(())
-        } else {
-            Err(InstructionError::from(input.program_result))
-        };
-
-        let program_result = raw_result.clone().into();
-
-        let resulting_accounts = input.resulting_accounts.clone();
-
-        Self {
-            compute_units_consumed,
-            execution_time,
-            program_result,
-            raw_result,
-            return_data,
-            resulting_accounts,
         }
     }
 }

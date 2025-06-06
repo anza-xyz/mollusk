@@ -445,22 +445,21 @@ pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
 pub mod program;
-pub mod result;
 pub mod sysvar;
 
+// Re-export result module from mollusk-svm-result crate
+pub use mollusk_svm_result::result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
-use result::Compare;
+use mollusk_svm_result::result::Compare;
 use {
     crate::{
-        account_store::AccountStore,
-        compile_accounts::CompiledAccounts,
-        program::ProgramCache,
-        result::{Check, CheckContext, Config, ContextResult, InstructionResult},
+        account_store::AccountStore, compile_accounts::CompiledAccounts, program::ProgramCache,
         sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
     agave_precompiles::get_precompile,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
+    mollusk_svm_result::result::{Check, CheckContext, Config, ContextResult, InstructionResult},
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_fee_structure::FeeStructure,

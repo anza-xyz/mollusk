@@ -7,7 +7,6 @@
 use {
     crate::{
         compile_accounts::{compile_accounts, CompiledAccounts},
-        result::InstructionResult,
         Mollusk, DEFAULT_LOADER_KEY,
     },
     agave_feature_set::FeatureSet,
@@ -20,6 +19,7 @@ use {
         metadata::Metadata as FuzzMetadata,
         Fixture as FuzzFixture,
     },
+    mollusk_svm_result::result::InstructionResult,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},

@@ -49,6 +49,7 @@ publish:
 		"mollusk-svm-fuzz-fs" \
 		"mollusk-svm-fuzz-fixture" \
 		"mollusk-svm-fuzz-fixture-firedancer" \
+		"mollusk-svm-result" \
 		"mollusk-svm" \
 		"mollusk-svm-bencher" \
 		"mollusk-svm-programs-memo" \

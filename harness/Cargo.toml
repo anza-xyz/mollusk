@@ -17,6 +17,7 @@ all-builtins = [
 fuzz = [
     "dep:mollusk-svm-fuzz-fixture",
     "dep:mollusk-svm-fuzz-fs",
+    "mollusk-svm-result/fuzz",
 ]
 fuzz-fd = [
     "dep:mollusk-svm-fuzz-fixture-firedancer",
@@ -34,6 +35,7 @@ mollusk-svm-fuzz-fixture = { workspace = true, optional = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true, optional = true }
 mollusk-svm-fuzz-fs = { workspace = true, optional = true }
 mollusk-svm-keys = { workspace = true }
+mollusk-svm-result = { workspace = true }
 solana-account = { workspace = true }
 solana-bpf-loader-program = { workspace = true }
 solana-clock = { workspace = true }
