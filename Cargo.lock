@@ -1610,7 +1610,6 @@ dependencies = [
  "solana-ed25519-program",
  "solana-epoch-rewards",
  "solana-epoch-schedule",
- "solana-fee-structure",
  "solana-hash",
  "solana-instruction",
  "solana-loader-v3-interface",

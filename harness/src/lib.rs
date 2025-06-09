@@ -462,7 +462,6 @@ use {
     mollusk_svm_result::{Check, CheckContext, Config, ContextResult, InstructionResult},
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_fee_structure::FeeStructure,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
     solana_log_collector::LogCollector,
@@ -483,7 +482,6 @@ pub struct Mollusk {
     pub config: Config,
     pub compute_budget: ComputeBudget,
     pub feature_set: FeatureSet,
-    pub fee_structure: FeeStructure,
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
@@ -515,7 +513,6 @@ impl Default for Mollusk {
             config: Config::default(),
             compute_budget: ComputeBudget::default(),
             feature_set,
-            fee_structure: FeeStructure::default(),
             logger: None,
             program_cache: ProgramCache::default(),
             sysvars: Sysvars::default(),
@@ -625,7 +622,7 @@ impl Mollusk {
                 &mut program_cache,
                 EnvironmentConfig::new(
                     Hash::default(),
-                    self.fee_structure.lamports_per_signature,
+                    /* blockhash_lamports_per_signature */ 5000, // The default value
                     0,
                     &|_| 0,
                     Arc::new(self.feature_set.clone()),
