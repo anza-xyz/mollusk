@@ -465,6 +465,7 @@ use {
     solana_fee_structure::FeeStructure,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
+    solana_log_collector::LogCollector,
     solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
     solana_pubkey::Pubkey,
     solana_timings::ExecuteTimings,
@@ -483,7 +484,7 @@ pub struct Mollusk {
     pub compute_budget: ComputeBudget,
     pub feature_set: FeatureSet,
     pub fee_structure: FeeStructure,
-    pub logger: Option<Rc<RefCell<solana_log_collector::LogCollector>>>,
+    pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
     #[cfg(feature = "fuzz-fd")]
@@ -515,9 +516,9 @@ impl Default for Mollusk {
             compute_budget: ComputeBudget::default(),
             feature_set,
             fee_structure: FeeStructure::default(),
+            logger: None,
             program_cache: ProgramCache::default(),
             sysvars: Sysvars::default(),
-            logger: None,
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
         }
