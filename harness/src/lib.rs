@@ -485,6 +485,12 @@ pub struct Mollusk {
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
+
+    /// This field stores the slot only to be able to convert to and from FD
+    /// fixtures and a Mollusk instance, since FD fixtures have a
+    /// "slot context". However, this field is functionally irrelevant for
+    /// instruction execution, since all slot-based information for on-chain
+    /// programs comes from the sysvars.
     #[cfg(feature = "fuzz-fd")]
     pub slot: u64,
 }
