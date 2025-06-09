@@ -29,6 +29,7 @@ audit:
 # Build test programs
 build-test-programs:
 	@cargo build-sbf --manifest-path test-programs/cpi-target/Cargo.toml
+	@cargo build-sbf --manifest-path test-programs/custom-syscall/Cargo.toml
 	@cargo build-sbf --manifest-path test-programs/primary/Cargo.toml
 
 # Pre-publish checks
@@ -84,6 +85,7 @@ check-features:
 
 # Run tests
 test:
+	@$(MAKE) build-test-programs
 	@cargo test --all-features
 
 # Run all checks in sequence
