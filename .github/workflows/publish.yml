@@ -3,9 +3,6 @@ name: Publish
 on:
   workflow_dispatch:
 
-env:
-  TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-
 jobs:
   pre_publish:
     name: Prepublish
@@ -68,4 +65,7 @@ jobs:
           version: ${{ steps.solana.outputs.version }}
       - name: Publish
         shell: bash
-        run: ARGS="--locked" make publish
+        env:
+          TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+          ARGS: "--locked"
+        run: make publish
