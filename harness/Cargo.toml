@@ -23,7 +23,10 @@ fuzz-fd = [
     "dep:mollusk-svm-fuzz-fixture-firedancer",
     "dep:mollusk-svm-fuzz-fs",
 ]
-serde = ["dep:serde"]
+serde = [
+    "dep:serde",
+    "mollusk-svm-result/serde",
+]
 
 [dependencies]
 agave-feature-set = { workspace = true }

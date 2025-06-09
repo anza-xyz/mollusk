@@ -1,7 +1,7 @@
 NIGHTLY_TOOLCHAIN := nightly-2024-11-22
 SOLANA_VERSION := 2.2.0
 
-.PHONY: audit build-test-programs prepublish publish format format-check clippy test nightly-version solana-version
+.PHONY: audit build-test-programs prepublish publish format format-check clippy test check-features nightly-version solana-version
 
 # Print the nightly toolchain version for CI
 nightly-version:
@@ -38,6 +38,7 @@ prepublish:
 	@$(MAKE) build-test-programs
 	@$(MAKE) format-check
 	@$(MAKE) clippy
+	@$(MAKE) check-features
 	@$(MAKE) test
 
 # Publish crates in order
@@ -75,6 +76,10 @@ format-check:
 # Run clippy linter
 clippy:
 	@cargo +$(NIGHTLY_TOOLCHAIN) clippy --all --all-features --all-targets -- -D warnings
+
+# Check all feature combinations with cargo-hack
+check-features:
+	@cargo hack check --feature-powerset --no-dev-deps
 
 # Run tests
 test:

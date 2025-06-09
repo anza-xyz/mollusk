@@ -47,6 +47,26 @@ jobs:
       - name: Run clippy
         run: make clippy
 
+  check_features:
+    name: Check Features
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-hack-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-hack-
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+      - name: Check all feature combinations
+        run: make check-features
+
   cargo_build_test:
     name: Cargo Build and Test
     runs-on: ubuntu-latest
