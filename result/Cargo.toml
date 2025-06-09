@@ -21,4 +21,4 @@ solana-rent = { workspace = true }
 [features]
 default = []
 fuzz = ["dep:mollusk-svm-fuzz-fixture"]
-serde = ["dep:serde"]
+serde = ["dep:serde", "solana-pubkey/serde"]

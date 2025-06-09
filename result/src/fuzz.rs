@@ -2,7 +2,6 @@
 
 use crate::types::{InstructionResult, ProgramResult};
 
-#[cfg(feature = "fuzz")]
 impl From<&InstructionResult> for mollusk_svm_fuzz_fixture::effects::Effects {
     fn from(input: &InstructionResult) -> Self {
         let compute_units_consumed = input.compute_units_consumed;
@@ -27,7 +26,6 @@ impl From<&InstructionResult> for mollusk_svm_fuzz_fixture::effects::Effects {
     }
 }
 
-#[cfg(feature = "fuzz")]
 impl From<&mollusk_svm_fuzz_fixture::effects::Effects> for InstructionResult {
     fn from(input: &mollusk_svm_fuzz_fixture::effects::Effects) -> Self {
         use solana_instruction::error::InstructionError;

@@ -31,6 +31,7 @@
 pub mod check;
 pub mod compare;
 pub mod config;
+#[cfg(feature = "fuzz")]
 pub mod fuzz;
 pub mod types;
 
