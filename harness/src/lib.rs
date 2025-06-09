@@ -503,7 +503,6 @@ impl Default for Mollusk {
              solana_runtime::message_processor=debug,\
              solana_runtime::system_instruction_processor=trace",
         );
-        let compute_budget = ComputeBudget::default();
         #[cfg(feature = "fuzz")]
         let feature_set = {
             // Omit "test features" (they have the same u64 ID).
@@ -516,13 +515,12 @@ impl Default for Mollusk {
         };
         #[cfg(not(feature = "fuzz"))]
         let feature_set = FeatureSet::all_enabled();
-        let program_cache = ProgramCache::new(&feature_set, &compute_budget);
         Self {
             config: Config::default(),
-            compute_budget,
+            compute_budget: ComputeBudget::default(),
             feature_set,
             logger: None,
-            program_cache,
+            program_cache: ProgramCache::default(),
             sysvars: Sysvars::default(),
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
@@ -575,7 +573,13 @@ impl Mollusk {
         elf: &[u8],
         loader_key: &Pubkey,
     ) {
-        self.program_cache.add_program(program_id, loader_key, elf);
+        self.program_cache.add_program(
+            program_id,
+            loader_key,
+            elf,
+            &self.compute_budget,
+            &self.feature_set,
+        );
     }
 
     /// Warp the test environment to a slot by updating sysvars.
