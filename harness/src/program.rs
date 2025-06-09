@@ -8,8 +8,12 @@ use {
     solana_loader_v3_interface::state::UpgradeableLoaderState,
     solana_loader_v4_interface::state::{LoaderV4State, LoaderV4Status},
     solana_program_runtime::{
-        invoke_context::BuiltinFunctionWithContext,
+        invoke_context::{BuiltinFunctionWithContext, InvokeContext},
         loaded_programs::{LoadProgramMetrics, ProgramCacheEntry, ProgramCacheForTxBatch},
+        solana_sbpf::{
+            elf::ElfError,
+            program::{BuiltinFunction, BuiltinProgram},
+        },
     },
     solana_pubkey::Pubkey,
     solana_rent::Rent,
@@ -57,13 +61,23 @@ pub struct ProgramCache {
     //
     // K: program ID, V: loader key
     entries_cache: Rc<RefCell<HashMap<Pubkey, Pubkey>>>,
+    // The function registry (syscalls) to use for verifying and loading
+    // program ELFs.
+    program_runtime_environment: BuiltinProgram<InvokeContext<'static>>,
 }
 
-impl Default for ProgramCache {
-    fn default() -> Self {
+impl ProgramCache {
+    pub fn new(feature_set: &FeatureSet, compute_budget: &ComputeBudget) -> Self {
         let me = Self {
             cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::default())),
             entries_cache: Rc::new(RefCell::new(HashMap::new())),
+            program_runtime_environment: create_program_runtime_environment_v1(
+                feature_set,
+                compute_budget,
+                /* reject_deployment_of_broken_elfs */ false,
+                /* debugging_features */ false,
+            )
+            .unwrap(),
         };
         BUILTINS.iter().for_each(|builtin| {
             let program_id = builtin.program_id;
@@ -72,9 +86,7 @@ impl Default for ProgramCache {
         });
         me
     }
-}
 
-impl ProgramCache {
     pub(crate) fn cache(&self) -> RefMut<ProgramCacheForTxBatch> {
         self.cache.borrow_mut()
     }
@@ -94,18 +106,24 @@ impl ProgramCache {
     }
 
     /// Add a program to the cache.
-    pub fn add_program(
-        &mut self,
-        program_id: &Pubkey,
-        loader_key: &Pubkey,
-        elf: &[u8],
-        compute_budget: &ComputeBudget,
-        feature_set: &FeatureSet,
-    ) {
-        let environment = Arc::new(
-            create_program_runtime_environment_v1(feature_set, compute_budget, false, false)
-                .unwrap(),
-        );
+    pub fn add_program(&mut self, program_id: &Pubkey, loader_key: &Pubkey, elf: &[u8]) {
+        // This might look rough, but it's actually functionally the same as
+        // calling `create_program_runtime_environment_v1` on every addition.
+        let environment = {
+            let config = self.program_runtime_environment.get_config().clone();
+            let mut loader = BuiltinProgram::new_loader(config);
+
+            for (_key, (name, value)) in self
+                .program_runtime_environment
+                .get_function_registry()
+                .iter()
+            {
+                let name = std::str::from_utf8(name).unwrap();
+                loader.register_function(name, value).unwrap();
+            }
+
+            Arc::new(loader)
+        };
         self.replenish(
             *program_id,
             Arc::new(
@@ -148,6 +166,19 @@ impl ProgramCache {
                 _ => panic!("Invalid loader key: {}", loader_key),
             })
             .collect()
+    }
+
+    /// Register a new function (syscall) with the program runtime environment.
+    ///
+    /// **Important**: You should register all custom syscalls BEFORE adding any
+    /// programs to the store that will use them.
+    pub fn register_function(
+        &mut self,
+        name: &str,
+        value: BuiltinFunction<InvokeContext<'static>>,
+    ) -> Result<(), ElfError> {
+        self.program_runtime_environment
+            .register_function(name, value)
     }
 }
 
