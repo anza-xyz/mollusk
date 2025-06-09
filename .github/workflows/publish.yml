@@ -68,4 +68,4 @@ jobs:
           version: ${{ steps.solana.outputs.version }}
       - name: Publish
         shell: bash
-        run: make publish ARGS=--locked
+        run: ARGS="--locked" make publish

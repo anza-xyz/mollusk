@@ -1,3 +1,4 @@
+SHELL := /usr/bin/env bash
 NIGHTLY_TOOLCHAIN := nightly-2024-11-22
 SOLANA_VERSION := 2.2.0
 
