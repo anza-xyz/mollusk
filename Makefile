@@ -1,7 +1,8 @@
 NIGHTLY_TOOLCHAIN := nightly-2024-11-22
 SOLANA_VERSION := 2.2.0
 
-.PHONY: audit build-test-programs prepublish publish format format-check clippy test check-features nightly-version solana-version
+.PHONY: audit build-test-programs prepublish publish format format-check \
+	clippy test check-features all-checks nightly-version solana-version
 
 # Print the nightly toolchain version for CI
 nightly-version:
@@ -84,3 +85,12 @@ check-features:
 # Run tests
 test:
 	@cargo test --all-features
+
+# Run all checks in sequence
+all-checks:
+	@echo "Running all checks..."
+	@$(MAKE) format-check
+	@$(MAKE) clippy
+	@$(MAKE) check-features
+	@$(MAKE) test
+	@echo "All checks passed!"
