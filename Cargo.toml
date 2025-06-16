@@ -18,7 +18,7 @@ repository = "https://github.com/anza-xyz/mollusk"
 readme = "README.md"
 license-file = "LICENSE"
 edition = "2021"
-version = "0.2.1"
+version = "0.2.0"
 
 [workspace.dependencies]
 agave-feature-set = "2.2.6"
