@@ -69,8 +69,8 @@ impl ProgramCache {
             cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::default())),
             entries_cache: Rc::new(RefCell::new(HashMap::new())),
             program_runtime_environment: create_program_runtime_environment_v1(
-                feature_set,
-                compute_budget,
+                &feature_set.runtime_features(),
+                &compute_budget.to_budget(),
                 /* reject_deployment_of_broken_elfs */ false,
                 /* debugging_features */ false,
             )

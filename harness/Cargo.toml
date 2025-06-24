@@ -59,6 +59,8 @@ solana-sdk-ids = { workspace = true }
 solana-slot-hashes = { workspace = true }
 solana-stake-interface = { workspace = true }
 solana-stake-program = { workspace = true, optional = true }
+solana-svm-callback = { workspace = true }
+solana-svm-feature-set = { workspace = true }
 solana-system-program = { workspace = true }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }

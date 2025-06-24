@@ -465,11 +465,15 @@ use {
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
     solana_log_collector::LogCollector,
-    solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
+    solana_program_runtime::{
+        execution_budget::SVMTransactionExecutionBudget,
+        invoke_context::{EnvironmentConfig, InvokeContext},
+    },
     solana_pubkey::Pubkey,
+    solana_svm_callback::InvokeContextCallback,
     solana_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
-    std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc, sync::Arc},
+    std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc},
 };
 
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
@@ -535,6 +539,9 @@ impl CheckContext for Mollusk {
         self.sysvars.rent.is_exempt(lamports, space)
     }
 }
+
+struct MockInvokeContextCallback {}
+impl InvokeContextCallback for MockInvokeContextCallback {}
 
 impl Mollusk {
     /// Create a new Mollusk instance containing the provided program.
@@ -625,19 +632,22 @@ impl Mollusk {
                 EnvironmentConfig::new(
                     Hash::default(),
                     /* blockhash_lamports_per_signature */ 5000, // The default value
-                    0,
-                    &|_| 0,
-                    Arc::new(self.feature_set.clone()),
+                    &MockInvokeContextCallback {},
+                    &self.feature_set.runtime_features(),
                     &sysvar_cache,
                 ),
                 self.logger.clone(),
-                self.compute_budget,
+                SVMTransactionExecutionBudget::default(),
+                Default::default(),
             );
             if let Some(precompile) = get_precompile(&instruction.program_id, |feature_id| {
-                invoke_context.get_feature_set().is_active(feature_id)
+                // invoke_context.get_feature_set().is_active(feature_id)
+                // There is not way to take a SVMFeatureSet and see if the feature pubkey
+                // matches a field
+                unimplemented!()
             }) {
                 invoke_context.process_precompile(
-                    precompile,
+                    &precompile.program_id,
                     &instruction.data,
                     &instruction_accounts,
                     &[program_id_index],
