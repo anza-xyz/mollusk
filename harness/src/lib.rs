@@ -457,7 +457,6 @@ use {
         sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
-    agave_precompiles::get_precompile,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{Check, CheckContext, Config, ContextResult, InstructionResult},
     solana_account::Account,
@@ -465,10 +464,8 @@ use {
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
     solana_log_collector::LogCollector,
-    solana_program_runtime::{
-        execution_budget::SVMTransactionExecutionBudget,
-        invoke_context::{EnvironmentConfig, InvokeContext},
-    },
+    solana_precompile_error::PrecompileError,
+    solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
     solana_timings::ExecuteTimings,
@@ -540,8 +537,32 @@ impl CheckContext for Mollusk {
     }
 }
 
-struct MockInvokeContextCallback {}
-impl InvokeContextCallback for MockInvokeContextCallback {}
+struct MolluskInvokeContextCallback<'a> {
+    feature_set: &'a FeatureSet,
+}
+
+impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
+    fn is_precompile(&self, program_id: &Pubkey) -> bool {
+        agave_precompiles::is_precompile(program_id, |feature_id| {
+            self.feature_set.is_active(feature_id)
+        })
+    }
+
+    fn process_precompile(
+        &self,
+        program_id: &Pubkey,
+        data: &[u8],
+        instruction_datas: Vec<&[u8]>,
+    ) -> Result<(), PrecompileError> {
+        if let Some(precompile) = agave_precompiles::get_precompile(program_id, |feature_id| {
+            self.feature_set.is_active(feature_id)
+        }) {
+            precompile.verify(data, &instruction_datas, self.feature_set)
+        } else {
+            Err(PrecompileError::InvalidPublicKey)
+        }
+    }
+}
 
 impl Mollusk {
     /// Create a new Mollusk instance containing the provided program.
@@ -625,6 +646,10 @@ impl Mollusk {
 
         let invoke_result = {
             let mut program_cache = self.program_cache.cache();
+            let callback = MolluskInvokeContextCallback {
+                feature_set: &self.feature_set,
+            };
+            let runtime_features = self.feature_set.runtime_features();
             let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
             let mut invoke_context = InvokeContext::new(
                 &mut transaction_context,
@@ -632,22 +657,17 @@ impl Mollusk {
                 EnvironmentConfig::new(
                     Hash::default(),
                     /* blockhash_lamports_per_signature */ 5000, // The default value
-                    &MockInvokeContextCallback {},
-                    &self.feature_set.runtime_features(),
+                    &callback,
+                    &runtime_features,
                     &sysvar_cache,
                 ),
                 self.logger.clone(),
-                SVMTransactionExecutionBudget::default(),
-                Default::default(),
+                self.compute_budget.to_budget(),
+                self.compute_budget.to_cost(),
             );
-            if let Some(precompile) = get_precompile(&instruction.program_id, |feature_id| {
-                // invoke_context.get_feature_set().is_active(feature_id)
-                // There is not way to take a SVMFeatureSet and see if the feature pubkey
-                // matches a field
-                unimplemented!()
-            }) {
+            if invoke_context.is_precompile(&instruction.program_id) {
                 invoke_context.process_precompile(
-                    &precompile.program_id,
+                    &instruction.program_id,
                     &instruction.data,
                     &instruction_accounts,
                     &[program_id_index],

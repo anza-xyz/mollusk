@@ -29,6 +29,7 @@ fn test_secp256k1() {
     );
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_ed25519() {
     let mollusk = Mollusk::default();
@@ -44,6 +45,7 @@ fn test_ed25519() {
     );
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_secp256r1() {
     use openssl::{
