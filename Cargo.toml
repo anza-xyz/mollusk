@@ -3,6 +3,7 @@ members = [
     "bencher",
     "cli",
     "error",
+    "fetcher/*",
     "fuzz/*",
     "harness",
     "keys",
@@ -23,6 +24,7 @@ version = "0.3.0"
 [workspace.dependencies]
 agave-feature-set = "2.3"
 agave-precompiles = "2.3"
+base64 = "0.22.1"
 bincode = "1.3.3"
 bs58 = "0.5.1"
 chrono = "0.4.38"
@@ -31,6 +33,9 @@ criterion = "0.5.1"
 ed25519-dalek = "=1.0.1"
 libsecp256k1 = "0.6.0"
 mollusk-svm = { path = "harness", version = "0.3.0" }
+mollusk-svm-account-fetcher-fs = { path = "fetcher/fs", version = "0.3.0" }
+mollusk-svm-account-fetcher-rpc = { path = "fetcher/rpc", version = "0.3.0" }
+mollusk-svm-account-fetcher-serde = { path = "fetcher/serde", version = "0.3.0" }
 mollusk-svm-bencher = { path = "bencher", version = "0.3.0" }
 mollusk-svm-cli = { path = "cli", version = "0.3.0" }
 mollusk-svm-error = { path = "error", version = "0.3.0" }
@@ -48,6 +53,7 @@ prost-build = "0.9"
 prost-types = "0.9"
 rand0-7 = { package = "rand", version = "0.7" }
 rayon = "1.10.0"
+reqwest = "0.12.20"
 serde = "1.0.203"
 serde_json = "1.0.117"
 serde_yaml = "0.9.34"
@@ -88,6 +94,7 @@ solana-sysvar = "2.2"
 solana-sysvar-id = "2.2"
 solana-timings = "2.3"
 solana-transaction-context = "2.3"
+tempfile = "3.13.0"
 thiserror = "1.0.64"
 tokio = "1.37.0"
 which = "=4.4.0"

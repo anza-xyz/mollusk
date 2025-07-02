@@ -46,6 +46,9 @@ prepublish:
 publish:
 	@set -e && set -u && set -o pipefail && \
 	CRATES=( \
+		"mollusk-svm-account-fetcher-serde" \
+		"mollusk-svm-account-fetcher-fs" \
+		"mollusk-svm-account-fetcher-rpc" \
 		"mollusk-svm-error" \
 		"mollusk-svm-keys" \
 		"mollusk-svm-fuzz-fs" \

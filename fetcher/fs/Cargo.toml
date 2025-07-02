@@ -1,0 +1,21 @@
+[package]
+name = "mollusk-svm-account-fetcher-fs"
+description = "File system account fetcher for Mollusk SVM"
+documentation = "https://docs.rs/mollusk-svm-account-fetcher-fs"
+authors = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+license-file ={ workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+base64 = { workspace = true }
+mollusk-svm-account-fetcher-serde = { workspace = true }
+serde_json = { workspace = true }
+solana-account = { workspace = true }
+solana-pubkey = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

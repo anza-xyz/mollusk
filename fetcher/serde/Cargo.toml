@@ -1,0 +1,19 @@
+[package]
+name = "mollusk-svm-account-fetcher-serde"
+description = "Serde utilities for Mollusk SVM account fetchers"
+documentation = "https://docs.rs/mollusk-svm-account-fetcher-serde"
+authors = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+license-file = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+base64 = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+solana-account = { workspace = true }
+solana-pubkey = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
