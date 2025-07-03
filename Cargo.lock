@@ -868,16 +868,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom-syscall-program"
-version = "0.1.0"
-dependencies = [
- "solana-account-info",
- "solana-program-entrypoint",
- "solana-program-error",
- "solana-pubkey",
-]
-
-[[package]]
 name = "dashmap"
 version = "5.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4305,6 +4295,26 @@ dependencies = [
 
 [[package]]
 name = "test-program-cpi-target"
+version = "0.1.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+]
+
+[[package]]
+name = "test-program-custom-syscall"
+version = "0.1.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+]
+
+[[package]]
+name = "test-program-epoch-stake"
 version = "0.1.0"
 dependencies = [
  "solana-account-info",

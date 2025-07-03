@@ -441,6 +441,7 @@
 
 pub mod account_store;
 mod compile_accounts;
+pub mod epoch_stake;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
@@ -453,8 +454,8 @@ pub use mollusk_svm_result as result;
 use mollusk_svm_result::Compare;
 use {
     crate::{
-        account_store::AccountStore, compile_accounts::CompiledAccounts, program::ProgramCache,
-        sysvar::Sysvars,
+        account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
+        program::ProgramCache, sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
@@ -482,6 +483,7 @@ pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgrade
 pub struct Mollusk {
     pub config: Config,
     pub compute_budget: ComputeBudget,
+    pub epoch_stake: EpochStake,
     pub feature_set: FeatureSet,
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
@@ -521,6 +523,7 @@ impl Default for Mollusk {
         Self {
             config: Config::default(),
             compute_budget,
+            epoch_stake: EpochStake::default(),
             feature_set,
             logger: None,
             program_cache,
@@ -539,9 +542,18 @@ impl CheckContext for Mollusk {
 
 struct MolluskInvokeContextCallback<'a> {
     feature_set: &'a FeatureSet,
+    epoch_stake: &'a EpochStake,
 }
 
 impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
+    fn get_epoch_stake(&self) -> u64 {
+        self.epoch_stake.values().sum()
+    }
+
+    fn get_epoch_stake_for_vote_account(&self, vote_address: &Pubkey) -> u64 {
+        self.epoch_stake.get(vote_address).copied().unwrap_or(0)
+    }
+
     fn is_precompile(&self, program_id: &Pubkey) -> bool {
         agave_precompiles::is_precompile(program_id, |feature_id| {
             self.feature_set.is_active(feature_id)
@@ -647,6 +659,7 @@ impl Mollusk {
         let invoke_result = {
             let mut program_cache = self.program_cache.cache();
             let callback = MolluskInvokeContextCallback {
+                epoch_stake: &self.epoch_stake,
                 feature_set: &self.feature_set,
             };
             let runtime_features = self.feature_set.runtime_features();
