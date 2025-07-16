@@ -452,6 +452,7 @@ pub mod sysvar;
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
+use solana_transaction_context::{IndexOfAccount, InstructionAccount};
 use {
     crate::{
         account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
@@ -489,6 +490,8 @@ pub struct Mollusk {
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
 
+    pub invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
+
     /// This field stores the slot only to be able to convert to and from FD
     /// fixtures and a Mollusk instance, since FD fixtures have a
     /// "slot context". However, this field is functionally irrelevant for
@@ -496,6 +499,35 @@ pub struct Mollusk {
     /// programs comes from the sysvars.
     #[cfg(feature = "fuzz-fd")]
     pub slot: u64,
+}
+
+pub trait InvocationInspectCallback {
+    fn before_invocation(
+        &self,
+        program_id: &Pubkey,
+        instruction_data: &[u8],
+        instruction_accounts: &[InstructionAccount],
+        program: IndexOfAccount,
+        invoke_context: &InvokeContext,
+    );
+
+    fn after_invocation(&self, invoke_context: &InvokeContext);
+}
+
+pub struct EmptyInvocationInspectCallback {}
+
+impl InvocationInspectCallback for EmptyInvocationInspectCallback {
+    fn before_invocation(
+        &self,
+        _: &Pubkey,
+        _: &[u8],
+        _: &[InstructionAccount],
+        _: IndexOfAccount,
+        _: &InvokeContext,
+    ) {
+    }
+
+    fn after_invocation(&self, _: &InvokeContext) {}
 }
 
 impl Default for Mollusk {
@@ -528,6 +560,7 @@ impl Default for Mollusk {
             logger: None,
             program_cache,
             sysvars: Sysvars::default(),
+            invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
         }
@@ -678,7 +711,16 @@ impl Mollusk {
                 self.compute_budget.to_budget(),
                 self.compute_budget.to_cost(),
             );
-            if invoke_context.is_precompile(&instruction.program_id) {
+
+            self.invocation_inspect_callback.before_invocation(
+                &instruction.program_id,
+                &instruction.data,
+                &instruction_accounts,
+                program_id_index,
+                &invoke_context,
+            );
+
+            let result = if invoke_context.is_precompile(&instruction.program_id) {
                 invoke_context.process_precompile(
                     &instruction.program_id,
                     &instruction.data,
@@ -694,7 +736,12 @@ impl Mollusk {
                     &mut compute_units_consumed,
                     &mut timings,
                 )
-            }
+            };
+
+            self.invocation_inspect_callback
+                .after_invocation(&invoke_context);
+
+            result
         };
 
         let return_data = transaction_context.get_return_data().1.to_vec();
