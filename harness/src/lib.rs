@@ -452,7 +452,8 @@ pub mod sysvar;
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
-use solana_transaction_context::{IndexOfAccount, InstructionAccount};
+#[cfg(feature = "invocation-inspect-callback")]
+use solana_transaction_context::InstructionAccount;
 use {
     crate::{
         account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
@@ -512,7 +513,6 @@ pub trait InvocationInspectCallback {
         program_id: &Pubkey,
         instruction_data: &[u8],
         instruction_accounts: &[InstructionAccount],
-        program: IndexOfAccount,
         invoke_context: &InvokeContext,
     );
 
@@ -529,7 +529,6 @@ impl InvocationInspectCallback for EmptyInvocationInspectCallback {
         _: &Pubkey,
         _: &[u8],
         _: &[InstructionAccount],
-        _: IndexOfAccount,
         _: &InvokeContext,
     ) {
     }
@@ -727,7 +726,6 @@ impl Mollusk {
                 &instruction.program_id,
                 &instruction.data,
                 &instruction_accounts,
-                program_id_index,
                 &invoke_context,
             );
 
