@@ -505,9 +505,9 @@ pub trait InvocationInspectCallback {
     fn before_invocation(
         &self,
         program_id: &Pubkey,
-        instruction_data: &[u8],
+        program_index: IndexOfAccount,
         instruction_accounts: &[InstructionAccount],
-        program: IndexOfAccount,
+        instruction_data: &[u8],
         invoke_context: &InvokeContext,
     );
 
