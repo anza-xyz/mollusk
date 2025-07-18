@@ -490,6 +490,10 @@ pub struct Mollusk {
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
 
+    /// The callback which can be used to inspect invoke_context
+    /// and extract low-level information such as bpf traces, transaction context,
+    /// detailed timings, etc.
+    #[cfg(feature = "invocation-inspect-callback")]
     pub invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
 
     /// This field stores the slot only to be able to convert to and from FD
@@ -501,6 +505,7 @@ pub struct Mollusk {
     pub slot: u64,
 }
 
+#[cfg(feature = "invocation-inspect-callback")]
 pub trait InvocationInspectCallback {
     fn before_invocation(
         &self,
@@ -514,8 +519,10 @@ pub trait InvocationInspectCallback {
     fn after_invocation(&self, invoke_context: &InvokeContext);
 }
 
-pub struct EmptyInvocationInspectCallback {}
+#[cfg(feature = "invocation-inspect-callback")]
+pub struct EmptyInvocationInspectCallback;
 
+#[cfg(feature = "invocation-inspect-callback")]
 impl InvocationInspectCallback for EmptyInvocationInspectCallback {
     fn before_invocation(
         &self,
@@ -560,7 +567,10 @@ impl Default for Mollusk {
             logger: None,
             program_cache,
             sysvars: Sysvars::default(),
+
+            #[cfg(feature = "invocation-inspect-callback")]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
+
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
         }
@@ -712,6 +722,7 @@ impl Mollusk {
                 self.compute_budget.to_cost(),
             );
 
+            #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.before_invocation(
                 &instruction.program_id,
                 &instruction.data,
@@ -738,6 +749,7 @@ impl Mollusk {
                 )
             };
 
+            #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback
                 .after_invocation(&invoke_context);
 
