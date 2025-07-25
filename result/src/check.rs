@@ -253,7 +253,8 @@ impl InstructionResult {
                                     true,
                                     context.is_rent_exempt(
                                         resulting_account.lamports,
-                                        resulting_account.data.len()
+                                        resulting_account.data.len(),
+                                        resulting_account.owner,
                                     ),
                                 );
                             }
