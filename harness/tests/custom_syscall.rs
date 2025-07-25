@@ -44,7 +44,7 @@ fn test_custom_syscall() {
             .unwrap();
         mollusk.add_program(
             &program_id,
-            "custom_syscall_program",
+            "test_program_custom_syscall",
             &mollusk_svm::program::loader_keys::LOADER_V3,
         );
         mollusk

@@ -9,7 +9,7 @@ pub fn add_program(mollusk: &mut Mollusk) {
     mollusk.add_program_with_elf_and_loader(
         &ID,
         ELF,
-        &mollusk_svm::program::loader_keys::LOADER_V2,
+        &mollusk_svm::program::loader_keys::LOADER_V3,
     );
 }
 

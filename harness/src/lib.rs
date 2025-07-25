@@ -441,6 +441,7 @@
 
 pub mod account_store;
 mod compile_accounts;
+pub mod epoch_stake;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
@@ -451,10 +452,12 @@ pub mod sysvar;
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
+#[cfg(feature = "invocation-inspect-callback")]
+use solana_transaction_context::InstructionAccount;
 use {
     crate::{
-        account_store::AccountStore, compile_accounts::CompiledAccounts, program::ProgramCache,
-        sysvar::Sysvars,
+        account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
+        program::ProgramCache, sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
@@ -482,10 +485,17 @@ pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgrade
 pub struct Mollusk {
     pub config: Config,
     pub compute_budget: ComputeBudget,
+    pub epoch_stake: EpochStake,
     pub feature_set: FeatureSet,
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
+
+    /// The callback which can be used to inspect invoke_context
+    /// and extract low-level information such as bpf traces, transaction context,
+    /// detailed timings, etc.
+    #[cfg(feature = "invocation-inspect-callback")]
+    pub invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
 
     /// This field stores the slot only to be able to convert to and from FD
     /// fixtures and a Mollusk instance, since FD fixtures have a
@@ -494,6 +504,36 @@ pub struct Mollusk {
     /// programs comes from the sysvars.
     #[cfg(feature = "fuzz-fd")]
     pub slot: u64,
+}
+
+#[cfg(feature = "invocation-inspect-callback")]
+pub trait InvocationInspectCallback {
+    fn before_invocation(
+        &self,
+        program_id: &Pubkey,
+        instruction_data: &[u8],
+        instruction_accounts: &[InstructionAccount],
+        invoke_context: &InvokeContext,
+    );
+
+    fn after_invocation(&self, invoke_context: &InvokeContext);
+}
+
+#[cfg(feature = "invocation-inspect-callback")]
+pub struct EmptyInvocationInspectCallback;
+
+#[cfg(feature = "invocation-inspect-callback")]
+impl InvocationInspectCallback for EmptyInvocationInspectCallback {
+    fn before_invocation(
+        &self,
+        _: &Pubkey,
+        _: &[u8],
+        _: &[InstructionAccount],
+        _: &InvokeContext,
+    ) {
+    }
+
+    fn after_invocation(&self, _: &InvokeContext) {}
 }
 
 impl Default for Mollusk {
@@ -521,10 +561,15 @@ impl Default for Mollusk {
         Self {
             config: Config::default(),
             compute_budget,
+            epoch_stake: EpochStake::default(),
             feature_set,
             logger: None,
             program_cache,
             sysvars: Sysvars::default(),
+
+            #[cfg(feature = "invocation-inspect-callback")]
+            invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
+
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
         }
@@ -539,9 +584,18 @@ impl CheckContext for Mollusk {
 
 struct MolluskInvokeContextCallback<'a> {
     feature_set: &'a FeatureSet,
+    epoch_stake: &'a EpochStake,
 }
 
 impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
+    fn get_epoch_stake(&self) -> u64 {
+        self.epoch_stake.values().sum()
+    }
+
+    fn get_epoch_stake_for_vote_account(&self, vote_address: &Pubkey) -> u64 {
+        self.epoch_stake.get(vote_address).copied().unwrap_or(0)
+    }
+
     fn is_precompile(&self, program_id: &Pubkey) -> bool {
         agave_precompiles::is_precompile(program_id, |feature_id| {
             self.feature_set.is_active(feature_id)
@@ -647,6 +701,7 @@ impl Mollusk {
         let invoke_result = {
             let mut program_cache = self.program_cache.cache();
             let callback = MolluskInvokeContextCallback {
+                epoch_stake: &self.epoch_stake,
                 feature_set: &self.feature_set,
             };
             let runtime_features = self.feature_set.runtime_features();
@@ -665,7 +720,16 @@ impl Mollusk {
                 self.compute_budget.to_budget(),
                 self.compute_budget.to_cost(),
             );
-            if invoke_context.is_precompile(&instruction.program_id) {
+
+            #[cfg(feature = "invocation-inspect-callback")]
+            self.invocation_inspect_callback.before_invocation(
+                &instruction.program_id,
+                &instruction.data,
+                &instruction_accounts,
+                &invoke_context,
+            );
+
+            let result = if invoke_context.is_precompile(&instruction.program_id) {
                 invoke_context.process_precompile(
                     &instruction.program_id,
                     &instruction.data,
@@ -681,7 +745,13 @@ impl Mollusk {
                     &mut compute_units_consumed,
                     &mut timings,
                 )
-            }
+            };
+
+            #[cfg(feature = "invocation-inspect-callback")]
+            self.invocation_inspect_callback
+                .after_invocation(&invoke_context);
+
+            result
         };
 
         let return_data = transaction_context.get_return_data().1.to_vec();
