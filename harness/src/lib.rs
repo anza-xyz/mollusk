@@ -492,8 +492,8 @@ pub struct Mollusk {
     pub sysvars: Sysvars,
 
     /// The callback which can be used to inspect invoke_context
-    /// and extract low-level information such as bpf traces, transaction context,
-    /// detailed timings, etc.
+    /// and extract low-level information such as bpf traces, transaction
+    /// context, detailed timings, etc.
     #[cfg(feature = "invocation-inspect-callback")]
     pub invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
 
@@ -524,13 +524,7 @@ pub struct EmptyInvocationInspectCallback;
 
 #[cfg(feature = "invocation-inspect-callback")]
 impl InvocationInspectCallback for EmptyInvocationInspectCallback {
-    fn before_invocation(
-        &self,
-        _: &Pubkey,
-        _: &[u8],
-        _: &[InstructionAccount],
-        _: &InvokeContext,
-    ) {
+    fn before_invocation(&self, _: &Pubkey, _: &[u8], _: &[InstructionAccount], _: &InvokeContext) {
     }
 
     fn after_invocation(&self, _: &InvokeContext) {}
@@ -578,7 +572,8 @@ impl Default for Mollusk {
 
 impl CheckContext for Mollusk {
     fn is_rent_exempt(&self, lamports: u64, space: usize, owner: Pubkey) -> bool {
-        owner.eq(&Pubkey::default()) && lamports == 0 || self.sysvars.rent.is_exempt(lamports, space)
+        owner.eq(&Pubkey::default()) && lamports == 0
+            || self.sysvars.rent.is_exempt(lamports, space)
     }
 }
 

@@ -471,8 +471,8 @@ fn test_account_checks_rent_exemption() {
     }
 
     impl CheckContext for TestCheckContext<'_> {
-        fn is_rent_exempt(&self, lamports: u64, space: usize) -> bool {
-            self.rent.is_exempt(lamports, space)
+        fn is_rent_exempt(&self, lamports: u64, space: usize, owner: Pubkey) -> bool {
+            owner.eq(&Pubkey::default()) && lamports == 0 || self.rent.is_exempt(lamports, space)
         }
     }
 
