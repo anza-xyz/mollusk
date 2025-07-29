@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "agave-feature-set"
 version = "3.0.0"
-source = "git+https://github.com/rustopian/agave?branch=v3.0-create-prefunded-account#d69c8c5e9765b06e1ed09934050cedfedf2bf1af"
+source = "git+https://github.com/rustopian/agave?branch=create-prefunded-account#684712c3283870b8571a8984557ac8c944fbf697"
 dependencies = [
  "ahash",
  "solana-epoch-schedule",
@@ -4206,7 +4206,7 @@ checksum = "d4d525b3bb05c5a56c17ec7f4d5b9f838f0bcf006cf423a7c0e1b05ef4e10a2a"
 [[package]]
 name = "solana-svm-feature-set"
 version = "3.0.0"
-source = "git+https://github.com/rustopian/agave?branch=v3.0-create-prefunded-account#d69c8c5e9765b06e1ed09934050cedfedf2bf1af"
+source = "git+https://github.com/rustopian/agave?branch=create-prefunded-account#684712c3283870b8571a8984557ac8c944fbf697"
 
 [[package]]
 name = "solana-system-interface"
