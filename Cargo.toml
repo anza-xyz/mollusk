@@ -21,8 +21,8 @@ edition = "2021"
 version = "0.4.1"
 
 [workspace.dependencies]
-agave-feature-set = { git = "https://github.com/rustopian/agave", branch = "create-prefunded-account" }
-agave-precompiles = "2.3"
+agave-feature-set = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+agave-precompiles = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 bincode = "1.3.3"
 bs58 = "0.5.1"
 chrono = "0.4.38"
@@ -54,9 +54,9 @@ serde_yaml = "0.9.34"
 serial_test = "2.0"
 solana-account = "^2.2"
 solana-account-info = "^2"
-solana-bpf-loader-program = "2.3"
+solana-bpf-loader-program = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 solana-clock = "^2"
-solana-compute-budget = "2.3"
+solana-compute-budget = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 solana-cpi = "^2"
 solana-ed25519-program = "^2"
 solana-epoch-rewards = "^2"
@@ -66,13 +66,13 @@ solana-instruction = "^2"
 solana-keccak-hasher = "^2"
 solana-loader-v3-interface = "3.0"
 solana-loader-v4-interface = "^2"
-solana-log-collector = "2.3"
+solana-log-collector = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 solana-logger = "2.3"
 solana-native-token = "^2"
 solana-precompile-error = "^2"
 solana-program-entrypoint = "^2"
 solana-program-error = "^2"
-solana-program-runtime = "2.3"
+solana-program-runtime = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 solana-pubkey = "^2"
 solana-rent = "^2"
 solana-sdk-ids = "^2"
@@ -81,17 +81,29 @@ solana-secp256r1-program = "^2"
 solana-slot-hashes = "^2"
 solana-stake-interface = "1.0"
 solana-stake-program = "2.3"
-solana-svm-callback = "2.3"
+solana-svm-callback = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 solana-system-interface = { version = "1.0", git = "https://github.com/rustopian/system.git", branch = "create-prefunded-account", features = ["bincode"] }
-solana-system-program = "2.3"
+solana-system-program = { version = "3.0", git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 solana-sysvar = "^2"
 solana-sysvar-id = "^2"
-solana-timings = "2.3"
-solana-transaction-context = "2.3"
+solana-timings = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-transaction-context = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 thiserror = "1.0.64"
 tokio = "1.37.0"
 which = "=4.4.0"
+solana-svm-feature-set = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
 
 [patch.crates-io]
 # Patching in create-prefunded-account interface until merged
 solana-system-interface = { version = "1.0", git = "https://github.com/rustopian/system.git", branch = "create-prefunded-account", features = ["bincode"] }
+solana-system-program = { version = "3.0", git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+agave-feature-set = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+agave-precompiles = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-program-runtime = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-bpf-loader-program = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-svm-feature-set = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-compute-budget = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-svm-callback = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-transaction-context = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-log-collector = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }
+solana-timings = { git = "https://github.com/rustopian/agave.git", branch = "create-prefunded-account" }

@@ -20,6 +20,7 @@ use {
         rc::Rc,
         sync::Arc,
     },
+    solana_program_runtime::solana_sbpf::vm::EbpfVm,
 };
 
 /// Loader keys, re-exported from `solana_sdk` for convenience.
@@ -186,7 +187,7 @@ static BUILTINS: &[Builtin] = &[
     Builtin {
         program_id: solana_system_program::id(),
         name: "system_program",
-        entrypoint: solana_system_program::system_processor::Entrypoint::vm,
+        entrypoint: system_program_entrypoint_static,
     },
     Builtin {
         program_id: loader_keys::LOADER_V2,
@@ -206,6 +207,30 @@ static BUILTINS: &[Builtin] = &[
     },
     /* ... */
 ];
+
+/// Wrapper that adapts the system program's `vm` entrypoint to the
+/// `BuiltinFunctionWithContext` type expected by Mollusk (which
+/// requires a `'static` lifetime on the `InvokeContext`).
+#[inline(always)]
+fn system_program_entrypoint_static<'a>(
+    vm: *mut EbpfVm<'a, InvokeContext<'static>>,
+    arg0: u64,
+    arg1: u64,
+    arg2: u64,
+    arg3: u64,
+    arg4: u64,
+) {
+    // We intentionally ignore the `Result` returned by the real implementation
+    // because the harness runtime expects a unit-returning function pointer.
+    let _ = solana_system_program::system_processor::Entrypoint::vm(
+        vm as *mut _,
+        arg0,
+        arg1,
+        arg2,
+        arg3,
+        arg4,
+    );
+}
 
 /// Create a key and account for a builtin program.
 pub fn create_keyed_account_for_builtin_program(
