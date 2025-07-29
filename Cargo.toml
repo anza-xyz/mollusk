@@ -21,7 +21,7 @@ edition = "2021"
 version = "0.3.0"
 
 [workspace.dependencies]
-agave-feature-set = { git = "https://github.com/rustopian/agave", branch = "v3.0-create-account-prefunded" }
+agave-feature-set = { git = "https://github.com/rustopian/agave", branch = "v3.0-create-prefunded-account" }
 agave-precompiles = "2.3"
 bincode = "1.3.3"
 bs58 = "0.5.1"
@@ -82,7 +82,7 @@ solana-slot-hashes = "^2"
 solana-stake-interface = "1.0"
 solana-stake-program = "2.3"
 solana-svm-callback = "2.3"
-solana-system-interface = { version = "1.0", git = "https://github.com/rustopian/system.git", branch = "create-account-prefunded", features = ["bincode"] }
+solana-system-interface = { version = "1.0", git = "https://github.com/rustopian/system.git", branch = "create-prefunded-account", features = ["bincode"] }
 solana-system-program = "2.3"
 solana-sysvar = "^2"
 solana-sysvar-id = "^2"
@@ -93,5 +93,5 @@ tokio = "1.37.0"
 which = "=4.4.0"
 
 [patch.crates-io]
-# Patching in create-account-prefunded interface until merged
-solana-system-interface = { version = "1.0", git = "https://github.com/rustopian/system.git", branch = "create-account-prefunded", features = ["bincode"] }
+# Patching in create-prefunded-account interface until merged
+solana-system-interface = { version = "1.0", git = "https://github.com/rustopian/system.git", branch = "create-prefunded-account", features = ["bincode"] }
