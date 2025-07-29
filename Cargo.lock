@@ -882,16 +882,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom-syscall-program"
-version = "0.1.0"
-dependencies = [
- "solana-account-info",
- "solana-program-entrypoint",
- "solana-program-error",
- "solana-pubkey",
-]
-
-[[package]]
 name = "dashmap"
 version = "5.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1844,7 +1834,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "agave-feature-set 3.0.0",
  "agave-precompiles",
@@ -1899,7 +1889,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-bencher"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "chrono",
  "mollusk-svm",
@@ -1913,7 +1903,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-cli"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "chrono",
  "clap",
@@ -1932,7 +1922,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-error"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "solana-pubkey",
  "thiserror 1.0.69",
@@ -1940,7 +1930,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-fuzz-fixture"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "agave-feature-set 3.0.0",
  "mollusk-svm-fuzz-fs",
@@ -1964,7 +1954,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-fuzz-fixture-firedancer"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "agave-feature-set 3.0.0",
  "mollusk-svm-fuzz-fs",
@@ -1981,7 +1971,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-fuzz-fs"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "bs58",
  "prost",
@@ -1992,7 +1982,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-keys"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "mollusk-svm-error",
  "solana-account",
@@ -2003,7 +1993,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-programs-memo"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "mollusk-svm",
  "solana-account",
@@ -2012,7 +2002,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-programs-token"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "mollusk-svm",
  "solana-account",
@@ -2021,7 +2011,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-result"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "mollusk-svm-fuzz-fixture",
  "serde",
@@ -4460,6 +4450,26 @@ dependencies = [
 
 [[package]]
 name = "test-program-cpi-target"
+version = "0.1.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+]
+
+[[package]]
+name = "test-program-custom-syscall"
+version = "0.1.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+]
+
+[[package]]
+name = "test-program-epoch-stake"
 version = "0.1.0"
 dependencies = [
  "solana-account-info",

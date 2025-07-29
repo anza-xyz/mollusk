@@ -1,3 +1,5 @@
+#![cfg(target_os = "solana")]
+
 use {solana_account_info::AccountInfo, solana_program_error::ProgramError, solana_pubkey::Pubkey};
 
 // Declare the custom syscall that we expect to be registered.

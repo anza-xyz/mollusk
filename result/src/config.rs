@@ -1,6 +1,6 @@
 //! Configuration and context for result validation.
 
-use solana_rent::Rent;
+use {solana_pubkey::Pubkey, solana_rent::Rent};
 
 pub struct Config {
     pub panic: bool,
@@ -24,8 +24,8 @@ impl Default for Config {
 /// one may wish to evaluate resulting account lamports with a custom `Rent`
 /// configuration. This trait allows such customization.
 pub trait CheckContext {
-    fn is_rent_exempt(&self, lamports: u64, space: usize) -> bool {
-        Rent::default().is_exempt(lamports, space)
+    fn is_rent_exempt(&self, lamports: u64, space: usize, owner: Pubkey) -> bool {
+        owner.eq(&Pubkey::default()) && lamports == 0 || Rent::default().is_exempt(lamports, space)
     }
 }
 

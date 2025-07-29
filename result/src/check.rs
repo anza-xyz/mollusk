@@ -22,6 +22,8 @@ enum CheckType<'a> {
     ReturnData(&'a [u8]),
     /// Check a resulting account after executing the instruction.
     ResultingAccount(AccountCheck<'a>),
+    /// Check that all accounts are rent exempt
+    AllRentExempt,
 }
 
 pub struct Check<'a> {
@@ -71,6 +73,11 @@ impl<'a> Check<'a> {
     /// Check a resulting account after executing the instruction.
     pub fn account(pubkey: &Pubkey) -> AccountCheckBuilder {
         AccountCheckBuilder::new(pubkey)
+    }
+
+    /// Check that all resulting accounts are rent exempt
+    pub fn all_rent_exempt() -> Self {
+        Check::new(CheckType::AllRentExempt)
     }
 }
 
@@ -246,7 +253,8 @@ impl InstructionResult {
                                     true,
                                     context.is_rent_exempt(
                                         resulting_account.lamports,
-                                        resulting_account.data.len()
+                                        resulting_account.data.len(),
+                                        resulting_account.owner,
                                     ),
                                 );
                             }
@@ -269,6 +277,25 @@ impl InstructionResult {
                             &actual_data[offset..offset + check_data_slice.len()];
                         pass &=
                             compare!(c, "account_data_slice", check_data_slice, actual_data_slice,);
+                    }
+                }
+                CheckType::AllRentExempt => {
+                    for (pubkey, account) in &self.resulting_accounts {
+                        let is_rent_exempt = context.is_rent_exempt(
+                            account.lamports(),
+                            account.data().len(),
+                            account.owner,
+                        );
+                        if !is_rent_exempt {
+                            pass &= throw!(
+                                c,
+                                "Account {} is not rent exempt after execution (lamports: {}, \
+                                 data_len: {})",
+                                pubkey,
+                                account.lamports(),
+                                account.data().len()
+                            );
+                        }
                     }
                 }
             }

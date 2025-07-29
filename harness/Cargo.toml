@@ -27,6 +27,7 @@ serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
 ]
+invocation-inspect-callback = []
 
 [dependencies]
 agave-feature-set = { workspace = true }
