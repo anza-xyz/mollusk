@@ -23,6 +23,9 @@ use {
     solana_program_runtime::solana_sbpf::vm::EbpfVm,
 };
 
+#[cfg(feature = "all-builtins")]
+use solana_stake_program;
+
 /// Loader keys, re-exported from `solana_sdk` for convenience.
 pub mod loader_keys {
     pub use solana_sdk_ids::{
@@ -203,7 +206,7 @@ static BUILTINS: &[Builtin] = &[
     Builtin {
         program_id: solana_sdk_ids::stake::id(),
         name: "solana_stake_program",
-        entrypoint: solana_stake_program::stake_instruction::Entrypoint::vm,
+        entrypoint: stake_program_entrypoint_static,
     },
     /* ... */
 ];
@@ -373,4 +376,24 @@ pub fn create_program_account_loader_v4(elf: &[u8]) -> Account {
         executable: false,
         ..Default::default()
     }
+}
+
+#[cfg(feature = "all-builtins")]
+#[inline(always)]
+fn stake_program_entrypoint_static<'a>(
+    vm: *mut EbpfVm<'a, InvokeContext<'static>>,
+    arg0: u64,
+    arg1: u64,
+    arg2: u64,
+    arg3: u64,
+    arg4: u64,
+) {
+    let _ = solana_stake_program::stake_instruction::Entrypoint::vm(
+        vm as *mut _,
+        arg0,
+        arg1,
+        arg2,
+        arg3,
+        arg4,
+    );
 }
