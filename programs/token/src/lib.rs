@@ -1,4 +1,5 @@
 //! Last updated at mainnet-beta slot height: 347196212
+mod state;
 
 #[cfg(feature = "associated-token")]
 pub mod associated_token;
