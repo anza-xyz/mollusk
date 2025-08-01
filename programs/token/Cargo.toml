@@ -19,5 +19,5 @@ token-2022 = []
 mollusk-svm = { workspace = true }
 solana-account = { workspace = true }
 solana-pubkey = { workspace = true }
-spl-token = "8.0.0"
-spl-associated-token-account = "7.0.0"
+spl-token = { workspace = true }
+spl-associated-token-account = { workspace = true }

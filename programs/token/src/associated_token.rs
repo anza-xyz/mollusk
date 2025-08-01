@@ -1,4 +1,10 @@
-use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey};
+use {
+    mollusk_svm::Mollusk,
+    solana_account::Account,
+    solana_pubkey::Pubkey,
+    spl_associated_token_account::get_associated_token_address_with_program_id,
+    spl_token::{solana_program::program_pack::Pack, state::Account as TokenAccount},
+};
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
@@ -21,4 +27,54 @@ pub fn account() -> Account {
 /// Get the key and account for the SPL Associated Token program.
 pub fn keyed_account() -> (Pubkey, Account) {
     (ID, account())
+}
+
+/// Keyed Account for an Associated Token Account
+pub fn keyed_account_for_associated_token_account(
+    mollusk: &Mollusk,
+    token_account_data: TokenAccount,
+) -> (Pubkey, Account) {
+    let associated_token_address = get_associated_token_address_with_program_id(
+        &token_account_data.owner,
+        &token_account_data.mint,
+        &crate::token::ID,
+    );
+
+    let mut data = vec![0u8; TokenAccount::LEN];
+    TokenAccount::pack(token_account_data, &mut data).unwrap();
+
+    let account = Account {
+        lamports: mollusk.sysvars.rent.minimum_balance(TokenAccount::LEN),
+        data,
+        owner: ID,
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    (associated_token_address, account)
+}
+
+/// Keyed Account for an Associated Token Account
+pub fn keyed_account_for_associated_token_2022_account(
+    mollusk: &Mollusk,
+    token_account_data: TokenAccount,
+) -> (Pubkey, Account) {
+    let associated_token_address = get_associated_token_address_with_program_id(
+        &token_account_data.owner,
+        &token_account_data.mint,
+        &crate::token2022::ID,
+    );
+
+    let mut data = vec![0u8; TokenAccount::LEN];
+    TokenAccount::pack(token_account_data, &mut data).unwrap();
+
+    let account = Account {
+        lamports: mollusk.sysvars.rent.minimum_balance(TokenAccount::LEN),
+        data,
+        owner: ID,
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    (associated_token_address, account)
 }
