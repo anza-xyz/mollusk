@@ -1962,6 +1962,7 @@ dependencies = [
  "mollusk-svm",
  "solana-account",
  "solana-pubkey",
+ "solana-rent",
  "spl-associated-token-account",
  "spl-token",
 ]

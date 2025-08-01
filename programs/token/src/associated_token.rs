@@ -4,6 +4,7 @@ use {
     solana_pubkey::Pubkey,
     spl_associated_token_account::get_associated_token_address_with_program_id,
     spl_token::{solana_program::program_pack::Pack, state::Account as TokenAccount},
+    solana_rent::Rent,
 };
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
@@ -29,9 +30,8 @@ pub fn keyed_account() -> (Pubkey, Account) {
     (ID, account())
 }
 
-/// Keyed Account for an Associated Token Account
-pub fn keyed_account_for_associated_token_account(
-    mollusk: &Mollusk,
+/// Create an Associated Token Account
+pub fn create_account_for_associated_token_account(
     token_account_data: TokenAccount,
 ) -> (Pubkey, Account) {
     let associated_token_address = get_associated_token_address_with_program_id(
@@ -44,7 +44,7 @@ pub fn keyed_account_for_associated_token_account(
     TokenAccount::pack(token_account_data, &mut data).unwrap();
 
     let account = Account {
-        lamports: mollusk.sysvars.rent.minimum_balance(TokenAccount::LEN),
+        lamports: Rent::default().minimum_balance(TokenAccount::LEN),
         data,
         owner: ID,
         executable: false,
@@ -54,9 +54,8 @@ pub fn keyed_account_for_associated_token_account(
     (associated_token_address, account)
 }
 
-/// Keyed Account for an Associated Token Account
-pub fn keyed_account_for_associated_token_2022_account(
-    mollusk: &Mollusk,
+/// Create an Associated Token Account for the Token2022 program
+pub fn create_account_for_associated_token_2022_account(
     token_account_data: TokenAccount,
 ) -> (Pubkey, Account) {
     let associated_token_address = get_associated_token_address_with_program_id(
@@ -69,7 +68,7 @@ pub fn keyed_account_for_associated_token_2022_account(
     TokenAccount::pack(token_account_data, &mut data).unwrap();
 
     let account = Account {
-        lamports: mollusk.sysvars.rent.minimum_balance(TokenAccount::LEN),
+        lamports: Rent::default().minimum_balance(TokenAccount::LEN),
         data,
         owner: ID,
         executable: false,

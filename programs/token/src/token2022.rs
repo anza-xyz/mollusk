@@ -1,4 +1,4 @@
-use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey, spl_token::solana_program::program_pack::Pack, spl_token::state::{Mint, Account as TokenAccount}};
+use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey, solana_rent::Rent, spl_token::solana_program::program_pack::Pack, spl_token::state::{Mint, Account as TokenAccount}};
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
@@ -23,13 +23,13 @@ pub fn keyed_account() -> (Pubkey, Account) {
     (ID, account())
 }
 
-/// Create a Keyed Account for a Mint
-pub fn keyed_account_for_mint(mollusk: &Mollusk, mint_data: Mint) -> Account {
+/// Create a Mint Account
+pub fn create_account_for_mint(mint_data: Mint) -> Account {
     let mut data = vec![0u8; Mint::LEN];
     Mint::pack(mint_data, &mut data).unwrap();
 
     Account {
-        lamports: mollusk.sysvars.rent.minimum_balance(Mint::LEN),
+        lamports: Rent::default().minimum_balance(Mint::LEN),
         data,
         owner: ID,
         executable: false,
@@ -37,16 +37,15 @@ pub fn keyed_account_for_mint(mollusk: &Mollusk, mint_data: Mint) -> Account {
     }
 }
 
-/// Create a Keyed Account for a Token Account
-pub fn keyed_account_for_token_account(
-    mollusk: &Mollusk,
+/// Create a Token Account
+pub fn create_account_for_token_account(
     token_account_data: TokenAccount,
 ) -> Account {
     let mut data = vec![0u8; TokenAccount::LEN];
     TokenAccount::pack(token_account_data, &mut data).unwrap();
 
     Account {
-        lamports: mollusk.sysvars.rent.minimum_balance(TokenAccount::LEN),
+        lamports: Rent::default().minimum_balance(TokenAccount::LEN),
         data,
         owner: ID,
         executable: false,
