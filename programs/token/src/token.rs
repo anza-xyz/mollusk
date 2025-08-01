@@ -1,4 +1,11 @@
-use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey};
+use {
+    mollusk_svm::Mollusk,
+    solana_account::Account,
+    solana_pubkey::Pubkey,
+    spl_token::solana_program::program_pack::Pack,
+    spl_token::state::{Account as TokenAccount, Mint},
+    solana_rent::Rent,
+};
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
@@ -21,4 +28,34 @@ pub fn account() -> Account {
 /// Get the key and account for the SPL Token program.
 pub fn keyed_account() -> (Pubkey, Account) {
     (ID, account())
+}
+
+/// Create a Mint Account
+pub fn create_account_for_mint(mint_data: Mint) -> Account {
+    let mut data = vec![0u8; Mint::LEN];
+    Mint::pack(mint_data, &mut data).unwrap();
+
+    Account {
+        lamports: Rent::default().minimum_balance(Mint::LEN),
+        data,
+        owner: ID,
+        executable: false,
+        rent_epoch: 0,
+    }
+}
+
+/// Create a Token Account
+pub fn create_account_for_token_account(
+    token_account_data: TokenAccount,
+) -> Account {
+    let mut data = vec![0u8; TokenAccount::LEN];
+    TokenAccount::pack(token_account_data, &mut data).unwrap();
+
+    Account {
+        lamports: Rent::default().minimum_balance(TokenAccount::LEN),
+        data,
+        owner: ID,
+        executable: false,
+        rent_epoch: 0,
+    }
 }
