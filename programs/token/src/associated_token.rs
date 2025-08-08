@@ -8,6 +8,8 @@ use {
 };
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+pub const TOKEN_PROGRAM_ID: Pubkey = solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+pub const TOKEN_2022_PROGRAM_ID: Pubkey = solana_pubkey::pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
 pub const ELF: &[u8] = include_bytes!("elf/associated_token.so");
 
@@ -37,7 +39,7 @@ pub fn create_account_for_associated_token_account(
     let associated_token_address = get_associated_token_address_with_program_id(
         &token_account_data.owner,
         &token_account_data.mint,
-        &crate::token::ID,
+        &TOKEN_PROGRAM_ID,
     );
 
     let mut data = vec![0u8; TokenAccount::LEN];
@@ -61,7 +63,7 @@ pub fn create_account_for_associated_token_2022_account(
     let associated_token_address = get_associated_token_address_with_program_id(
         &token_account_data.owner,
         &token_account_data.mint,
-        &crate::token2022::ID,
+        &TOKEN_2022_PROGRAM_ID,
     );
 
     let mut data = vec![0u8; TokenAccount::LEN];

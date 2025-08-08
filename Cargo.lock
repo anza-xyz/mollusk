@@ -1963,6 +1963,7 @@ dependencies = [
  "solana-account",
  "solana-pubkey",
  "solana-rent",
+ "solana-sdk-ids",
  "spl-associated-token-account",
  "spl-token",
 ]

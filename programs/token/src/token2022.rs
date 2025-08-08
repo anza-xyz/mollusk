@@ -1,4 +1,11 @@
-use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey, solana_rent::Rent, spl_token::solana_program::program_pack::Pack, spl_token::state::{Mint, Account as TokenAccount}};
+use {
+    mollusk_svm::Mollusk,
+    solana_account::Account,
+    solana_pubkey::Pubkey,
+    solana_rent::Rent,
+    spl_token::solana_program::program_pack::Pack,
+    spl_token::state::{Mint, Account as TokenAccount},
+};
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
