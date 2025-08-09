@@ -616,7 +616,7 @@ impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
 impl Mollusk {
     /// Create a new Mollusk instance containing the provided program.
     ///
-    /// Attempts the load the program's ELF file from the default search paths.
+    /// Attempts to load the program's ELF file from the default search paths.
     /// Once loaded, adds the program to the program cache and returns the
     /// newly created Mollusk instance.
     ///
