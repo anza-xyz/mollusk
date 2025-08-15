@@ -12,10 +12,13 @@ version = { workspace = true }
 [features]
 default = ["token", "associated-token", "token-2022"]
 token = []
-associated-token = []
+associated-token = ["dep:spl-associated-token-account"]
 token-2022 = []
 
 [dependencies]
 mollusk-svm = { workspace = true }
 solana-account = { workspace = true }
 solana-pubkey = { workspace = true }
+solana-rent = { workspace = true }
+spl-token = { workspace = true }
+spl-associated-token-account = { workspace = true, optional = true  }
