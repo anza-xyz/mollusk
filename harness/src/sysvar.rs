@@ -72,6 +72,26 @@ impl Sysvars {
         (T::id(), account)
     }
 
+    pub(crate) fn maybe_create_sysvar_account(&self, pubkey: &Pubkey) -> Option<Account> {
+        if pubkey.eq(&Clock::id()) {
+            Some(self.sysvar_account(&self.clock).1)
+        } else if pubkey.eq(&EpochRewards::id()) {
+            Some(self.sysvar_account(&self.epoch_rewards).1)
+        } else if pubkey.eq(&EpochSchedule::id()) {
+            Some(self.sysvar_account(&self.epoch_schedule).1)
+        } else if pubkey.eq(&LastRestartSlot::id()) {
+            Some(self.sysvar_account(&self.last_restart_slot).1)
+        } else if pubkey.eq(&Rent::id()) {
+            Some(self.sysvar_account(&self.rent).1)
+        } else if pubkey.eq(&SlotHashes::id()) {
+            Some(self.sysvar_account(&self.slot_hashes).1)
+        } else if pubkey.eq(&StakeHistory::id()) {
+            Some(self.sysvar_account(&self.stake_history).1)
+        } else {
+            None
+        }
+    }
+
     /// Get the key and account for the clock sysvar.
     pub fn keyed_account_for_clock_sysvar(&self) -> (Pubkey, Account) {
         self.sysvar_account(&self.clock)

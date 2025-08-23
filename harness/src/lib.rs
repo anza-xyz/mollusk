@@ -1195,9 +1195,17 @@ impl<AS: AccountStore> MolluskContext<AS> {
                 .iter()
                 .for_each(|AccountMeta { pubkey, .. }| {
                     if seen.insert(*pubkey) {
-                        let account = store
-                            .get_account(pubkey)
-                            .unwrap_or_else(|| store.default_account(pubkey));
+                        let account = store.get_account(pubkey).unwrap_or_else(|| {
+                            self.mollusk
+                                .sysvars
+                                .maybe_create_sysvar_account(pubkey)
+                                .unwrap_or_else(|| {
+                                    self.mollusk
+                                        .program_cache
+                                        .maybe_create_program_account(pubkey)
+                                        .unwrap_or_else(|| store.default_account(pubkey))
+                                })
+                        });
                         accounts.push((*pubkey, account));
                     }
                 });
