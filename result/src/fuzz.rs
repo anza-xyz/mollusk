@@ -51,6 +51,10 @@ impl From<&mollusk_svm_fuzz_fixture::effects::Effects> for InstructionResult {
             raw_result,
             return_data,
             resulting_accounts,
+            #[cfg(feature = "fuzz")]
+            fd_program_result: None,
+            #[cfg(feature = "fuzz")]
+            fd_program_custom_code: None,
         }
     }
 }

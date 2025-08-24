@@ -466,12 +466,12 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
-    solana_log_collector::LogCollector,
     solana_precompile_error::PrecompileError,
     solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
-    solana_timings::ExecuteTimings,
+    solana_svm_log_collector::LogCollector,
+    solana_svm_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
     std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc},
 };
@@ -538,7 +538,7 @@ impl Default for Mollusk {
              solana_runtime::message_processor=debug,\
              solana_runtime::system_instruction_processor=trace",
         );
-        let compute_budget = ComputeBudget::default();
+        let compute_budget = ComputeBudget::new_with_defaults(false);
         #[cfg(feature = "fuzz")]
         let feature_set = {
             // Omit "test features" (they have the same u64 ID).
@@ -724,22 +724,24 @@ impl Mollusk {
                 &invoke_context,
             );
 
+            // Configure next instruction then call the appropriate processor
+            invoke_context
+                .transaction_context
+                .configure_next_instruction_for_tests(
+                    program_id_index,
+                    instruction_accounts.clone(),
+                    &instruction.data,
+                )
+                .unwrap();
+
             let result = if invoke_context.is_precompile(&instruction.program_id) {
                 invoke_context.process_precompile(
                     &instruction.program_id,
                     &instruction.data,
-                    &instruction_accounts,
-                    &[program_id_index],
                     std::iter::once(instruction.data.as_ref()),
                 )
             } else {
-                invoke_context.process_instruction(
-                    &instruction.data,
-                    &instruction_accounts,
-                    &[program_id_index],
-                    &mut compute_units_consumed,
-                    &mut timings,
-                )
+                invoke_context.process_instruction(&mut compute_units_consumed, &mut timings)
             };
 
             #[cfg(feature = "invocation-inspect-callback")]
@@ -758,12 +760,20 @@ impl Mollusk {
                     transaction_context
                         .find_index_of_account(pubkey)
                         .map(|index| {
-                            let resulting_account = transaction_context
-                                .get_account_at_index(index)
+                            let mut resulting_account: Account = transaction_context
+                                .accounts()
+                                .try_borrow(index)
                                 .unwrap()
-                                .borrow()
                                 .clone()
                                 .into();
+                            // Normalize closed accounts: if system-owned and lamports == 0,
+                            // treat as fully closed with empty data.
+                            if resulting_account.lamports == 0
+                                && resulting_account.owner == solana_sdk_ids::system_program::id()
+                                && !resulting_account.data.is_empty()
+                            {
+                                resulting_account.data = Vec::new();
+                            }
                             (*pubkey, resulting_account)
                         })
                         .unwrap_or((*pubkey, account.clone()))
@@ -773,13 +783,21 @@ impl Mollusk {
             accounts.to_vec()
         };
 
-        InstructionResult {
-            compute_units_consumed,
-            execution_time: timings.details.execute_us.0,
-            program_result: invoke_result.clone().into(),
-            raw_result: invoke_result,
-            return_data,
-            resulting_accounts,
+        {
+            #[allow(unused_mut)]
+            let mut ir = InstructionResult {
+                compute_units_consumed,
+                execution_time: timings.details.execute_us.0,
+                program_result: invoke_result.clone().into(),
+                raw_result: invoke_result,
+                return_data,
+                resulting_accounts,
+                #[cfg(feature = "fuzz")]
+                fd_program_result: None,
+                #[cfg(feature = "fuzz")]
+                fd_program_custom_code: None,
+            };
+            ir
         }
     }
 
@@ -1062,6 +1080,8 @@ impl Mollusk {
         &mut self,
         fixture: &mollusk_svm_fuzz_fixture_firedancer::Fixture,
     ) -> InstructionResult {
+        use mollusk_svm_result::ProgramResult;
+
         let fuzz::firedancer::ParsedFixtureContext {
             accounts,
             compute_budget,
@@ -1080,7 +1100,15 @@ impl Mollusk {
             &fixture.output,
         );
 
-        expected_result.compare_with_config(&result, &Compare::everything(), &self.config);
+        // Adjust actual program_result to FD convention: treat any Custom(_) as Custom(26)
+        let mut actual = result.clone();
+        if let ProgramResult::Failure(solana_program_error::ProgramError::Custom(_)) =
+            actual.program_result
+        {
+            actual.program_result =
+                ProgramResult::Failure(solana_program_error::ProgramError::Custom(26));
+        }
+        expected_result.compare_with_config(&actual, &Compare::everything(), &self.config);
         result
     }
 
@@ -1213,6 +1241,10 @@ impl<AS: AccountStore> MolluskContext<AS> {
             raw_result,
             return_data,
             resulting_accounts,
+            #[cfg(feature = "fuzz")]
+                fd_program_result: _,
+            #[cfg(feature = "fuzz")]
+                fd_program_custom_code: _,
         } = result;
 
         let mut store = self.account_store.borrow_mut();

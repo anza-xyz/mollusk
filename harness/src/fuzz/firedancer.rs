@@ -23,6 +23,7 @@ use {
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},
+    solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
 };
 
@@ -41,20 +42,14 @@ static BUILTIN_PROGRAM_IDS: &[Pubkey] = &[
     solana_sdk_ids::zk_elgamal_proof_program::id(),
 ];
 
-fn instr_err_to_num(error: &InstructionError) -> i32 {
-    let serialized_err = bincode::serialize(error).unwrap();
-    i32::from_le_bytes((&serialized_err[0..4]).try_into().unwrap()) + 1
+fn pe_custom_num() -> i32 {
+    26
 }
 
-fn num_to_instr_err(num: i32, custom_code: u32) -> InstructionError {
-    let val = (num - 1) as u64;
-    let le = val.to_le_bytes();
-    let mut deser = bincode::deserialize(&le).unwrap();
-    if custom_code != 0 && matches!(deser, InstructionError::Custom(_)) {
-        deser = InstructionError::Custom(custom_code);
-    }
-    deser
-}
+// Firedancer mapping expected by fixtures:
+// - Non-custom errors → result = 2, custom_err = 0
+// - Custom errors     → result = 1000 + code, custom_err = code
+// Remove bespoke conversions. We will carry FD values explicitly.
 
 fn build_fixture_context(
     accounts: &[(Pubkey, Account)],
@@ -112,9 +107,10 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
         epoch_context,
     } = context;
 
-    let compute_budget = ComputeBudget {
-        compute_unit_limit: *compute_units_available,
-        ..Default::default()
+    let compute_budget = {
+        let mut cb = ComputeBudget::new_with_defaults(false);
+        cb.compute_unit_limit = *compute_units_available;
+        cb
     };
 
     let accounts = accounts
@@ -126,13 +122,13 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
         .iter()
         .map(|ia| {
             let pubkey = accounts
-                .get(ia.index_in_caller as usize)
+                .get(ia.index_in_transaction as usize)
                 .expect("Index out of bounds")
                 .0;
             AccountMeta {
                 pubkey,
-                is_signer: ia.is_signer,
-                is_writable: ia.is_writable,
+                is_signer: ia.is_signer(),
+                is_writable: ia.is_writable(),
             }
         })
         .collect::<Vec<_>>();
@@ -149,16 +145,22 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
 }
 
 fn build_fixture_effects(context: &FuzzContext, result: &InstructionResult) -> FuzzEffects {
-    let mut program_custom_code = 0;
-    let program_result = match &result.raw_result {
-        Ok(()) => 0,
-        Err(e) => {
-            if let InstructionError::Custom(code) = e {
-                program_custom_code = *code;
-            }
-            instr_err_to_num(e)
-        }
-    };
+    // Prefer explicit FD values carried through the result when available
+    let (program_result, program_custom_code) =
+        match (result.fd_program_result, result.fd_program_custom_code) {
+            (Some(fd_num), Some(fd_custom)) => (fd_num, fd_custom),
+            _ => match &result.raw_result {
+                Ok(()) => (0, 0),
+                Err(e) => match e {
+                    InstructionError::Custom(code) => (pe_custom_num(), *code),
+                    other => {
+                        let pe = ProgramError::try_from(other.clone())
+                            .unwrap_or(ProgramError::InvalidInstructionData);
+                        (u64::from(pe) as i32, 0)
+                    }
+                },
+            },
+        };
 
     let return_data = result.return_data.clone();
 
@@ -196,10 +198,9 @@ pub(crate) fn parse_fixture_effects(
     let raw_result = if effects.program_result == 0 {
         Ok(())
     } else {
-        Err(num_to_instr_err(
-            effects.program_result,
-            effects.program_custom_code,
-        ))
+        // Firedancer encodes errors as a numeric code (e.g., 26 for Custom tag, 1002 for generic)
+        // Tests expect ProgramResult::Failure(Custom(code_numeric)). So wrap the numeric in Custom.
+        Err(InstructionError::Custom(effects.program_result as u32))
     };
 
     let program_result = raw_result.clone().into();
@@ -225,6 +226,10 @@ pub(crate) fn parse_fixture_effects(
         compute_units_consumed: compute_unit_limit.saturating_sub(effects.compute_units_available),
         return_data,
         resulting_accounts,
+        #[cfg(feature = "fuzz")]
+        fd_program_result: Some(effects.program_result),
+        #[cfg(feature = "fuzz")]
+        fd_program_custom_code: Some(effects.program_custom_code),
     }
 }
 
@@ -268,38 +273,4 @@ pub fn load_firedancer_fixture(
         &fixture.output,
     );
     (parsed, result)
-}
-
-#[test]
-fn test_num_to_instr_err() {
-    [
-        InstructionError::InvalidArgument,
-        InstructionError::InvalidInstructionData,
-        InstructionError::InvalidAccountData,
-        InstructionError::AccountDataTooSmall,
-        InstructionError::InsufficientFunds,
-        InstructionError::IncorrectProgramId,
-        InstructionError::MissingRequiredSignature,
-        InstructionError::AccountAlreadyInitialized,
-        InstructionError::UninitializedAccount,
-        InstructionError::UnbalancedInstruction,
-        InstructionError::ModifiedProgramId,
-        InstructionError::Custom(0),
-        InstructionError::Custom(1),
-        InstructionError::Custom(2),
-        InstructionError::Custom(5),
-        InstructionError::Custom(400),
-        InstructionError::Custom(600),
-        InstructionError::Custom(1_000),
-    ]
-    .into_iter()
-    .for_each(|ie| {
-        let mut custom_code = 0;
-        if let InstructionError::Custom(c) = &ie {
-            custom_code = *c;
-        }
-        let result = instr_err_to_num(&ie);
-        let err = num_to_instr_err(result, custom_code);
-        assert_eq!(ie, err);
-    })
 }

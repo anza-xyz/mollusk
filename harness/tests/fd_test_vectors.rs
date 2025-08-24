@@ -149,15 +149,19 @@ fn compare_instruction_accounts(a: &[InstructionAccount], b: &[InstructionAccoun
         return false;
     }
 
-    let mut a_sorted = a.to_vec();
-    let mut b_sorted = b.to_vec();
+    let mut a_mapped: Vec<(u16, bool, bool)> = a
+        .iter()
+        .map(|ia| (ia.index_in_transaction, ia.is_signer(), ia.is_writable()))
+        .collect();
+    let mut b_mapped: Vec<(u16, bool, bool)> = b
+        .iter()
+        .map(|ia| (ia.index_in_transaction, ia.is_signer(), ia.is_writable()))
+        .collect();
 
-    // Sort by Pubkey
-    a_sorted.sort_by(|ia_a, ia_b| ia_a.index_in_transaction.cmp(&ia_b.index_in_transaction));
-    b_sorted.sort_by(|ia_a, ia_b| ia_a.index_in_transaction.cmp(&ia_b.index_in_transaction));
+    a_mapped.sort_unstable();
+    b_mapped.sort_unstable();
 
-    // Compare sorted lists
-    a_sorted == b_sorted
+    a_mapped == b_mapped
 }
 
 fn compare_feature_sets(from_fixture: &FeatureSet, from_mollusk: &FeatureSet) {

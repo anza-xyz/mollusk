@@ -57,6 +57,12 @@ pub struct InstructionResult {
     /// they were provided. Any accounts that were modified will maintain
     /// their original position in this list, but with updated state.
     pub resulting_accounts: Vec<(Pubkey, Account)>,
+    #[cfg(feature = "fuzz")]
+    /// Firedancer fixture: original program_result numeric, if provided by a fixture
+    pub fd_program_result: Option<i32>,
+    #[cfg(feature = "fuzz")]
+    /// Firedancer fixture: original program_custom_code numeric, if provided by a fixture
+    pub fd_program_custom_code: Option<u32>,
 }
 
 impl Default for InstructionResult {
@@ -68,6 +74,10 @@ impl Default for InstructionResult {
             raw_result: Ok(()),
             return_data: vec![],
             resulting_accounts: vec![],
+            #[cfg(feature = "fuzz")]
+            fd_program_result: None,
+            #[cfg(feature = "fuzz")]
+            fd_program_custom_code: None,
         }
     }
 }

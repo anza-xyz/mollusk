@@ -1,15 +1,13 @@
 use {
-    mollusk_svm::Mollusk,
-    solana_account::Account,
-    solana_pubkey::Pubkey,
-    spl_associated_token_account::get_associated_token_address_with_program_id,
-    spl_token::{solana_program::program_pack::Pack, state::Account as TokenAccount},
-    solana_rent::Rent,
+    mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey, solana_rent::Rent,
+    spl_token::solana_program::program_pack::Pack, spl_token::state::Account as TokenAccount,
 };
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
-const TOKEN_PROGRAM_ID: Pubkey = solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-const TOKEN_2022_PROGRAM_ID: Pubkey = solana_pubkey::pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+const TOKEN_PROGRAM_ID: Pubkey =
+    solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const TOKEN_2022_PROGRAM_ID: Pubkey =
+    solana_pubkey::pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
 pub const ELF: &[u8] = include_bytes!("elf/associated_token.so");
 
@@ -32,13 +30,26 @@ pub fn keyed_account() -> (Pubkey, Account) {
     (ID, account())
 }
 
+fn derive_associated_token_address(
+    owner: &Pubkey,
+    mint: &Pubkey,
+    token_program_id: &Pubkey,
+) -> Pubkey {
+    let seeds = &[owner.as_ref(), token_program_id.as_ref(), mint.as_ref()];
+    Pubkey::find_program_address(seeds, &ID).0
+}
+
+fn convert_pubkey(p: &spl_token::solana_program::pubkey::Pubkey) -> Pubkey {
+    Pubkey::new_from_array(p.to_bytes())
+}
+
 /// Create an Associated Token Account
 pub fn create_account_for_associated_token_account(
     token_account_data: TokenAccount,
 ) -> (Pubkey, Account) {
-    let associated_token_address = get_associated_token_address_with_program_id(
-        &token_account_data.owner,
-        &token_account_data.mint,
+    let associated_token_address = derive_associated_token_address(
+        &convert_pubkey(&token_account_data.owner),
+        &convert_pubkey(&token_account_data.mint),
         &TOKEN_PROGRAM_ID,
     );
 
@@ -60,9 +71,9 @@ pub fn create_account_for_associated_token_account(
 pub fn create_account_for_associated_token_2022_account(
     token_account_data: TokenAccount,
 ) -> (Pubkey, Account) {
-    let associated_token_address = get_associated_token_address_with_program_id(
-        &token_account_data.owner,
-        &token_account_data.mint,
+    let associated_token_address = derive_associated_token_address(
+        &convert_pubkey(&token_account_data.owner),
+        &convert_pubkey(&token_account_data.mint),
         &TOKEN_2022_PROGRAM_ID,
     );
 

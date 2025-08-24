@@ -11,7 +11,7 @@ use {
     solana_rent::Rent,
     solana_slot_hashes::{SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
     solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
-    solana_sysvar::{self, last_restart_slot::LastRestartSlot, Sysvar},
+    solana_sysvar::{self, last_restart_slot::LastRestartSlot},
     solana_sysvar_id::SysvarId,
 };
 
@@ -58,8 +58,7 @@ impl Default for Sysvars {
 }
 
 impl Sysvars {
-    fn sysvar_account<T: SysvarId + Sysvar>(&self, sysvar: &T) -> (Pubkey, Account) {
-        let data = bincode::serialize::<T>(sysvar).unwrap();
+    fn sysvar_account_from_bytes<T: SysvarId>(&self, data: Vec<u8>) -> (Pubkey, Account) {
         let space = data.len();
         let lamports = self.rent.minimum_balance(space);
         let account = Account {
@@ -74,37 +73,44 @@ impl Sysvars {
 
     /// Get the key and account for the clock sysvar.
     pub fn keyed_account_for_clock_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.clock)
+        let data = bincode::serialize(&self.clock).unwrap();
+        self.sysvar_account_from_bytes::<Clock>(data)
     }
 
     /// Get the key and account for the epoch rewards sysvar.
     pub fn keyed_account_for_epoch_rewards_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.epoch_rewards)
+        let data = bincode::serialize(&self.epoch_rewards).unwrap();
+        self.sysvar_account_from_bytes::<EpochRewards>(data)
     }
 
     /// Get the key and account for the epoch schedule sysvar.
     pub fn keyed_account_for_epoch_schedule_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.epoch_schedule)
+        let data = bincode::serialize(&self.epoch_schedule).unwrap();
+        self.sysvar_account_from_bytes::<EpochSchedule>(data)
     }
 
     /// Get the key and account for the last restart slot sysvar.
     pub fn keyed_account_for_last_restart_slot_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.last_restart_slot)
+        let data = bincode::serialize(&self.last_restart_slot).unwrap();
+        self.sysvar_account_from_bytes::<LastRestartSlot>(data)
     }
 
     /// Get the key and account for the rent sysvar.
     pub fn keyed_account_for_rent_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.rent)
+        let data = bincode::serialize(&self.rent).unwrap();
+        self.sysvar_account_from_bytes::<Rent>(data)
     }
 
     /// Get the key and account for the slot hashes sysvar.
     pub fn keyed_account_for_slot_hashes_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.slot_hashes)
+        let data = bincode::serialize(&self.slot_hashes).unwrap();
+        self.sysvar_account_from_bytes::<SlotHashes>(data)
     }
 
     /// Get the key and account for the stake history sysvar.
     pub fn keyed_account_for_stake_history_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.stake_history)
+        let data = bincode::serialize(&self.stake_history).unwrap();
+        self.sysvar_account_from_bytes::<StakeHistory>(data)
     }
 
     /// Warp the test environment to a slot by updating sysvars.

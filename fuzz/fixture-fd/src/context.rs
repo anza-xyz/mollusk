@@ -54,7 +54,7 @@ impl From<EpochContext> for ProtoEpochContext {
 }
 
 /// Instruction context fixture.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Context {
     /// The program ID of the program being invoked.
     pub program_id: Pubkey,

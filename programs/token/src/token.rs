@@ -2,9 +2,9 @@ use {
     mollusk_svm::Mollusk,
     solana_account::Account,
     solana_pubkey::Pubkey,
+    solana_rent::Rent,
     spl_token::solana_program::program_pack::Pack,
     spl_token::state::{Account as TokenAccount, Mint},
-    solana_rent::Rent,
 };
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
@@ -45,9 +45,7 @@ pub fn create_account_for_mint(mint_data: Mint) -> Account {
 }
 
 /// Create a Token Account
-pub fn create_account_for_token_account(
-    token_account_data: TokenAccount,
-) -> Account {
+pub fn create_account_for_token_account(token_account_data: TokenAccount) -> Account {
     let mut data = vec![0u8; TokenAccount::LEN];
     TokenAccount::pack(token_account_data, &mut data).unwrap();
 

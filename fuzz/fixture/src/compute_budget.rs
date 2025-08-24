@@ -20,7 +20,6 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             max_call_depth,
             stack_frame_size,
             log_pubkey_units,
-            max_cpi_instruction_size,
             cpi_bytes_per_unit,
             sysvar_base_cost,
             secp256k1_recover_cost,
@@ -53,6 +52,7 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             alt_bn128_g1_decompress,
             alt_bn128_g2_compress,
             alt_bn128_g2_decompress,
+            ..
         } = value;
 
         Self {
@@ -68,7 +68,6 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             max_call_depth: max_call_depth as usize,
             stack_frame_size: stack_frame_size as usize,
             log_pubkey_units,
-            max_cpi_instruction_size: max_cpi_instruction_size as usize,
             cpi_bytes_per_unit,
             sysvar_base_cost,
             secp256k1_recover_cost,
@@ -120,7 +119,6 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             max_call_depth,
             stack_frame_size,
             log_pubkey_units,
-            max_cpi_instruction_size,
             cpi_bytes_per_unit,
             sysvar_base_cost,
             secp256k1_recover_cost,
@@ -168,7 +166,7 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             max_call_depth: max_call_depth as u64,
             stack_frame_size: stack_frame_size as u64,
             log_pubkey_units,
-            max_cpi_instruction_size: max_cpi_instruction_size as u64,
+            max_cpi_instruction_size: 0,
             cpi_bytes_per_unit,
             sysvar_base_cost,
             secp256k1_recover_cost,

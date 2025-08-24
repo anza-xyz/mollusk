@@ -66,19 +66,26 @@ fn process_instruction(
                 return Err(ProgramError::MissingRequiredSignature);
             }
 
-            account_info.realloc(0, true)?;
-            account_info.assign(&solana_sdk_ids::system_program::id());
+            // Zeroize data (best-effort "empty")
+            for byte in account_info.try_borrow_mut_data()?.iter_mut() {
+                *byte = 0;
+            }
 
+            // Zero lamports by moving them to the incinerator directly
             let lamports = account_info.lamports();
+            if lamports > 0 {
+                {
+                    let mut inc_lamports = incinerator_info.try_borrow_mut_lamports()?;
+                    **inc_lamports += lamports;
+                }
+                {
+                    let mut acc_lamports = account_info.try_borrow_mut_lamports()?;
+                    **acc_lamports = 0;
+                }
+            }
 
-            invoke(
-                &solana_system_interface::instruction::transfer(
-                    account_info.key,
-                    &solana_sdk_ids::incinerator::id(),
-                    lamports,
-                ),
-                &[account_info.clone(), incinerator_info.clone()],
-            )?;
+            // Assign to system program so SVM purges the account to empty data at finalize
+            account_info.assign(&solana_sdk_ids::system_program::id());
         }
         Some((4, rest)) if rest.len() >= PUBKEY_BYTES => {
             // Invoke the "CPI Target" test program, which will write the rest
