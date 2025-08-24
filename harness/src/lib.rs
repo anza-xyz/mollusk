@@ -461,7 +461,7 @@ use {
     },
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
-    mollusk_svm_result::{Check, CheckContext, Config, ContextResult, InstructionResult},
+    mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
@@ -1213,46 +1213,34 @@ impl<AS: AccountStore> MolluskContext<AS> {
         accounts
     }
 
-    fn consume_mollusk_result(&self, result: InstructionResult) -> ContextResult {
-        let InstructionResult {
-            compute_units_consumed,
-            execution_time,
-            program_result,
-            raw_result,
-            return_data,
-            resulting_accounts,
-        } = result;
-
-        let mut store = self.account_store.borrow_mut();
-        for (pubkey, account) in resulting_accounts {
-            store.store_account(pubkey, account);
-        }
-
-        ContextResult {
-            compute_units_consumed,
-            execution_time,
-            program_result,
-            raw_result,
-            return_data,
+    fn consume_mollusk_result(&self, result: &InstructionResult) {
+        if result.program_result.is_ok() {
+            // Only store resulting accounts if the result was success.
+            let mut store = self.account_store.borrow_mut();
+            for (pubkey, account) in result.resulting_accounts.iter() {
+                store.store_account(*pubkey, account.clone());
+            }
         }
     }
 
     /// Process an instruction using the minified Solana Virtual Machine (SVM)
     /// environment. Simply returns the result.
-    pub fn process_instruction(&self, instruction: &Instruction) -> ContextResult {
+    pub fn process_instruction(&self, instruction: &Instruction) -> InstructionResult {
         let accounts = self.load_accounts_for_instructions(once(instruction));
         let result = self.mollusk.process_instruction(instruction, &accounts);
-        self.consume_mollusk_result(result)
+        self.consume_mollusk_result(&result);
+        result
     }
 
     /// Process a chain of instructions using the minified Solana Virtual
     /// Machine (SVM) environment.
-    pub fn process_instruction_chain(&self, instructions: &[Instruction]) -> ContextResult {
+    pub fn process_instruction_chain(&self, instructions: &[Instruction]) -> InstructionResult {
         let accounts = self.load_accounts_for_instructions(instructions.iter());
         let result = self
             .mollusk
             .process_instruction_chain(instructions, &accounts);
-        self.consume_mollusk_result(result)
+        self.consume_mollusk_result(&result);
+        result
     }
 
     /// Process an instruction using the minified Solana Virtual Machine (SVM)
@@ -1261,12 +1249,13 @@ impl<AS: AccountStore> MolluskContext<AS> {
         &self,
         instruction: &Instruction,
         checks: &[Check],
-    ) -> ContextResult {
+    ) -> InstructionResult {
         let accounts = self.load_accounts_for_instructions(once(instruction));
         let result = self
             .mollusk
             .process_and_validate_instruction(instruction, &accounts, checks);
-        self.consume_mollusk_result(result)
+        self.consume_mollusk_result(&result);
+        result
     }
 
     /// Process a chain of instructions using the minified Solana Virtual
@@ -1274,13 +1263,14 @@ impl<AS: AccountStore> MolluskContext<AS> {
     pub fn process_and_validate_instruction_chain(
         &self,
         instructions: &[(&Instruction, &[Check])],
-    ) -> ContextResult {
+    ) -> InstructionResult {
         let accounts = self.load_accounts_for_instructions(
             instructions.iter().map(|(instruction, _)| *instruction),
         );
         let result = self
             .mollusk
             .process_and_validate_instruction_chain(instructions, &accounts);
-        self.consume_mollusk_result(result)
+        self.consume_mollusk_result(&result);
+        result
     }
 }

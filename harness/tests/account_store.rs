@@ -1,6 +1,7 @@
 use {
     mollusk_svm::{result::Check, Mollusk},
     solana_account::{Account, ReadableAccount},
+    solana_instruction::{AccountMeta, Instruction},
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
     solana_system_interface::error::SystemError,
@@ -127,69 +128,73 @@ fn test_multiple_transfers_with_persistent_state() {
 }
 
 #[test]
-fn test_account_store_sysvar_account() {
-    let mollusk = Mollusk::default();
-    let context = mollusk.with_context(HashMap::new());
+fn test_account_store_sysvars_and_programs() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
 
-    // Use Clock sysvar as an example.
-    let clock_pubkey = solana_sdk_ids::sysvar::clock::id();
-    let recipient = Pubkey::new_unique();
+    let program_id = Pubkey::new_unique();
+    let mollusk = Mollusk::new(&program_id, "test_program_primary");
+    let mut context = mollusk.with_context(HashMap::new());
 
-    // Create an instruction that references the Clock sysvar.
-    let instruction = solana_instruction::Instruction::new_with_bytes(
-        solana_sdk_ids::system_program::id(),
-        &[],
-        vec![
-            solana_instruction::AccountMeta::new_readonly(clock_pubkey, false),
-            solana_instruction::AccountMeta::new(recipient, false),
-        ],
+    // `with_context` will already create program accounts, so assert our
+    // main program already has an account in the store.
+    {
+        let store = context.account_store.borrow();
+        let main_program_account = store
+            .get(&program_id)
+            .expect("Main program account should exist");
+        assert_eq!(
+            main_program_account.owner,
+            solana_sdk_ids::bpf_loader_upgradeable::id()
+        );
+        assert!(main_program_account.executable);
+    }
+
+    // Add another test program to the test environment.
+    let other_program_id = Pubkey::new_unique();
+    context.mollusk.add_program(
+        &other_program_id,
+        "test_program_cpi_target",
+        &mollusk_svm::program::loader_keys::LOADER_V3,
     );
 
-    // Process the instruction - this should load the Clock sysvar account.
-    context.process_instruction(&instruction);
+    // Use the "close account" test from our BPF program.
+    let key = Pubkey::new_unique();
+    context
+        .account_store
+        .borrow_mut()
+        .insert(key, Account::new(50_000_000, 50, &program_id));
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &[3],
+        vec![
+            AccountMeta::new(key, true),
+            AccountMeta::new(solana_sdk_ids::incinerator::id(), false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::id(), false),
+            // Arbitrarily include the `Clock` sysvar account
+            AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+            // Also include our additional program account
+            AccountMeta::new_readonly(other_program_id, false),
+        ],
+    );
+    context.process_and_validate_instruction(&instruction, &[Check::success()]);
 
-    // Verify the Clock sysvar was loaded correctly.
     let store = context.account_store.borrow();
-    let clock_account = store.get(&clock_pubkey).expect("Clock sysvar should exist");
 
-    // Verify it has the expected owner.
+    // Verify clock sysvar was loaded.
+    let clock_account = store
+        .get(&solana_sdk_ids::sysvar::clock::id())
+        .expect("Clock sysvar should exist");
     assert_eq!(clock_account.owner, solana_sdk_ids::sysvar::id());
-    // Verify it has data (Clock sysvar should have serialized Clock data).
-    assert!(!clock_account.data.is_empty());
-}
 
-#[test]
-fn test_account_store_program_account() {
-    // Use the System Program as an example.
-    let program_id = solana_sdk_ids::system_program::id();
-    let mollusk = Mollusk::default();
-
-    let context = mollusk.with_context(HashMap::new());
-    let recipient = Pubkey::new_unique();
-
-    // Create an instruction that references the program account.
-    let instruction = solana_instruction::Instruction::new_with_bytes(
-        solana_sdk_ids::bpf_loader_upgradeable::id(),
-        &[],
-        vec![
-            solana_instruction::AccountMeta::new_readonly(program_id, false),
-            solana_instruction::AccountMeta::new(recipient, false),
-        ],
+    // Verify our additional program was loaded.
+    let additional_program_account = store
+        .get(&other_program_id)
+        .expect("Additional program account should exist");
+    assert_eq!(
+        additional_program_account.owner,
+        mollusk_svm::program::loader_keys::LOADER_V3
     );
-
-    // Process the instruction - this should load the program account.
-    context.process_instruction(&instruction);
-
-    // Verify the program account was loaded correctly
-    let store = context.account_store.borrow();
-    let program_account = store
-        .get(&program_id)
-        .expect("Program account should exist");
-
-    // Verify it has the expected owner (native loader for builtins).
-    assert_eq!(program_account.owner, solana_sdk_ids::native_loader::id());
-    // Verify it's marked as executable.
-    assert!(program_account.executable);
+    assert!(additional_program_account.executable);
 }
 
 #[test]
