@@ -22,7 +22,7 @@ jobs:
           toolchain: ${{ steps.nightly.outputs.version }}
           components: rustfmt
       - name: Run format
-        run: make format-check
+        run: make format
 
   rust_clippy:
     name: Clippy

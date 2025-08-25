@@ -3,8 +3,10 @@ use {
     solana_account::Account,
     solana_pubkey::Pubkey,
     solana_rent::Rent,
-    spl_token::solana_program::program_pack::Pack,
-    spl_token::state::{Account as TokenAccount, Mint},
+    spl_token::{
+        solana_program::program_pack::Pack,
+        state::{Account as TokenAccount, Mint},
+    },
 };
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");

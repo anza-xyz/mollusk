@@ -71,6 +71,26 @@ impl Sysvars {
         (T::id(), account)
     }
 
+    pub(crate) fn maybe_create_sysvar_account(&self, pubkey: &Pubkey) -> Option<Account> {
+        if pubkey.eq(&Clock::id()) {
+            Some(self.sysvar_account(&self.clock).1)
+        } else if pubkey.eq(&EpochRewards::id()) {
+            Some(self.sysvar_account(&self.epoch_rewards).1)
+        } else if pubkey.eq(&EpochSchedule::id()) {
+            Some(self.sysvar_account(&self.epoch_schedule).1)
+        } else if pubkey.eq(&LastRestartSlot::id()) {
+            Some(self.sysvar_account(&self.last_restart_slot).1)
+        } else if pubkey.eq(&Rent::id()) {
+            Some(self.sysvar_account(&self.rent).1)
+        } else if pubkey.eq(&SlotHashes::id()) {
+            Some(self.sysvar_account(&self.slot_hashes).1)
+        } else if pubkey.eq(&StakeHistory::id()) {
+            Some(self.sysvar_account(&self.stake_history).1)
+        } else {
+            None
+        }
+    }
+
     /// Get the key and account for the clock sysvar.
     pub fn keyed_account_for_clock_sysvar(&self) -> (Pubkey, Account) {
         let data = bincode::serialize(&self.clock).unwrap();
@@ -111,6 +131,18 @@ impl Sysvars {
     pub fn keyed_account_for_stake_history_sysvar(&self) -> (Pubkey, Account) {
         let data = bincode::serialize(&self.stake_history).unwrap();
         self.sysvar_account_from_bytes::<StakeHistory>(data)
+    }
+
+    pub(crate) fn get_all_keyed_sysvar_accounts(&self) -> Vec<(Pubkey, Account)> {
+        vec![
+            self.keyed_account_for_clock_sysvar(),
+            self.keyed_account_for_epoch_rewards_sysvar(),
+            self.keyed_account_for_epoch_schedule_sysvar(),
+            self.keyed_account_for_last_restart_slot_sysvar(),
+            self.keyed_account_for_rent_sysvar(),
+            self.keyed_account_for_slot_hashes_sysvar(),
+            self.keyed_account_for_stake_history_sysvar(),
+        ]
     }
 
     /// Warp the test environment to a slot by updating sysvars.

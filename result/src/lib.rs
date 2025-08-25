@@ -41,5 +41,5 @@ pub use {
     check::{AccountCheckBuilder, Check},
     compare::Compare,
     config::{CheckContext, Config},
-    types::{ContextResult, InstructionResult, ProgramResult},
+    types::{InstructionResult, ProgramResult},
 };
