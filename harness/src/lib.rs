@@ -1155,6 +1155,7 @@ impl Mollusk {
         MolluskContext {
             mollusk: self,
             account_store: Rc::new(RefCell::new(account_store)),
+            hydrate_store: true, // <-- Default
         }
     }
 }
@@ -1179,6 +1180,7 @@ impl Mollusk {
 pub struct MolluskContext<AS: AccountStore> {
     pub mollusk: Mollusk,
     pub account_store: Rc<RefCell<AS>>,
+    pub hydrate_store: bool,
 }
 
 impl<AS: AccountStore> MolluskContext<AS> {
@@ -1186,8 +1188,24 @@ impl<AS: AccountStore> MolluskContext<AS> {
         &self,
         instructions: impl Iterator<Item = &'a Instruction>,
     ) -> Vec<(Pubkey, Account)> {
-        let mut seen = HashSet::new();
         let mut accounts = Vec::new();
+
+        // If hydration is enabled, add sysvars and program accounts regardless
+        // of whether or not they exist already.
+        if self.hydrate_store {
+            self.mollusk
+                .program_cache
+                .get_all_keyed_program_accounts()
+                .into_iter()
+                .chain(self.mollusk.sysvars.get_all_keyed_sysvar_accounts())
+                .for_each(|(pubkey, account)| {
+                    accounts.push((pubkey, account));
+                });
+        }
+
+        // Regardless of hydration, only add an account if the caller hasn't
+        // already loaded it into the store.
+        let mut seen = HashSet::new();
         let store = self.account_store.borrow();
         instructions.for_each(|instruction| {
             instruction
@@ -1195,6 +1213,9 @@ impl<AS: AccountStore> MolluskContext<AS> {
                 .iter()
                 .for_each(|AccountMeta { pubkey, .. }| {
                     if seen.insert(*pubkey) {
+                        // First try to load theirs, then see if it's a sysvar,
+                        // then see if it's a cached program, then apply the
+                        // default.
                         let account = store.get_account(pubkey).unwrap_or_else(|| {
                             self.mollusk
                                 .sysvars

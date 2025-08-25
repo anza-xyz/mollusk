@@ -127,6 +127,18 @@ impl Sysvars {
         self.sysvar_account(&self.stake_history)
     }
 
+    pub(crate) fn get_all_keyed_sysvar_accounts(&self) -> Vec<(Pubkey, Account)> {
+        vec![
+            self.keyed_account_for_clock_sysvar(),
+            self.keyed_account_for_epoch_rewards_sysvar(),
+            self.keyed_account_for_epoch_schedule_sysvar(),
+            self.keyed_account_for_last_restart_slot_sysvar(),
+            self.keyed_account_for_rent_sysvar(),
+            self.keyed_account_for_slot_hashes_sysvar(),
+            self.keyed_account_for_stake_history_sysvar(),
+        ]
+    }
+
     /// Warp the test environment to a slot by updating sysvars.
     pub fn warp_to_slot(&mut self, slot: Slot) {
         let slot_delta = slot.saturating_sub(self.clock.slot);
