@@ -476,6 +476,15 @@ use {
     std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc},
 };
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ContextResult {
+    pub compute_units_consumed: u64,
+    pub execution_time: u64,
+    pub program_result: mollusk_svm_result::ProgramResult,
+    pub raw_result: Result<(), solana_instruction::error::InstructionError>,
+    pub return_data: Vec<u8>,
+}
+
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
 
 /// The Mollusk API, providing a simple interface for testing Solana programs.
@@ -1262,31 +1271,18 @@ impl<AS: AccountStore> MolluskContext<AS> {
         accounts
     }
 
-    fn consume_mollusk_result(&self, result: InstructionResult) -> ContextResult {
-        let InstructionResult {
-            compute_units_consumed,
-            execution_time,
-            program_result,
-            raw_result,
-            return_data,
-            resulting_accounts,
-            #[cfg(feature = "fuzz")]
-                fd_program_result: _,
-            #[cfg(feature = "fuzz")]
-                fd_program_custom_code: _,
-        } = result;
-
+    fn consume_mollusk_result(&self, result: &InstructionResult) -> ContextResult {
         let mut store = self.account_store.borrow_mut();
-        for (pubkey, account) in resulting_accounts {
-            store.store_account(pubkey, account);
+        for (pubkey, account) in &result.resulting_accounts {
+            store.store_account(*pubkey, account.clone());
         }
 
         ContextResult {
-            compute_units_consumed,
-            execution_time,
-            program_result,
-            raw_result,
-            return_data,
+            compute_units_consumed: result.compute_units_consumed,
+            execution_time: result.execution_time,
+            program_result: result.program_result.clone(),
+            raw_result: result.raw_result.clone(),
+            return_data: result.return_data.clone(),
         }
     }
 
