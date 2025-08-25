@@ -93,7 +93,7 @@ solana-transaction-context = { version = "3.0", git = "https://github.com/anza-x
 solana-transaction-error = "3.0"
 spl-associated-token-account = "7.0.0" # requires patching for now
 spl-token = "8.0.0"
-thiserror = "1.0.64"
+thiserror = "2.0"
 tokio = "1.37.0"
 which = "=4.4.0"
 

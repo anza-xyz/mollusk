@@ -2277,7 +2277,7 @@ name = "mollusk-svm-error"
 version = "0.4.2"
 dependencies = [
  "solana-pubkey 3.0.0",
- "thiserror 1.0.69",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
