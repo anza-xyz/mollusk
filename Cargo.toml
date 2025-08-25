@@ -72,7 +72,7 @@ solana-native-token = "3.0"
 solana-precompile-error = "3.0"
 solana-program-entrypoint = "3.0"
 solana-program-error = "3.0"
-solana-program-runtime = { version = "3.0", git = "https://github.com/anza-xyz/agave.git" }
+solana-program-runtime = { version = "3.0.0", git = "https://github.com/anza-xyz/agave.git" }
 solana-pubkey = "3.0"
 solana-rent = "3.0"
 solana-sdk-ids = "3.0"
