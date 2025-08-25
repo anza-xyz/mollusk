@@ -164,6 +164,24 @@ impl ProgramCache {
             })
             .collect()
     }
+
+    pub(crate) fn maybe_create_program_account(&self, pubkey: &Pubkey) -> Option<Account> {
+        // If it's found in the entries cache, create the proper program account based
+        // on the loader key.
+        self.entries_cache
+            .borrow()
+            .get(pubkey)
+            .map(|loader_key| match *loader_key {
+                loader_keys::NATIVE_LOADER => {
+                    create_keyed_account_for_builtin_program(pubkey, "I'm a stub!").1
+                }
+                loader_keys::LOADER_V1 => create_program_account_loader_v1(&[]),
+                loader_keys::LOADER_V2 => create_program_account_loader_v2(&[]),
+                loader_keys::LOADER_V3 => create_program_account_loader_v3(pubkey),
+                loader_keys::LOADER_V4 => create_program_account_loader_v4(&[]),
+                _ => panic!("Invalid loader key: {}", loader_key),
+            })
+    }
 }
 
 pub struct Builtin {
