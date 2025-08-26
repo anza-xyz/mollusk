@@ -21,6 +21,7 @@ solana-epoch-schedule = { workspace = true }
 solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
 solana-keccak-hasher = { workspace = true }
+solana-sha256-hasher = { workspace = true, features = ["sha2"] }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-slot-hashes = { workspace = true }

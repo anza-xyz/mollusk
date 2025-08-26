@@ -17,6 +17,7 @@ serde_json = { workspace = true }
 solana-account = { workspace = true }
 solana-keccak-hasher = { workspace = true }
 solana-pubkey = { workspace = true }
+solana-sha256-hasher = { workspace = true, features = ["sha2"] }
 solana-transaction-context = { workspace = true }
 
 [build-dependencies]

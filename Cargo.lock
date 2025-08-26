@@ -1934,6 +1934,7 @@ dependencies = [
  "solana-keccak-hasher",
  "solana-pubkey",
  "solana-rent",
+ "solana-sha256-hasher 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "solana-slot-hashes",
  "solana-stake-interface",
  "which",
@@ -1952,6 +1953,7 @@ dependencies = [
  "solana-account",
  "solana-keccak-hasher",
  "solana-pubkey",
+ "solana-sha256-hasher 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "solana-transaction-context",
  "which",
 ]
