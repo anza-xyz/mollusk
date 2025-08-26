@@ -14,7 +14,7 @@ use {
 };
 
 /// Instruction context fixture.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Context {
     /// The compute budget to use for the simulation.
     pub compute_budget: ComputeBudget,
@@ -30,6 +30,20 @@ pub struct Context {
     pub instruction_data: Vec<u8>,
     /// Input accounts with state.
     pub accounts: Vec<(Pubkey, Account)>,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self {
+            compute_budget: ComputeBudget::new_with_defaults(true),
+            feature_set: FeatureSet::default(),
+            sysvars: Sysvars::default(),
+            program_id: Pubkey::default(),
+            instruction_accounts: Vec::default(),
+            instruction_data: Vec::default(),
+            accounts: Vec::default(),
+        }
+    }
 }
 
 impl From<ProtoContext> for Context {
@@ -64,7 +78,10 @@ impl From<ProtoContext> for Context {
             .collect();
 
         Self {
-            compute_budget: value.compute_budget.map(Into::into).unwrap_or_default(),
+            compute_budget: value
+                .compute_budget
+                .map(Into::into)
+                .unwrap_or_else(|| ComputeBudget::new_with_defaults(true)),
             feature_set: value.feature_set.map(Into::into).unwrap_or_default(),
             sysvars: value.sysvars.map(Into::into).unwrap_or_default(),
             program_id,

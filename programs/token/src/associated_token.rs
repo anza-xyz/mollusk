@@ -1,10 +1,8 @@
 use {
-    mollusk_svm::Mollusk,
-    solana_account::Account,
-    solana_pubkey::Pubkey,
-    solana_rent::Rent,
-    spl_associated_token_account::get_associated_token_address_with_program_id,
-    spl_token::{solana_program::program_pack::Pack, state::Account as TokenAccount},
+    mollusk_svm::Mollusk, solana_account::Account, solana_program_pack::Pack,
+    solana_pubkey::Pubkey, solana_rent::Rent,
+    spl_associated_token_account_interface::address::get_associated_token_address_with_program_id,
+    spl_token_interface::state::Account as TokenAccount,
 };
 
 pub const ID: Pubkey = solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");

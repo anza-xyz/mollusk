@@ -10,7 +10,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [features]
-default = []
+default = ["serde"]
 all-builtins = [
     "dep:solana-stake-program",
 ]
@@ -32,6 +32,7 @@ invocation-inspect-callback = []
 [dependencies]
 agave-feature-set = { workspace = true }
 agave-precompiles = { workspace = true }
+agave-syscalls = { workspace = true }
 bincode = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 mollusk-svm-error = { workspace = true }
@@ -48,9 +49,9 @@ solana-epoch-rewards = { workspace = true }
 solana-epoch-schedule = { workspace = true }
 solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
+solana-instruction-error = { workspace = true, features = ["serde"] }
 solana-loader-v3-interface = { workspace = true, features = ["serde"] }
 solana-loader-v4-interface = { workspace = true }
-solana-log-collector = { workspace = true }
 solana-logger = { workspace = true }
 solana-precompile-error = { workspace = true }
 solana-program-error = { workspace = true }
@@ -58,14 +59,16 @@ solana-program-runtime = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-sdk-ids = { workspace = true }
+solana-sha256-hasher = { workspace = true, features = ["sha2"] }
 solana-slot-hashes = { workspace = true }
 solana-stake-interface = { workspace = true }
 solana-stake-program = { workspace = true, optional = true }
 solana-svm-callback = { workspace = true }
+solana-svm-log-collector = { workspace = true }
+solana-svm-timings = { workspace = true }
 solana-system-program = { workspace = true }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }
-solana-timings = { workspace = true }
 solana-transaction-context = { workspace = true, features = ["dev-context-only-utils"] }
 
 [dev-dependencies]

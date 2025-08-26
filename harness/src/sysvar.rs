@@ -58,7 +58,10 @@ impl Default for Sysvars {
 }
 
 impl Sysvars {
-    fn sysvar_account<T: SysvarId + Sysvar>(&self, sysvar: &T) -> (Pubkey, Account) {
+    fn sysvar_account<T: SysvarId + Sysvar + serde::Serialize>(
+        &self,
+        sysvar: &T,
+    ) -> (Pubkey, Account) {
         let data = bincode::serialize::<T>(sysvar).unwrap();
         let space = data.len();
         let lamports = self.rent.minimum_balance(space);

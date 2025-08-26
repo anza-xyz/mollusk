@@ -12,28 +12,16 @@ impl From<ProtoInstrAccount> for InstructionAccount {
             is_writable,
             is_signer,
         } = value;
-        Self {
-            index_in_transaction: index as u16,
-            index_in_caller: index as u16,
-            index_in_callee: index as u16,
-            is_signer,
-            is_writable,
-        }
+        Self::new(index as u16, is_signer, is_writable)
     }
 }
 
 impl From<InstructionAccount> for ProtoInstrAccount {
     fn from(value: InstructionAccount) -> Self {
-        let InstructionAccount {
-            index_in_transaction,
-            is_signer,
-            is_writable,
-            ..
-        } = value;
         Self {
-            index: index_in_transaction as u32,
-            is_signer,
-            is_writable,
+            index: value.index_in_transaction as u32,
+            is_signer: value.is_signer(),
+            is_writable: value.is_writable(),
         }
     }
 }

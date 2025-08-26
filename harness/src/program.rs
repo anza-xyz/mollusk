@@ -2,8 +2,8 @@
 
 use {
     agave_feature_set::FeatureSet,
+    agave_syscalls::create_program_runtime_environment_v1,
     solana_account::Account,
-    solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_loader_v3_interface::state::UpgradeableLoaderState,
     solana_loader_v4_interface::state::{LoaderV4State, LoaderV4Status},

@@ -466,12 +466,12 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
-    solana_log_collector::LogCollector,
     solana_precompile_error::PrecompileError,
     solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
-    solana_timings::ExecuteTimings,
+    solana_svm_log_collector::LogCollector,
+    solana_svm_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
     std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc},
 };
@@ -538,7 +538,7 @@ impl Default for Mollusk {
              solana_runtime::message_processor=debug,\
              solana_runtime::system_instruction_processor=trace",
         );
-        let compute_budget = ComputeBudget::default();
+        let compute_budget = ComputeBudget::new_with_defaults(true);
         #[cfg(feature = "fuzz")]
         let feature_set = {
             // Omit "test features" (they have the same u64 ID).
@@ -716,6 +716,16 @@ impl Mollusk {
                 self.compute_budget.to_cost(),
             );
 
+            // Configure the next instruction frame for this invocation.
+            invoke_context
+                .transaction_context
+                .configure_next_instruction_for_tests(
+                    program_id_index,
+                    instruction_accounts.clone(),
+                    &instruction.data,
+                )
+                .expect("failed to configure next instruction");
+
             #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.before_invocation(
                 &instruction.program_id,
@@ -728,18 +738,10 @@ impl Mollusk {
                 invoke_context.process_precompile(
                     &instruction.program_id,
                     &instruction.data,
-                    &instruction_accounts,
-                    &[program_id_index],
                     std::iter::once(instruction.data.as_ref()),
                 )
             } else {
-                invoke_context.process_instruction(
-                    &instruction.data,
-                    &instruction_accounts,
-                    &[program_id_index],
-                    &mut compute_units_consumed,
-                    &mut timings,
-                )
+                invoke_context.process_instruction(&mut compute_units_consumed, &mut timings)
             };
 
             #[cfg(feature = "invocation-inspect-callback")]
@@ -759,9 +761,9 @@ impl Mollusk {
                         .find_index_of_account(pubkey)
                         .map(|index| {
                             let resulting_account = transaction_context
-                                .get_account_at_index(index)
+                                .accounts()
+                                .try_borrow(index)
                                 .unwrap()
-                                .borrow()
                                 .clone()
                                 .into();
                             (*pubkey, resulting_account)

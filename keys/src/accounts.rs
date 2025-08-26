@@ -36,23 +36,13 @@ pub fn compile_instruction_accounts(
     compiled_instruction
         .accounts
         .iter()
-        .enumerate()
-        .map(|(ix_account_index, &index_in_transaction)| {
-            let index_in_callee = compiled_instruction
-                .accounts
-                .get(0..ix_account_index)
-                .unwrap()
-                .iter()
-                .position(|&account_index| account_index == index_in_transaction)
-                .unwrap_or(ix_account_index) as IndexOfAccount;
+        .map(|&index_in_transaction| {
             let index_in_transaction = index_in_transaction as usize;
-            InstructionAccount {
-                index_in_transaction: index_in_transaction as IndexOfAccount,
-                index_in_caller: index_in_transaction as IndexOfAccount,
-                index_in_callee,
-                is_signer: key_map.is_signer_at_index(index_in_transaction),
-                is_writable: key_map.is_writable_at_index(index_in_transaction),
-            }
+            InstructionAccount::new(
+                index_in_transaction as IndexOfAccount,
+                key_map.is_signer_at_index(index_in_transaction),
+                key_map.is_writable_at_index(index_in_transaction),
+            )
         })
         .collect()
 }

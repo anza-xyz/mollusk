@@ -66,7 +66,7 @@ fn process_instruction(
                 return Err(ProgramError::MissingRequiredSignature);
             }
 
-            account_info.realloc(0, true)?;
+            account_info.resize(0)?;
             account_info.assign(&solana_sdk_ids::system_program::id());
 
             let lamports = account_info.lamports();

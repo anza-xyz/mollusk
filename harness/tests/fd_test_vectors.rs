@@ -152,12 +152,19 @@ fn compare_instruction_accounts(a: &[InstructionAccount], b: &[InstructionAccoun
     let mut a_sorted = a.to_vec();
     let mut b_sorted = b.to_vec();
 
-    // Sort by Pubkey
+    // Sort by index_in_transaction
     a_sorted.sort_by(|ia_a, ia_b| ia_a.index_in_transaction.cmp(&ia_b.index_in_transaction));
     b_sorted.sort_by(|ia_a, ia_b| ia_a.index_in_transaction.cmp(&ia_b.index_in_transaction));
 
-    // Compare sorted lists
-    a_sorted == b_sorted
+    // Compare sorted lists; InstructionAccount doesn't implement PartialEq
+    a_sorted
+        .iter()
+        .zip(b_sorted.iter())
+        .all(|(a_item, b_item)| {
+            a_item.index_in_transaction == b_item.index_in_transaction
+                && a_item.is_signer() == b_item.is_signer()
+                && a_item.is_writable() == b_item.is_writable()
+        })
 }
 
 fn compare_feature_sets(from_fixture: &FeatureSet, from_mollusk: &FeatureSet) {

@@ -29,7 +29,7 @@ use {
 
 /// A fixture for invoking a single instruction against a simulated SVM
 /// program runtime environment, for a given program.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Fixture {
     /// The fixture metadata.
     pub metadata: Option<Metadata>,
@@ -154,13 +154,7 @@ mod tests {
         let instruction_accounts = accounts
             .iter()
             .enumerate()
-            .map(|(i, _)| InstructionAccount {
-                index_in_transaction: i as u16,
-                index_in_caller: i as u16,
-                index_in_callee: i as u16,
-                is_signer: false,
-                is_writable: true,
-            })
+            .map(|(i, _)| InstructionAccount::new(i as u16, false, true))
             .collect::<Vec<_>>();
         let instruction_data = vec![4; 24];
         let slot_context = SlotContext { slot: 42 };

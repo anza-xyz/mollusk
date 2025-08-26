@@ -20,7 +20,6 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             max_call_depth,
             stack_frame_size,
             log_pubkey_units,
-            max_cpi_instruction_size,
             cpi_bytes_per_unit,
             sysvar_base_cost,
             secp256k1_recover_cost,
@@ -68,7 +67,6 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             max_call_depth: max_call_depth as usize,
             stack_frame_size: stack_frame_size as usize,
             log_pubkey_units,
-            max_cpi_instruction_size: max_cpi_instruction_size as usize,
             cpi_bytes_per_unit,
             sysvar_base_cost,
             secp256k1_recover_cost,
@@ -120,7 +118,6 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             max_call_depth,
             stack_frame_size,
             log_pubkey_units,
-            max_cpi_instruction_size,
             cpi_bytes_per_unit,
             sysvar_base_cost,
             secp256k1_recover_cost,
@@ -168,7 +165,6 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             max_call_depth: max_call_depth as u64,
             stack_frame_size: stack_frame_size as u64,
             log_pubkey_units,
-            max_cpi_instruction_size: max_cpi_instruction_size as u64,
             cpi_bytes_per_unit,
             sysvar_base_cost,
             secp256k1_recover_cost,
@@ -218,7 +214,6 @@ pub(crate) fn hash_proto_compute_budget(hasher: &mut Hasher, compute_budget: &Pr
     hasher.hash(&compute_budget.max_call_depth.to_le_bytes());
     hasher.hash(&compute_budget.stack_frame_size.to_le_bytes());
     hasher.hash(&compute_budget.log_pubkey_units.to_le_bytes());
-    hasher.hash(&compute_budget.max_cpi_instruction_size.to_le_bytes());
     hasher.hash(&compute_budget.cpi_bytes_per_unit.to_le_bytes());
     hasher.hash(&compute_budget.sysvar_base_cost.to_le_bytes());
     hasher.hash(&compute_budget.secp256k1_recover_cost.to_le_bytes());

@@ -112,7 +112,7 @@ mod tests {
     fn test_consistent_hashing() {
         const ITERATIONS: usize = 1000;
 
-        let compute_budget = ComputeBudget::default();
+        let compute_budget = ComputeBudget::new_with_defaults(true);
         let feature_set = FeatureSet::all_enabled();
         let sysvars = Sysvars::default();
         let program_id = Pubkey::default();

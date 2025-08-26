@@ -114,7 +114,7 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
 
     let compute_budget = ComputeBudget {
         compute_unit_limit: *compute_units_available,
-        ..Default::default()
+        ..ComputeBudget::new_with_defaults(true)
     };
 
     let accounts = accounts
@@ -126,13 +126,13 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
         .iter()
         .map(|ia| {
             let pubkey = accounts
-                .get(ia.index_in_caller as usize)
+                .get(ia.index_in_transaction as usize)
                 .expect("Index out of bounds")
                 .0;
             AccountMeta {
                 pubkey,
-                is_signer: ia.is_signer,
-                is_writable: ia.is_writable,
+                is_signer: ia.is_signer(),
+                is_writable: ia.is_writable(),
             }
         })
         .collect::<Vec<_>>();
