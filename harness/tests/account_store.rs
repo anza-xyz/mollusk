@@ -33,30 +33,9 @@ fn test_transfer_with_context() {
 
     let context = mollusk.with_context(account_store);
 
-    // Build and debug-print the transfer instruction
-    let instr =
-        solana_system_interface::instruction::transfer(&sender, &recipient, transfer_amount);
-    eprintln!(
-        "[test debug] system transfer data_len: {}, data: {:?}",
-        instr.data.len(),
-        instr.data
-    );
-    match bincode::deserialize::<solana_system_interface::instruction::SystemInstruction>(
-        &instr.data,
-    ) {
-        Ok(decoded) => eprintln!("[test debug] decode ok: {:?}", decoded),
-        Err(err) => eprintln!("[test debug] decode err: {}", err),
-    }
-    for (i, meta) in instr.accounts.iter().enumerate() {
-        eprintln!(
-            "[test debug] meta[{}]: pubkey={}, signer={}, writable={}",
-            i, meta.pubkey, meta.is_signer, meta.is_writable
-        );
-    }
-
     // Process the transfer instruction
     let result = context.process_and_validate_instruction(
-        &instr,
+        &solana_system_interface::instruction::transfer(&sender, &recipient, transfer_amount),
         &[
             Check::success(),
             Check::compute_units(DEFAULT_COMPUTE_UNITS),
@@ -114,37 +93,15 @@ fn test_multiple_transfers_with_persistent_state() {
         Check::compute_units(DEFAULT_COMPUTE_UNITS),
     ];
 
-    // First transfer: Alice -> Bob (with debug)
+    // First transfer: Alice -> Bob
     let instruction1 =
         solana_system_interface::instruction::transfer(&alice, &bob, transfer1_amount);
-    eprintln!(
-        "[test debug] ix1 data_len: {}, data: {:?}",
-        instruction1.data.len(),
-        instruction1.data
-    );
-    match bincode::deserialize::<solana_system_interface::instruction::SystemInstruction>(
-        &instruction1.data,
-    ) {
-        Ok(decoded) => eprintln!("[test debug] ix1 decode ok: {:?}", decoded),
-        Err(err) => eprintln!("[test debug] ix1 decode err: {}", err),
-    }
     let result1 = context.process_and_validate_instruction(&instruction1, &checks);
     assert!(!result1.program_result.is_err());
 
-    // Second transfer: Bob -> Charlie (with debug)
+    // Second transfer: Bob -> Charlie
     let instruction2 =
         solana_system_interface::instruction::transfer(&bob, &charlie, transfer2_amount);
-    eprintln!(
-        "[test debug] ix2 data_len: {}, data: {:?}",
-        instruction2.data.len(),
-        instruction2.data
-    );
-    match bincode::deserialize::<solana_system_interface::instruction::SystemInstruction>(
-        &instruction2.data,
-    ) {
-        Ok(decoded) => eprintln!("[test debug] ix2 decode ok: {:?}", decoded),
-        Err(err) => eprintln!("[test debug] ix2 decode err: {}", err),
-    }
     let result2 = context.process_and_validate_instruction(&instruction2, &checks);
     assert!(!result2.program_result.is_err());
 
@@ -251,17 +208,6 @@ fn test_account_store_default_account() {
     // Try to transfer from a non-existent account (should get default account)
     let instruction =
         solana_system_interface::instruction::transfer(&non_existent_key, &recipient, 1000);
-    eprintln!(
-        "[test debug] default-account transfer data_len: {}, data: {:?}",
-        instruction.data.len(),
-        instruction.data
-    );
-    match bincode::deserialize::<solana_system_interface::instruction::SystemInstruction>(
-        &instruction.data,
-    ) {
-        Ok(decoded) => eprintln!("[test debug] default decode ok: {:?}", decoded),
-        Err(err) => eprintln!("[test debug] default decode err: {}", err),
-    }
 
     // This should fail because the default account has 0 lamports
     context.process_and_validate_instruction(
