@@ -104,7 +104,6 @@ which = "=4.4.0"
 [patch.crates-io]
 solana-address = { version = "1.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-pubkey = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-sdk = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-program-entrypoint = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-program-error = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-sysvar = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
@@ -114,7 +113,6 @@ solana-account-info = { version = "3.0", git = "https://github.com/anza-xyz/sola
 solana-instruction = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-message = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-instruction-error = { version = "2.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-transaction-context = { version = "3.0", git = "https://github.com/anza-xyz/agave.git" }
 solana-transaction-error = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-signer = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-nonce = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
@@ -130,10 +128,5 @@ solana-epoch-schedule = { version = "3.0", git = "https://github.com/anza-xyz/so
 solana-epoch-rewards = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-clock = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-last-restart-slot = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-# solana-compute-budget = { version = "3.0", git = "https://github.com/anza-xyz/agave.git" }
-solana-svm-timings = { version = "3.0", git = "https://github.com/anza-xyz/agave.git" }
-solana-svm-callback = { version = "3.0", git = "https://github.com/anza-xyz/agave.git" }
-# solana-bpf-loader-program = { version = "3.0", git = "https://github.com/anza-xyz/agave.git" }
 solana-loader-v3-interface = { version = "6.1.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
 solana-loader-v4-interface = { version = "3.1.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-spl-associated-token-account = { version = "7.0.0", git = "https://github.com/solana-program/associated-token-account.git" }

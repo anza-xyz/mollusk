@@ -4997,28 +4997,3 @@ dependencies = [
  "quote",
  "syn 2.0.87",
 ]
-
-[[patch.unused]]
-name = "solana-sdk"
-version = "3.0.0"
-source = "git+https://github.com/anza-xyz/solana-sdk.git#6809dde2e6bec1506dfe7c213c8c865c231b717e"
-
-[[patch.unused]]
-name = "solana-svm-callback"
-version = "3.1.0"
-source = "git+https://github.com/anza-xyz/agave.git#b676359b1fef681acc0fc97af4b3cf0a080857b7"
-
-[[patch.unused]]
-name = "solana-svm-timings"
-version = "3.1.0"
-source = "git+https://github.com/anza-xyz/agave.git#b676359b1fef681acc0fc97af4b3cf0a080857b7"
-
-[[patch.unused]]
-name = "solana-transaction-context"
-version = "3.1.0"
-source = "git+https://github.com/anza-xyz/agave.git#b676359b1fef681acc0fc97af4b3cf0a080857b7"
-
-[[patch.unused]]
-name = "spl-associated-token-account"
-version = "7.0.0"
-source = "git+https://github.com/solana-program/associated-token-account.git#209714777d7113af98e6e0ca4a3a0f26ffb9e8fe"

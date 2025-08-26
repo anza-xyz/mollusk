@@ -203,8 +203,8 @@ impl Builtin {
 }
 
 #[cfg(feature = "all-builtins")]
-fn stake_vm_wrapper<'a>(
-    vm: *mut EbpfVm<'a, InvokeContext<'static>>,
+fn stake_vm_wrapper(
+    vm: *mut EbpfVm<InvokeContext<'static>>,
     arg1: u64,
     arg2: u64,
     arg3: u64,
