@@ -1,5 +1,7 @@
 //! Module for working with Solana programs.
 
+#[cfg(feature = "all-builtins")]
+use solana_program_runtime::solana_sbpf::vm::EbpfVm;
 use {
     agave_feature_set::FeatureSet,
     agave_syscalls::create_program_runtime_environment_v1,
@@ -21,9 +23,6 @@ use {
         sync::Arc,
     },
 };
-
-#[cfg(feature = "all-builtins")]
-use solana_program_runtime::solana_sbpf::vm::EbpfVm;
 
 /// Loader keys, re-exported from `solana_sdk` for convenience.
 pub mod loader_keys {
