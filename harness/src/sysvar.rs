@@ -11,7 +11,7 @@ use {
     solana_rent::Rent,
     solana_slot_hashes::{SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
     solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
-    solana_sysvar::{self, last_restart_slot::LastRestartSlot, Sysvar},
+    solana_sysvar::{self, last_restart_slot::LastRestartSlot, SysvarSerialize},
     solana_sysvar_id::SysvarId,
 };
 
@@ -58,10 +58,7 @@ impl Default for Sysvars {
 }
 
 impl Sysvars {
-    fn sysvar_account<T: SysvarId + Sysvar + serde::Serialize>(
-        &self,
-        sysvar: &T,
-    ) -> (Pubkey, Account) {
+    fn sysvar_account<T: SysvarId + SysvarSerialize>(&self, sysvar: &T) -> (Pubkey, Account) {
         let data = bincode::serialize::<T>(sysvar).unwrap();
         let space = data.len();
         let lamports = self.rent.minimum_balance(space);

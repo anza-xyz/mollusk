@@ -10,7 +10,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [features]
-default = ["serde"]
+default = []
 all-builtins = [
     "dep:solana-stake-program",
 ]
