@@ -12,25 +12,9 @@ use {
     solana_system_interface::error::SystemError,
 };
 
-// TODO: Investigate these differences
-#[cfg(target_os = "linux")]
-const CU_WRITE_DATA: u64 = 387;
-#[cfg(not(target_os = "linux"))]
 const CU_WRITE_DATA: u64 = 384;
-
-#[cfg(target_os = "linux")]
-const CU_TRANSFER: u64 = 2580;
-#[cfg(not(target_os = "linux"))]
 const CU_TRANSFER: u64 = 2533;
-
-#[cfg(target_os = "linux")]
-const CU_CLOSE_ACCOUNT: u64 = 2658;
-#[cfg(not(target_os = "linux"))]
 const CU_CLOSE_ACCOUNT: u64 = 2608;
-
-#[cfg(target_os = "linux")]
-const CU_CPI: u64 = 2447;
-#[cfg(not(target_os = "linux"))]
 const CU_CPI: u64 = 2418;
 
 #[test]
