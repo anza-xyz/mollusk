@@ -156,7 +156,7 @@ fn compare_instruction_accounts(a: &[InstructionAccount], b: &[InstructionAccoun
     a_sorted.sort_by(|ia_a, ia_b| ia_a.index_in_transaction.cmp(&ia_b.index_in_transaction));
     b_sorted.sort_by(|ia_a, ia_b| ia_a.index_in_transaction.cmp(&ia_b.index_in_transaction));
 
-    // Compare sorted lists; InstructionAccount doesn't implement PartialEq
+    // Compare sorted lists; InstructionAccount no longer implements PartialEq
     a_sorted
         .iter()
         .zip(b_sorted.iter())

@@ -91,42 +91,9 @@ solana-system-interface = "2.0"
 solana-system-program = "3.0"
 solana-sysvar = "3.0"
 solana-sysvar-id = "3.0"
-solana-timings = "3.0"
 solana-transaction-context = "3.0"
 spl-associated-token-account-interface = "2.0.0"
 spl-token-interface = "2.0.0"
 thiserror = "1.0.64"
 tokio = "1.37.0"
 which = "=4.4.0"
-
-
-# Unfortunately we still need a number of patches until updated SPL crates are all published
-[patch.crates-io]
-solana-address = { version = "1.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-pubkey = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-program-entrypoint = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-program-error = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-sysvar = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-sysvar-id = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-account = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-account-info = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-instruction = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-message = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-instruction-error = { version = "2.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-transaction-error = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-signer = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-nonce = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-bincode = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-transaction     = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-sanitize        = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-hash            = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-nonce-account   = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-signature = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-rent = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-slot-hashes = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-epoch-schedule = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-epoch-rewards = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-clock = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-last-restart-slot = { version = "3.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-loader-v3-interface = { version = "6.1.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
-solana-loader-v4-interface = { version = "3.1.0", git = "https://github.com/anza-xyz/solana-sdk.git" }
