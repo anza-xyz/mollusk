@@ -44,7 +44,6 @@ fn test_secp256k1() {
     );
 }
 
-#[allow(deprecated)]
 #[test]
 fn test_ed25519() {
     use ed25519_dalek::Signer;
@@ -73,7 +72,6 @@ fn test_ed25519() {
     );
 }
 
-#[allow(deprecated)]
 #[test]
 fn test_secp256r1() {
     use openssl::{

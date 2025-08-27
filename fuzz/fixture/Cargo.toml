@@ -9,7 +9,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [features]
-simd-0296 = []
+simd-0268 = []
 default = []
 
 [dependencies]

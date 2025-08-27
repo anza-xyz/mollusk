@@ -538,9 +538,9 @@ impl Default for Mollusk {
              solana_runtime::message_processor=debug,\
              solana_runtime::system_instruction_processor=trace",
         );
-        #[cfg(feature = "simd-0296")]
+        #[cfg(feature = "simd-0268")]
         let compute_budget = ComputeBudget::new_with_defaults(true);
-        #[cfg(not(feature = "simd-0296"))]
+        #[cfg(not(feature = "simd-0268"))]
         let compute_budget = ComputeBudget::new_with_defaults(false);
 
         #[cfg(feature = "fuzz")]

@@ -32,25 +32,6 @@ pub struct Context {
     pub accounts: Vec<(Pubkey, Account)>,
 }
 
-impl Default for Context {
-    fn default() -> Self {
-        #[cfg(feature = "simd-0296")]
-        let compute_budget = ComputeBudget::new_with_defaults(true);
-        #[cfg(not(feature = "simd-0296"))]
-        let compute_budget = ComputeBudget::new_with_defaults(false);
-
-        Self {
-            compute_budget,
-            feature_set: FeatureSet::default(),
-            sysvars: Sysvars::default(),
-            program_id: Pubkey::default(),
-            instruction_accounts: Vec::default(),
-            instruction_data: Vec::default(),
-            accounts: Vec::default(),
-        }
-    }
-}
-
 impl From<ProtoContext> for Context {
     fn from(value: ProtoContext) -> Self {
         let program_id_bytes: [u8; 32] = value
@@ -84,11 +65,11 @@ impl From<ProtoContext> for Context {
 
         Self {
             compute_budget: value.compute_budget.map(Into::into).unwrap_or_else(|| {
-                #[cfg(feature = "simd-0296")]
+                #[cfg(feature = "simd-0268")]
                 {
                     ComputeBudget::new_with_defaults(true)
                 }
-                #[cfg(not(feature = "simd-0296"))]
+                #[cfg(not(feature = "simd-0268"))]
                 {
                     ComputeBudget::new_with_defaults(false)
                 }

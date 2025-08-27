@@ -23,7 +23,7 @@ use {
 
 /// A fixture for invoking a single instruction against a simulated SVM
 /// program runtime environment, for a given program.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Fixture {
     /// The fixture inputs.
     pub input: Context,
@@ -112,9 +112,9 @@ mod tests {
     fn test_consistent_hashing() {
         const ITERATIONS: usize = 1000;
 
-        #[cfg(feature = "simd-0296")]
+        #[cfg(feature = "simd-0268")]
         let compute_budget = ComputeBudget::new_with_defaults(true);
-        #[cfg(not(feature = "simd-0296"))]
+        #[cfg(not(feature = "simd-0268"))]
         let compute_budget = ComputeBudget::new_with_defaults(false);
 
         let feature_set = FeatureSet::all_enabled();

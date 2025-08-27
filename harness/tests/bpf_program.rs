@@ -12,11 +12,6 @@ use {
     solana_system_interface::error::SystemError,
 };
 
-const CU_WRITE_DATA: u64 = 384;
-const CU_TRANSFER: u64 = 2533;
-const CU_CLOSE_ACCOUNT: u64 = 2608;
-const CU_CPI: u64 = 2418;
-
 #[test]
 fn test_write_data() {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
@@ -72,7 +67,7 @@ fn test_write_data() {
         &[(key, account.clone())],
         &[
             Check::success(),
-            Check::compute_units(CU_WRITE_DATA),
+            Check::compute_units(384),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
@@ -157,7 +152,7 @@ fn test_transfer() {
         ],
         &[
             Check::success(),
-            Check::compute_units(CU_TRANSFER),
+            Check::compute_units(2533),
             Check::account(&payer)
                 .lamports(payer_lamports - transfer_amount)
                 .build(),
@@ -261,7 +256,7 @@ fn test_close_account() {
         ],
         &[
             Check::success(),
-            Check::compute_units(CU_CLOSE_ACCOUNT),
+            Check::compute_units(2608),
             Check::account(&key)
                 .closed() // The rest is unnecessary, just testing.
                 .data(&[])
@@ -381,7 +376,7 @@ fn test_cpi() {
         ],
         &[
             Check::success(),
-            Check::compute_units(CU_CPI),
+            Check::compute_units(2418),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)

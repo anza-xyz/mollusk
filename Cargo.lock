@@ -1953,7 +1953,6 @@ dependencies = [
  "solana-account",
  "solana-keccak-hasher",
  "solana-pubkey",
- "solana-sha256-hasher",
  "solana-transaction-context",
  "which",
 ]

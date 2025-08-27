@@ -112,12 +112,12 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
         epoch_context,
     } = context;
 
-    #[cfg(feature = "simd-0296")]
+    #[cfg(feature = "simd-0268")]
     let compute_budget = ComputeBudget {
         compute_unit_limit: *compute_units_available,
         ..ComputeBudget::new_with_defaults(true)
     };
-    #[cfg(not(feature = "simd-0296"))]
+    #[cfg(not(feature = "simd-0268"))]
     let compute_budget = ComputeBudget {
         compute_unit_limit: *compute_units_available,
         ..ComputeBudget::new_with_defaults(false)
