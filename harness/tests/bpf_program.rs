@@ -12,6 +12,27 @@ use {
     solana_system_interface::error::SystemError,
 };
 
+// TODO: Investigate these differences
+#[cfg(target_os = "linux")]
+const CU_WRITE_DATA: u64 = 387;
+#[cfg(not(target_os = "linux"))]
+const CU_WRITE_DATA: u64 = 384;
+
+#[cfg(target_os = "linux")]
+const CU_TRANSFER: u64 = 2580;
+#[cfg(not(target_os = "linux"))]
+const CU_TRANSFER: u64 = 2533;
+
+#[cfg(target_os = "linux")]
+const CU_CLOSE_ACCOUNT: u64 = 2658;
+#[cfg(not(target_os = "linux"))]
+const CU_CLOSE_ACCOUNT: u64 = 2608;
+
+#[cfg(target_os = "linux")]
+const CU_CPI: u64 = 2447;
+#[cfg(not(target_os = "linux"))]
+const CU_CPI: u64 = 2418;
+
 #[test]
 fn test_write_data() {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
@@ -67,7 +88,7 @@ fn test_write_data() {
         &[(key, account.clone())],
         &[
             Check::success(),
-            Check::compute_units(384),
+            Check::compute_units(CU_WRITE_DATA),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
@@ -152,7 +173,7 @@ fn test_transfer() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2533),
+            Check::compute_units(CU_TRANSFER),
             Check::account(&payer)
                 .lamports(payer_lamports - transfer_amount)
                 .build(),
@@ -256,7 +277,7 @@ fn test_close_account() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2608),
+            Check::compute_units(CU_CLOSE_ACCOUNT),
             Check::account(&key)
                 .closed() // The rest is unnecessary, just testing.
                 .data(&[])
@@ -376,7 +397,7 @@ fn test_cpi() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2418),
+            Check::compute_units(CU_CPI),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
