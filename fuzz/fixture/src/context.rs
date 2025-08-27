@@ -34,8 +34,13 @@ pub struct Context {
 
 impl Default for Context {
     fn default() -> Self {
+        #[cfg(feature = "simd-0296")]
+        let compute_budget = ComputeBudget::new_with_defaults(true);
+        #[cfg(not(feature = "simd-0296"))]
+        let compute_budget = ComputeBudget::new_with_defaults(false);
+
         Self {
-            compute_budget: ComputeBudget::new_with_defaults(true),
+            compute_budget,
             feature_set: FeatureSet::default(),
             sysvars: Sysvars::default(),
             program_id: Pubkey::default(),
@@ -78,10 +83,16 @@ impl From<ProtoContext> for Context {
             .collect();
 
         Self {
-            compute_budget: value
-                .compute_budget
-                .map(Into::into)
-                .unwrap_or_else(|| ComputeBudget::new_with_defaults(true)),
+            compute_budget: value.compute_budget.map(Into::into).unwrap_or_else(|| {
+                #[cfg(feature = "simd-0296")]
+                {
+                    ComputeBudget::new_with_defaults(true)
+                }
+                #[cfg(not(feature = "simd-0296"))]
+                {
+                    ComputeBudget::new_with_defaults(false)
+                }
+            }),
             feature_set: value.feature_set.map(Into::into).unwrap_or_default(),
             sysvars: value.sysvars.map(Into::into).unwrap_or_default(),
             program_id,

@@ -23,11 +23,12 @@ fuzz-fd = [
     "dep:mollusk-svm-fuzz-fixture-firedancer",
     "dep:mollusk-svm-fuzz-fs",
 ]
+invocation-inspect-callback = []
 serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
 ]
-invocation-inspect-callback = []
+simd-0296 = []
 
 [dependencies]
 agave-feature-set = { workspace = true }

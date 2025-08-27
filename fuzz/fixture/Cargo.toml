@@ -8,6 +8,10 @@ license-file ={ workspace = true }
 edition = { workspace = true }
 version = { workspace = true }
 
+[features]
+simd-0296 = []
+default = []
+
 [dependencies]
 agave-feature-set = { workspace = true }
 mollusk-svm-fuzz-fs = { workspace = true }
