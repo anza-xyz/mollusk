@@ -1,7 +1,5 @@
 //! Module for working with Solana programs.
 
-#[cfg(feature = "all-builtins")]
-use solana_program_runtime::solana_sbpf::vm::EbpfVm;
 use {
     agave_feature_set::FeatureSet,
     agave_syscalls::create_program_runtime_environment_v1,
@@ -202,18 +200,6 @@ impl Builtin {
     }
 }
 
-#[cfg(feature = "all-builtins")]
-fn stake_vm_wrapper(
-    vm: *mut EbpfVm<InvokeContext<'static>>,
-    arg1: u64,
-    arg2: u64,
-    arg3: u64,
-    arg4: u64,
-    arg5: u64,
-) {
-    solana_stake_program::stake_instruction::Entrypoint::vm(vm, arg1, arg2, arg3, arg4, arg5)
-}
-
 static BUILTINS: &[Builtin] = &[
     Builtin {
         program_id: solana_system_program::id(),
@@ -234,7 +220,7 @@ static BUILTINS: &[Builtin] = &[
     Builtin {
         program_id: solana_sdk_ids::stake::id(),
         name: "solana_stake_program",
-        entrypoint: stake_vm_wrapper,
+        entrypoint: solana_stake_program::stake_instruction::Entrypoint::vm,
     },
     /* ... */
 ];
