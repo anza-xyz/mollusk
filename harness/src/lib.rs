@@ -445,6 +445,7 @@ pub mod epoch_stake;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
+pub mod instructions_sysvar;
 pub mod program;
 pub mod sysvar;
 

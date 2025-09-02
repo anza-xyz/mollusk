@@ -53,6 +53,7 @@ solana-epoch-schedule = { workspace = true }
 solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
 solana-instruction-error = { workspace = true, features = ["serde"] }
+solana-instructions-sysvar = { workspace = true }
 solana-loader-v3-interface = { workspace = true, features = ["serde"] }
 solana-loader-v4-interface = { workspace = true }
 solana-loader-v4-program = { workspace = true, features = ["agave-unstable-api"], optional = true }

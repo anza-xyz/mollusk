@@ -2256,6 +2256,7 @@ dependencies = [
  "solana-hash 3.1.0",
  "solana-instruction",
  "solana-instruction-error",
+ "solana-instructions-sysvar",
  "solana-loader-v3-interface",
  "solana-loader-v4-interface",
  "solana-loader-v4-program",
