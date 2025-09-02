@@ -445,6 +445,7 @@ pub mod epoch_stake;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
+pub mod instructions_sysvar;
 pub mod program;
 pub mod sysvar;
 
@@ -667,6 +668,15 @@ impl Mollusk {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
+        self.process_instruction_with_instruction_index(instruction, accounts, 0)
+    }
+
+    pub fn process_instruction_with_instruction_index(
+        &self,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+        instruction_index: usize,
+    ) -> InstructionResult {
         let mut compute_units_consumed = 0;
         let mut timings = ExecuteTimings::default();
 
@@ -692,6 +702,7 @@ impl Mollusk {
             self.compute_budget.max_instruction_stack_depth,
             self.compute_budget.max_instruction_trace_length,
         );
+        transaction_context.set_top_level_instruction_index(instruction_index);
 
         let invoke_result = {
             let mut program_cache = self.program_cache.cache();
@@ -803,8 +814,12 @@ impl Mollusk {
             ..Default::default()
         };
 
-        for instruction in instructions {
-            let this_result = self.process_instruction(instruction, &result.resulting_accounts);
+        for (index, instruction) in instructions.iter().enumerate() {
+            let this_result = self.process_instruction_with_instruction_index(
+                instruction,
+                &result.resulting_accounts,
+                index,
+            );
 
             result.absorb(this_result);
 

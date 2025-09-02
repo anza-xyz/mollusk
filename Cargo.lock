@@ -1817,6 +1817,7 @@ dependencies = [
  "solana-epoch-schedule",
  "solana-hash",
  "solana-instruction",
+ "solana-instructions-sysvar",
  "solana-loader-v3-interface 3.0.0",
  "solana-loader-v4-interface",
  "solana-log-collector",

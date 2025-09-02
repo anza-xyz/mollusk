@@ -48,6 +48,7 @@ solana-epoch-rewards = { workspace = true }
 solana-epoch-schedule = { workspace = true }
 solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
+solana-instructions-sysvar = { workspace = true }
 solana-loader-v3-interface = { workspace = true, features = ["serde"] }
 solana-loader-v4-interface = { workspace = true }
 solana-log-collector = { workspace = true }
