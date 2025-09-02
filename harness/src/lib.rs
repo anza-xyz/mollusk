@@ -445,6 +445,7 @@ pub mod epoch_stake;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
+pub mod instructions_sysvar;
 pub mod program;
 pub mod sysvar;
 
@@ -813,8 +814,12 @@ impl Mollusk {
             ..Default::default()
         };
 
-        for instruction in instructions {
-            let this_result = self.process_instruction(instruction, &result.resulting_accounts);
+        for (index, instruction) in instructions.iter().enumerate() {
+            let this_result = self.process_instruction_with_instruction_index(
+                instruction,
+                &result.resulting_accounts,
+                index,
+            );
 
             result.absorb(this_result);
 
