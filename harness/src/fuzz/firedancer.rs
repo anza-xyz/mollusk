@@ -73,7 +73,7 @@ fn build_fixture_context(
         instruction_accounts,
         transaction_accounts,
         ..
-    } = compile_accounts(instruction, accounts, loader_key);
+    } = compile_accounts(instruction, accounts.iter(), loader_key);
 
     let accounts = transaction_accounts
         .into_iter()

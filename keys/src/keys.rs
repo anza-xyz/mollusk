@@ -181,6 +181,21 @@ impl KeyMap {
     pub fn position(&self, key: &Pubkey) -> Option<usize> {
         self.map.keys().position(|k| k == key)
     }
+
+    /// Return whether or not the map contains a key.
+    pub fn contains_key(&self, key: &Pubkey) -> bool {
+        self.map.contains_key(key)
+    }
+
+    /// Get the length of the key map.
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    /// Return whether or not the key map is empty.
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
 }
 
 #[cfg(test)]

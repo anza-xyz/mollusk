@@ -21,9 +21,9 @@ pub struct CompiledAccounts {
     pub transaction_accounts: Vec<TransactionAccount>,
 }
 
-pub fn compile_accounts(
+pub fn compile_accounts<'a>(
     instruction: &Instruction,
-    accounts: &[(Pubkey, Account)],
+    accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
     loader_key: Pubkey,
 ) -> CompiledAccounts {
     let stub_out_program_account = move || {
