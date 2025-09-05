@@ -838,22 +838,36 @@ impl Mollusk {
         instructions: &[Instruction],
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let mut result = InstructionResult {
+        let mut composite_result = InstructionResult {
             resulting_accounts: accounts.to_vec(),
             ..Default::default()
         };
 
         for instruction in instructions {
-            let this_result = self.process_instruction(instruction, &result.resulting_accounts);
+            let loader_key = self.get_loader_key(&instruction.program_id);
 
-            result.absorb(this_result);
+            let CompiledAccounts {
+                program_id_index,
+                instruction_accounts,
+                transaction_accounts,
+            } = crate::compile_accounts::compile_accounts(instruction, accounts, loader_key);
 
-            if result.program_result.is_err() {
+            let this_result = self.process_instruction_inner(
+                instruction,
+                accounts,
+                program_id_index,
+                instruction_accounts,
+                transaction_accounts,
+            );
+
+            composite_result.absorb(this_result);
+
+            if composite_result.program_result.is_err() {
                 break;
             }
         }
 
-        result
+        composite_result
     }
 
     /// Process an instruction using the minified Solana Virtual Machine (SVM)
@@ -936,26 +950,42 @@ impl Mollusk {
         instructions: &[(&Instruction, &[Check])],
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let mut result = InstructionResult {
+        let mut composite_result = InstructionResult {
             resulting_accounts: accounts.to_vec(),
             ..Default::default()
         };
 
         for (instruction, checks) in instructions.iter() {
-            let this_result = self.process_and_validate_instruction(
+            let loader_key = self.get_loader_key(&instruction.program_id);
+            let accounts = &composite_result.resulting_accounts;
+
+            let CompiledAccounts {
+                program_id_index,
+                instruction_accounts,
+                transaction_accounts,
+            } = crate::compile_accounts::compile_accounts(instruction, accounts, loader_key);
+
+            let this_result = self.process_instruction_inner(
                 instruction,
-                &result.resulting_accounts,
-                checks,
+                accounts,
+                program_id_index,
+                instruction_accounts,
+                transaction_accounts,
             );
 
-            result.absorb(this_result);
+            #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
+            fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &this_result);
 
-            if result.program_result.is_err() {
+            this_result.run_checks(checks, &self.config, self);
+
+            composite_result.absorb(this_result);
+
+            if composite_result.program_result.is_err() {
                 break;
             }
         }
 
-        result
+        composite_result
     }
 
     #[cfg(feature = "fuzz")]
