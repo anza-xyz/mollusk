@@ -2,11 +2,12 @@
 
 use {
     crate::keys::KeyMap,
-    mollusk_svm_error::error::MolluskError,
+    mollusk_svm_error::error::{MolluskError, MolluskPanic},
     solana_account::{Account, AccountSharedData},
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
     solana_transaction_context::{IndexOfAccount, InstructionAccount, TransactionAccount},
+    std::collections::HashMap,
 };
 
 // Helper struct to avoid cloning instruction data.
@@ -47,60 +48,64 @@ pub fn compile_instruction_accounts(
         .collect()
 }
 
-pub fn compile_transaction_accounts_for_instruction(
+pub fn compile_transaction_accounts_for_instruction<'a>(
     key_map: &KeyMap,
     instruction: &Instruction,
-    accounts: &[(Pubkey, Account)],
+    accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
     stub_out_program_account: Option<Box<dyn Fn() -> Account>>,
 ) -> Vec<TransactionAccount> {
+    let len = key_map.len();
+    let mut by_key: HashMap<Pubkey, AccountSharedData> = HashMap::with_capacity(len);
+
+    for (key, account) in accounts {
+        if key_map.contains_key(key) {
+            by_key.insert(*key, AccountSharedData::from(account.clone()));
+        }
+    }
+
     key_map
         .keys()
         .map(|key| {
-            let account = accounts
-                .iter()
-                .find(|(k, _)| k == key)
-                .map(|(_, account)| AccountSharedData::from(account.clone()));
-
-            if let Some(account) = account {
-                (*key, account)
-            } else if let Some(stub_out_program_account) = &stub_out_program_account {
+            if let Some(stub_out_program_account) = &stub_out_program_account {
                 if instruction.program_id == *key {
-                    (*key, stub_out_program_account().into())
-                } else {
-                    panic!("{}", MolluskError::AccountMissing(key))
+                    return (*key, stub_out_program_account().into());
                 }
-            } else {
-                panic!("{}", MolluskError::AccountMissing(key))
             }
+            let account = by_key
+                .remove(key)
+                .or_panic_with(MolluskError::AccountMissing(key));
+            (*key, account)
         })
         .collect()
 }
 
-pub fn compile_transaction_accounts(
+pub fn compile_transaction_accounts<'a>(
     key_map: &KeyMap,
     instructions: &[Instruction],
-    accounts: &[(Pubkey, Account)],
+    accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
     stub_out_program_account: Option<Box<dyn Fn() -> Account>>,
 ) -> Vec<TransactionAccount> {
+    let len = key_map.len();
+    let mut by_key: HashMap<Pubkey, AccountSharedData> = HashMap::with_capacity(len);
+
+    for (key, account) in accounts {
+        if key_map.contains_key(key) {
+            by_key.insert(*key, AccountSharedData::from(account.clone()));
+        }
+    }
+
     key_map
         .keys()
         .map(|key| {
-            let account = accounts
-                .iter()
-                .find(|(k, _)| k == key)
-                .map(|(_, account)| AccountSharedData::from(account.clone()));
-
-            if let Some(account) = account {
-                (*key, account)
-            } else if let Some(stub_out_program_account) = &stub_out_program_account {
+            if let Some(stub_out_program_account) = &stub_out_program_account {
                 if instructions.iter().any(|ix| ix.program_id == *key) {
-                    (*key, stub_out_program_account().into())
-                } else {
-                    panic!("{}", MolluskError::AccountMissing(key))
+                    return (*key, stub_out_program_account().into());
                 }
-            } else {
-                panic!("{}", MolluskError::AccountMissing(key))
             }
+            let account = by_key
+                .remove(key)
+                .or_panic_with(MolluskError::AccountMissing(key));
+            (*key, account)
         })
         .collect()
 }
