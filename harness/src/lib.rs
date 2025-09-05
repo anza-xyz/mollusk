@@ -454,8 +454,6 @@ pub use mollusk_svm_result as result;
 use mollusk_svm_result::Compare;
 #[cfg(feature = "precompiles")]
 use solana_precompile_error::PrecompileError;
-#[cfg(feature = "invocation-inspect-callback")]
-use solana_transaction_context::InstructionAccount;
 use {
     crate::{
         account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
@@ -464,7 +462,7 @@ use {
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
-    solana_account::Account,
+    solana_account::{Account, AccountSharedData},
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
@@ -473,7 +471,7 @@ use {
     solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
-    solana_transaction_context::TransactionContext,
+    solana_transaction_context::{InstructionAccount, TransactionContext},
     std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc},
 };
 
@@ -680,31 +678,27 @@ impl Mollusk {
         self.sysvars.warp_to_slot(slot)
     }
 
-    /// Process an instruction using the minified Solana Virtual Machine (SVM)
-    /// environment. Simply returns the result.
-    pub fn process_instruction(
-        &self,
-        instruction: &Instruction,
-        accounts: &[(Pubkey, Account)],
-    ) -> InstructionResult {
-        let mut compute_units_consumed = 0;
-        let mut timings = ExecuteTimings::default();
-
-        let loader_key = if crate::program::precompile_keys::is_precompile(&instruction.program_id)
-        {
+    fn get_loader_key(&self, program_id: &Pubkey) -> Pubkey {
+        if crate::program::precompile_keys::is_precompile(program_id) {
             crate::program::loader_keys::NATIVE_LOADER
         } else {
             self.program_cache
-                .load_program(&instruction.program_id)
-                .or_panic_with(MolluskError::ProgramNotCached(&instruction.program_id))
+                .load_program(program_id)
+                .or_panic_with(MolluskError::ProgramNotCached(program_id))
                 .account_owner()
-        };
+        }
+    }
 
-        let CompiledAccounts {
-            program_id_index,
-            instruction_accounts,
-            transaction_accounts,
-        } = crate::compile_accounts::compile_accounts(instruction, accounts, loader_key);
+    fn process_instruction_inner(
+        &self,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+        program_id_index: u16,
+        instruction_accounts: Vec<InstructionAccount>,
+        transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
+    ) -> InstructionResult {
+        let mut compute_units_consumed = 0;
+        let mut timings = ExecuteTimings::default();
 
         let mut transaction_context = TransactionContext::new(
             transaction_accounts,
@@ -805,6 +799,30 @@ impl Mollusk {
         }
     }
 
+    /// Process an instruction using the minified Solana Virtual Machine (SVM)
+    /// environment. Simply returns the result.
+    pub fn process_instruction(
+        &self,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+    ) -> InstructionResult {
+        let loader_key = self.get_loader_key(&instruction.program_id);
+
+        let CompiledAccounts {
+            program_id_index,
+            instruction_accounts,
+            transaction_accounts,
+        } = crate::compile_accounts::compile_accounts(instruction, accounts, loader_key);
+
+        self.process_instruction_inner(
+            instruction,
+            accounts,
+            program_id_index,
+            instruction_accounts,
+            transaction_accounts,
+        )
+    }
+
     /// Process a chain of instructions using the minified Solana Virtual
     /// Machine (SVM) environment. The returned result is an
     /// `InstructionResult`, containing:
@@ -866,7 +884,21 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         checks: &[Check],
     ) -> InstructionResult {
-        let result = self.process_instruction(instruction, accounts);
+        let loader_key = self.get_loader_key(&instruction.program_id);
+
+        let CompiledAccounts {
+            program_id_index,
+            instruction_accounts,
+            transaction_accounts,
+        } = crate::compile_accounts::compile_accounts(instruction, accounts, loader_key);
+
+        let result = self.process_instruction_inner(
+            instruction,
+            accounts,
+            program_id_index,
+            instruction_accounts,
+            transaction_accounts,
+        );
 
         #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
         fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &result);
