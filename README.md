@@ -27,12 +27,13 @@ Four main API methods are offered:
 
 * `process_instruction`: Process an instruction and return the result.
 * `process_and_validate_instruction`: Process an instruction and perform a
-  series of checks on the result, panicking if any checks fail.
+  series of checks on the result. By default, failing checks cause a panic,
+  but this behavior is configurable through `Mollusk::config`.
 * `process_instruction_chain`: Process a chain of instructions and return
   the result.
 * `process_and_validate_instruction_chain`: Process a chain of instructions
-  and perform a series of checks on each result, panicking if any checks
-  fail.
+  and perform a series of checks on each result. By default, failing checks
+  cause a panic, but this behavior is configurable through `Mollusk::config`.
 
 ## Single Instructions
 
