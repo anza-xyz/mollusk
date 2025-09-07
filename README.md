@@ -33,7 +33,8 @@ Four main API methods are offered:
   the result.
 * `process_and_validate_instruction_chain`: Process a chain of instructions
   and perform a series of checks on each result. By default, failing checks
-  cause a panic, but this behavior is configurable through `Mollusk::config`.
+  cause a panic, but this behavior is configurable through
+  `Mollusk::config`.
 
 ## Single Instructions
 

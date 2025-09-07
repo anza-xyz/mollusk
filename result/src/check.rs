@@ -2,7 +2,7 @@
 
 use {
     crate::{
-        config::{CheckContext, Config, compare, throw},
+        config::{compare, throw, CheckContext, Config},
         types::{InstructionResult, ProgramResult},
     },
     solana_account::{Account, ReadableAccount},
@@ -10,6 +10,8 @@ use {
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
 };
+
+type AccountCheckFn = dyn Fn(&[(Pubkey, Account)]) -> bool;
 
 enum CheckType<'a> {
     /// Check the number of compute units consumed by the instruction.
@@ -25,7 +27,7 @@ enum CheckType<'a> {
     /// Check that all accounts are rent exempt.
     AllRentExempt,
     /// Custom check for accounts.
-    Custom((Box<dyn Fn(&[(Pubkey, Account)]) -> bool>, &'static str)),
+    Custom((Box<AccountCheckFn>, &'static str)),
 }
 
 pub struct Check<'a> {
@@ -308,9 +310,9 @@ impl InstructionResult {
                         }
                     }
                 }
-                CheckType::Custom((function, function_name))=>{
-                        println!("Calling {}", *function_name);
-                        pass &= function(&self.resulting_accounts);
+                CheckType::Custom((function, function_name)) => {
+                    println!("Calling {}", *function_name);
+                    pass &= function(&self.resulting_accounts);
                 }
             }
         }
