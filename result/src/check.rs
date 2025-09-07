@@ -2,10 +2,10 @@
 
 use {
     crate::{
-        config::{compare, throw, CheckContext, Config},
+        config::{CheckContext, Config, compare, throw},
         types::{InstructionResult, ProgramResult},
     },
-    solana_account::ReadableAccount,
+    solana_account::{Account, ReadableAccount},
     solana_instruction::error::InstructionError,
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
@@ -22,8 +22,10 @@ enum CheckType<'a> {
     ReturnData(&'a [u8]),
     /// Check a resulting account after executing the instruction.
     ResultingAccount(AccountCheck<'a>),
-    /// Check that all accounts are rent exempt
+    /// Check that all accounts are rent exempt.
     AllRentExempt,
+    /// Custom check for accounts.
+    Custom((Box<dyn Fn(&[(Pubkey, Account)]) -> bool>, &'static str)),
 }
 
 pub struct Check<'a> {
@@ -75,9 +77,17 @@ impl<'a> Check<'a> {
         AccountCheckBuilder::new(pubkey)
     }
 
-    /// Check that all resulting accounts are rent exempt
+    /// Check that all resulting accounts are rent exempt.
     pub fn all_rent_exempt() -> Self {
         Check::new(CheckType::AllRentExempt)
+    }
+
+    /// Custom check for accounts.
+    pub fn custom<F>(function: F, function_name: &'static str) -> Self
+    where
+        F: Fn(&[(Pubkey, Account)]) -> bool + 'static,
+    {
+        Check::new(CheckType::Custom((Box::new(function), function_name)))
     }
 }
 
@@ -297,6 +307,10 @@ impl InstructionResult {
                             );
                         }
                     }
+                }
+                CheckType::Custom((function, function_name))=>{
+                        println!("Calling {}", *function_name);
+                        pass &= function(&self.resulting_accounts);
                 }
             }
         }
