@@ -28,7 +28,6 @@ serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
 ]
-simd-0268 = []
 
 [dependencies]
 agave-feature-set = { workspace = true }
