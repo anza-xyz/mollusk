@@ -195,8 +195,10 @@ mod tests {
     #[test]
     fn test_present_compute_budget_is_passthrough() {
         let mut proto = empty_proto_context();
-        let mut cb = ProtoComputeBudget::default();
-        cb.compute_unit_limit = 12345;
+        let cb = ProtoComputeBudget {
+            compute_unit_limit: 12345,
+            ..Default::default()
+        };
         proto.compute_budget = Some(cb);
 
         // Whether the feature is present or not should not affect passthrough
