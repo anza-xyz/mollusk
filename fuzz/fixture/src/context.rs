@@ -63,18 +63,18 @@ impl From<ProtoContext> for Context {
             )
             .collect();
 
+        let feature_set: FeatureSet = value.feature_set.map(Into::into).unwrap_or_default();
+        let simd_0268_active =
+            feature_set.is_active(&agave_feature_set::raise_cpi_nesting_limit_to_8::id());
+
+        let compute_budget = value
+            .compute_budget
+            .map(Into::into)
+            .unwrap_or_else(|| ComputeBudget::new_with_defaults(simd_0268_active));
+
         Self {
-            compute_budget: value.compute_budget.map(Into::into).unwrap_or_else(|| {
-                #[cfg(feature = "simd-0268")]
-                {
-                    ComputeBudget::new_with_defaults(true)
-                }
-                #[cfg(not(feature = "simd-0268"))]
-                {
-                    ComputeBudget::new_with_defaults(false)
-                }
-            }),
-            feature_set: value.feature_set.map(Into::into).unwrap_or_default(),
+            compute_budget,
+            feature_set,
             sysvars: value.sysvars.map(Into::into).unwrap_or_default(),
             program_id,
             instruction_accounts,
