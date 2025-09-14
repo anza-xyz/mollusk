@@ -112,10 +112,7 @@ mod tests {
     fn test_consistent_hashing() {
         const ITERATIONS: usize = 1000;
 
-        #[cfg(feature = "simd-0268")]
         let compute_budget = ComputeBudget::new_with_defaults(true);
-        #[cfg(not(feature = "simd-0268"))]
-        let compute_budget = ComputeBudget::new_with_defaults(false);
 
         let feature_set = FeatureSet::all_enabled();
         let sysvars = Sysvars::default();
