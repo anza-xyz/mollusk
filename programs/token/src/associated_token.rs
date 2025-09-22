@@ -48,7 +48,7 @@ pub fn create_account_for_associated_token_account(
     let account = Account {
         lamports: Rent::default().minimum_balance(TokenAccount::LEN),
         data,
-        owner: ID,
+        owner: TOKEN_PROGRAM_ID,
         executable: false,
         rent_epoch: 0,
     };
@@ -66,13 +66,17 @@ pub fn create_account_for_associated_token_2022_account(
         &TOKEN_2022_PROGRAM_ID,
     );
 
-    let mut data = vec![0u8; TokenAccount::LEN];
+    // space for immutable owner extension and account type
+    const EXTENDED_ACCOUNT_LEN: usize = TokenAccount::LEN + 5;
+    let mut data = vec![0u8; EXTENDED_ACCOUNT_LEN];
     TokenAccount::pack(token_account_data, &mut data).unwrap();
+    data[TokenAccount::LEN] = 2; // AccountType::Account
+    data[TokenAccount::LEN + 1] = 7; // ExtensionType::ImmutableOwner
 
     let account = Account {
-        lamports: Rent::default().minimum_balance(TokenAccount::LEN),
+        lamports: Rent::default().minimum_balance(EXTENDED_ACCOUNT_LEN),
         data,
-        owner: ID,
+        owner: TOKEN_2022_PROGRAM_ID,
         executable: false,
         rent_epoch: 0,
     };
