@@ -1837,6 +1837,7 @@ dependencies = [
  "rand 0.7.3",
  "rayon",
  "serde",
+ "serde_json",
  "serial_test",
  "solana-account",
  "solana-bpf-loader-program",
@@ -1891,6 +1892,7 @@ dependencies = [
 name = "mollusk-svm-cli"
 version = "0.6.1"
 dependencies = [
+ "bs58",
  "chrono",
  "clap",
  "mollusk-svm",

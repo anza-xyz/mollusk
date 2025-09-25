@@ -18,10 +18,19 @@ mollusk-svm-bencher = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true }
 mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd", "serde"] }
+bs58 = { workspace = true, optional = true }
 solana-logger = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-sdk-ids = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+
+[features]
+default = []
+feature-matrix = [
+    "bs58",
+    "mollusk-svm/feature-matrix",
+    "mollusk-svm/serde",
+]
 
 [[bin]]
 name = "mollusk"

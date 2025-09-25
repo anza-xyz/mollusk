@@ -107,6 +107,32 @@ enum SubCommand {
         #[arg(short, long)]
         verbose: bool,
     },
+    #[cfg(feature = "feature-matrix")]
+    Matrix {
+        #[arg(required = true)]
+        elf_path: String,
+        #[arg(required = true)]
+        fixtures_dir: String,
+        #[arg(value_parser = Pubkey::from_str)]
+        program_id: Pubkey,
+
+        #[arg(long)]
+        baseline_slot: Option<u64>,
+        #[arg(long)]
+        variant: Vec<String>,
+        #[arg(long)]
+        max_cu_delta_abs: Option<u64>,
+        #[arg(long)]
+        max_cu_delta_percent: Option<f32>,
+        #[arg(long)]
+        out_dir: Option<String>,
+        #[arg(long)]
+        markdown: bool,
+        #[arg(long)]
+        json: bool,
+        #[arg(long, default_value = "mollusk")]
+        proto: ProtoLayout,
+    },
 }
 
 #[derive(Parser)]
@@ -227,6 +253,83 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .run_all(Some(&mut mollusk_ground), &mut mollusk_test, &fixtures)?
         }
+        #[cfg(feature = "feature-matrix")]
+        SubCommand::Matrix {
+            elf_path,
+            fixtures_dir,
+            program_id,
+            baseline_slot,
+            variant,
+            max_cu_delta_abs,
+            max_cu_delta_percent,
+            out_dir,
+            markdown,
+            json,
+            proto,
+        } => {
+            use mollusk_svm::feature_matrix::{BaselineConfig, FeatureMatrix, FeatureVariant, ReportConfig, Thresholds};
+            use bs58;
+            let mut mollusk = Mollusk::default();
+            add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
+
+            let baseline = if let Some(slot) = baseline_slot { BaselineConfig::Slot(slot) } else { BaselineConfig::Explicit(mollusk.feature_set.clone()) };
+
+            let mut fm = FeatureMatrix::new(mollusk, baseline).thresholds(Thresholds {
+                max_cu_delta_abs,
+                max_cu_delta_percent,
+                require_result_parity: true,
+            });
+
+            for spec in &variant {
+                let (name, list) = match spec.split_once(':') {
+                    Some(v) => v,
+                    None => {
+                        eprintln!("[matrix] ignoring malformed --variant (missing ':'): {}", spec);
+                        continue;
+                    }
+                };
+                let ids: Vec<solana_pubkey::Pubkey> = list
+                    .split(',')
+                    .filter(|s| !s.is_empty())
+                    .filter_map(|s| bs58::decode(s).into_vec().ok())
+                    .filter(|v| v.len() == 32)
+                    .map(|v| solana_pubkey::Pubkey::new_from_array(v.try_into().unwrap()))
+                    .collect();
+                if ids.is_empty() {
+                    eprintln!("[matrix] ignoring --variant '{}' with no valid feature ids", name);
+                    continue;
+                }
+                fm = fm.variant(FeatureVariant { name: name.to_string(), enable: ids });
+            }
+
+            let fixtures = search_paths(&fixtures_dir, "fix")?;
+            if matches!(proto, ProtoLayout::Firedancer) {
+                eprintln!("[matrix] Firedancer fixtures are not supported by the matrix runner yet. Use --proto mollusk.");
+                std::process::exit(2);
+            }
+
+            let runs = fm.run_with_setup(|_m| {}, |m| {
+                let mut aggregate = mollusk_svm::result::InstructionResult::default();
+                for path in &fixtures {
+                    let fixture = mollusk_svm_fuzz_fixture::Fixture::load_from_blob_file(path);
+                    let res = m.process_fixture(&fixture);
+                    let mut total = aggregate.clone();
+                    total.absorb(res);
+                    aggregate = total;
+                }
+                aggregate
+            });
+
+            let fm = fm.report(ReportConfig {
+                out_dir: out_dir.clone().map(Into::into),
+                markdown,
+                json,
+            }).build();
+
+            let (_md, _js) = fm.generate_reports(&runs);
+        }
+        #[cfg(not(feature = "feature-matrix"))]
+        _ => {}
     }
     Ok(())
 }
