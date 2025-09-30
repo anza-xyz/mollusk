@@ -36,9 +36,7 @@ fn test_featureset_apply_variant_enables_ids() {
     let applied = fm.apply_variant(&base, &v);
     assert!(applied.is_active(&fid));
 
-    // Slot resolution returns a non-empty featureset by default implementation.
     let fs_slot = fm.resolve_baseline_featureset();
-    // Not asserting exact size; ensure type is usable (Active set may be empty on default).
     let _ = fs_slot.runtime_features();
 }
 
@@ -100,8 +98,7 @@ fn test_cu_deltas_and_reports_golden() {
     assert_eq!(*delta_abs, 100);
     assert!(delta_percent.is_some());
     assert!(*pass);
-
-    // Generate in-memory reports (no files).
+ 
     let fm = fm.report(ReportConfig { out_dir: None, markdown: true, json: true }).build();
     let (md, js) = fm.generate_reports(&runs);
     let md = md.expect("markdown");

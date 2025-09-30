@@ -120,10 +120,8 @@ enum SubCommand {
         program_id: Pubkey,
         #[arg(long)]
         variant: Vec<String>,
-        /// Repeatable feature ID to include in the matrix (base58 pubkey)
         #[arg(long)]
         feature: Vec<String>,
-        /// Matrix generation strategy (default: cartesian)
         #[arg(long, default_value = "cartesian")]
         matrix: MatrixStrategy,
         #[arg(long)]
