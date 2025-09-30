@@ -193,7 +193,7 @@ pub struct VariantRun<T> {
 }
 
 impl FeatureMatrix {
-    fn build_mollusk_for_featureset(&self, features: &FeatureSet) -> Mollusk {
+    pub fn build_mollusk_for_featureset(&self, features: &FeatureSet) -> Mollusk {
         let mut mollusk = Mollusk::default();
         mollusk.feature_set = features.clone();
         mollusk.program_cache = ProgramCache::new(&mollusk.feature_set, &mollusk.compute_budget);
