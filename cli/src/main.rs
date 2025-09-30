@@ -329,9 +329,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             for mask in 1..total {
                                 let mut ids = Vec::new();
                                 let mut parts: Vec<String> = Vec::new();
-                                for i in 0..n {
-                                    if (mask >> i) & 1 == 1 {
-                                        let id = feature_ids[i];
+                                for (idx, fid) in feature_ids.iter().enumerate().take(n) {
+                                    if (mask >> idx) & 1 == 1 {
+                                        let id = *fid;
                                         ids.push(id);
                                         let short = bs58::encode(id.to_bytes()).into_string();
                                         parts.push(short.chars().take(8).collect());

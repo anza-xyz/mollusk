@@ -162,7 +162,7 @@ impl FeatureMatrix {
                 .remove(&agave_feature_set::disable_sbpf_v0_execution::id());
             fs.active_mut()
                 .remove(&agave_feature_set::reenable_sbpf_v0_execution::id());
-            return fs;
+            fs
         }
         #[cfg(not(feature = "fuzz"))]
         {
@@ -391,25 +391,23 @@ pub struct MatrixReportJson {
 impl FeatureMatrix {
     fn render_markdown_table(headers: &[&str], rows: &[Vec<String>]) -> String {
         let mut out = String::new();
-        // Header
-        out.push_str("|");
+        out.push('|');
         for h in headers {
-            out.push_str(" ");
+            out.push(' ');
             out.push_str(h);
             out.push_str(" |");
         }
         out.push('\n');
-        // Separator
-        out.push_str("|");
+        out.push('|');
         for _ in headers {
             out.push_str("---|");
         }
         out.push('\n');
         // Rows
         for row in rows {
-            out.push_str("|");
+            out.push('|');
             for cell in row {
-                out.push_str(" ");
+                out.push(' ');
                 out.push_str(cell);
                 out.push_str(" |");
             }
@@ -446,15 +444,12 @@ impl FeatureMatrix {
             &["Variant", "Pass", "ProgramResult", "ReturnData", "Accounts"],
             &diff_rows,
         ));
-        md.push_str("\n");
+        md.push('\n');
 
         // CU summary
         md.push_str("## Compute Units\n\n");
         if let Some(first) = cu.first() {
-            md.push_str(&format!(
-                "Baseline CU: {}\n\n",
-                first.baseline_cu
-            ));
+            md.push_str(&format!("Baseline CU: {}\n\n", first.baseline_cu));
         }
         let cu_rows: Vec<Vec<String>> = cu
             .iter()
