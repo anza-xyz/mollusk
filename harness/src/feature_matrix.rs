@@ -1,8 +1,5 @@
 use {
-    crate::{
-        program::ProgramCache,
-        Mollusk,
-    },
+    crate::{program::ProgramCache, Mollusk},
     agave_feature_set::FeatureSet,
     mollusk_svm_result::{self as result_model, Config as ResultConfig},
     solana_pubkey::Pubkey,
@@ -126,7 +123,9 @@ impl FeatureMatrix {
     }
 
     /// Finalize builder. Execution APIs will be added in subsequent steps.
-    pub fn build(self) -> Self { self }
+    pub fn build(self) -> Self {
+        self
+    }
 
     /// Resolve the baseline `FeatureSet` based on configuration.
     pub fn resolve_baseline_featureset(&self) -> FeatureSet {
@@ -178,7 +177,6 @@ pub trait FeatureSetResolver {
 }
 
 impl FeatureMatrix {
-
     pub fn with_resolver(mut self, resolver: Box<dyn FeatureSetResolver + Send + Sync>) -> Self {
         self.resolver = Some(resolver);
         self
@@ -434,9 +432,21 @@ impl FeatureMatrix {
                 vec![
                     d.variant.clone(),
                     if d.pass { "PASS".into() } else { "FAIL".into() },
-                    if d.fields.program_result { "OK".into() } else { "X".into() },
-                    if d.fields.return_data { "OK".into() } else { "X".into() },
-                    if d.fields.resulting_accounts { "OK".into() } else { "X".into() },
+                    if d.fields.program_result {
+                        "OK".into()
+                    } else {
+                        "X".into()
+                    },
+                    if d.fields.return_data {
+                        "OK".into()
+                    } else {
+                        "X".into()
+                    },
+                    if d.fields.resulting_accounts {
+                        "OK".into()
+                    } else {
+                        "X".into()
+                    },
                 ]
             })
             .collect();
@@ -525,5 +535,3 @@ impl FeatureMatrix {
         (markdown, json_string)
     }
 }
-
-

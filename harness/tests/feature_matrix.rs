@@ -1,7 +1,10 @@
 use {
     agave_feature_set::FeatureSet,
     mollusk_svm::{
-        feature_matrix::{BaselineConfig, CuDeltaEntry, FeatureMatrix, FeatureVariant, ReportConfig, ResultFieldPass, VariantRun},
+        feature_matrix::{
+            BaselineConfig, CuDeltaEntry, FeatureMatrix, FeatureVariant, ReportConfig,
+            ResultFieldPass, VariantRun,
+        },
         result::InstructionResult,
         Mollusk,
     },
@@ -32,7 +35,10 @@ fn test_featureset_apply_variant_enables_ids() {
     let fid = Pubkey::new_unique();
     let base = FeatureSet::default();
     assert!(!base.is_active(&fid));
-    let v = FeatureVariant { name: "v1".into(), enable: vec![fid] };
+    let v = FeatureVariant {
+        name: "v1".into(),
+        enable: vec![fid],
+    };
     let applied = fm.apply_variant(&base, &v);
     assert!(applied.is_active(&fid));
 
@@ -53,9 +59,21 @@ fn test_diff_instruction_results_pass_and_fail() {
     let different = instr_result_with(120, b"nope", &[a0.clone(), a1.clone()]);
 
     let runs = vec![
-        VariantRun { name: "baseline".into(), features: FeatureSet::default(), output: baseline },
-        VariantRun { name: "identical".into(), features: FeatureSet::default(), output: identical },
-        VariantRun { name: "different".into(), features: FeatureSet::default(), output: different },
+        VariantRun {
+            name: "baseline".into(),
+            features: FeatureSet::default(),
+            output: baseline,
+        },
+        VariantRun {
+            name: "identical".into(),
+            features: FeatureSet::default(),
+            output: identical,
+        },
+        VariantRun {
+            name: "different".into(),
+            features: FeatureSet::default(),
+            output: different,
+        },
     ];
 
     let diffs = fm.diff_instruction_results(&runs);
@@ -63,7 +81,14 @@ fn test_diff_instruction_results_pass_and_fail() {
     let d0 = &diffs[0];
     assert_eq!(d0.variant, "identical");
     assert!(d0.pass);
-    assert_eq!(d0.fields, ResultFieldPass { program_result: true, return_data: true, resulting_accounts: true });
+    assert_eq!(
+        d0.fields,
+        ResultFieldPass {
+            program_result: true,
+            return_data: true,
+            resulting_accounts: true
+        }
+    );
     let d1 = &diffs[1];
     assert_eq!(d1.variant, "different");
     assert!(!d1.pass);
@@ -82,24 +107,49 @@ fn test_cu_deltas_and_reports_golden() {
     let v1 = instr_result_with(1100, b"", &[(pk, acc.clone())]);
 
     let runs = vec![
-        VariantRun { name: "baseline".into(), features: FeatureSet::default(), output: baseline },
-        VariantRun { name: "v1".into(), features: FeatureSet::default(), output: v1 },
+        VariantRun {
+            name: "baseline".into(),
+            features: FeatureSet::default(),
+            output: baseline,
+        },
+        VariantRun {
+            name: "v1".into(),
+            features: FeatureSet::default(),
+            output: v1,
+        },
     ];
 
     // Thresholds allow up to 15% increase.
-    fm = fm.thresholds(mollusk_svm::feature_matrix::Thresholds { max_cu_delta_abs: None, max_cu_delta_percent: Some(15.0), require_result_parity: true });
+    fm = fm.thresholds(mollusk_svm::feature_matrix::Thresholds {
+        max_cu_delta_abs: None,
+        max_cu_delta_percent: Some(15.0),
+        require_result_parity: true,
+    });
 
     let cu = fm.cu_deltas(&runs);
     assert_eq!(cu.len(), 1);
-    let CuDeltaEntry { variant, baseline_cu, variant_cu, delta_abs, delta_percent, pass } = &cu[0];
+    let CuDeltaEntry {
+        variant,
+        baseline_cu,
+        variant_cu,
+        delta_abs,
+        delta_percent,
+        pass,
+    } = &cu[0];
     assert_eq!(variant, "v1");
     assert_eq!(*baseline_cu, 1000);
     assert_eq!(*variant_cu, 1100);
     assert_eq!(*delta_abs, 100);
     assert!(delta_percent.is_some());
     assert!(*pass);
- 
-    let fm = fm.report(ReportConfig { out_dir: None, markdown: true, json: true }).build();
+
+    let fm = fm
+        .report(ReportConfig {
+            out_dir: None,
+            markdown: true,
+            json: true,
+        })
+        .build();
     let (md, js) = fm.generate_reports(&runs);
     let md = md.expect("markdown");
     let js = js.expect("json");
@@ -112,5 +162,3 @@ fn test_cu_deltas_and_reports_golden() {
     assert!(js.contains("\"diffs\""));
     assert!(js.contains("\"cu\""));
 }
-
-
