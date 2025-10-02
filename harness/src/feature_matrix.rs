@@ -1,3 +1,9 @@
+//! Feature-activation matrix runner for testing program behavior across different FeatureSet configurations.
+//!
+//! This module provides functionality to run fixtures under different feature combinations
+//! and compare results. Currently only used by the CLI, but kept in the harness for
+//! potential reuse by other tools.
+
 use {
     crate::{program::ProgramCache, Mollusk},
     agave_feature_set::FeatureSet,
@@ -242,16 +248,14 @@ impl FeatureMatrix {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ResultFieldPass {
     pub program_result: bool,
     pub return_data: bool,
     pub resulting_accounts: bool,
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct InstructionDiffEntry {
     pub variant: String,
     pub pass: bool,
@@ -321,8 +325,7 @@ impl FeatureMatrix {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CuDeltaEntry {
     pub variant: String,
     pub baseline_cu: u64,
@@ -378,8 +381,7 @@ impl FeatureMatrix {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct MatrixReportJson {
     pub baseline: String,
     pub diffs: Vec<InstructionDiffEntry>,

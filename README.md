@@ -501,12 +501,16 @@ for file in fs::read_dir(Path::new("fixtures-dir"))? {
 Fixtures can be loaded from files or decoded from raw blobs. These
 capabilities are provided by the respective fixture crates.
 
-## Feature Matrix (gated)
+## CLI
+
+Mollusk CLI (WIP).
+
+### Feature Matrix
 
 The Feature Matrix lets you run fixtures under a baseline FeatureSet and automatically generated feature variants, then compare parity and compute units.
 
-- Gated behind the `feature-matrix` feature in `mollusk-svm` and `mollusk-svm-cli`.
-- Baseline FeatureSet is derived from each fixture’s `SlotContext`/`Context.feature_set` (no CLI slot override).
+- Baseline FeatureSet is derived from each fixture's `SlotContext`/`Context.feature_set`. The matrix toggles the targeted features on and off in separate runs.
+- Cartesian product generation is the default behavior for feature combinations.
 
 CLI example:
 
@@ -517,7 +521,6 @@ mollusk matrix \
   11111111111111111111111111111112 \
   --feature 2yDdYzg56LgRBzX1UeMNcrsXphJ4yTZe4cCvEoGzbXDc \
   --feature 5GDFSoKFJWWEkttfwTwWXfehKH7DGiL9v8bNChjJ5Q5g \
-  --matrix cartesian \
   --max-cu-delta-abs 1000 \
   --max-cu-delta-percent 5.0 \
   --out-dir ./feature-validation-reports \

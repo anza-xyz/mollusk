@@ -439,7 +439,6 @@
 //! Fixtures can be loaded from files or decoded from raw blobs. These
 //! capabilities are provided by the respective fixture crates.
 
-#[cfg(feature = "feature-matrix")]
 pub mod feature_matrix;
 
 pub mod account_store;

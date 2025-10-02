@@ -3,8 +3,6 @@
 mod config;
 mod runner;
 
-#[cfg(feature = "feature-matrix")]
-use clap::ValueEnum;
 use {
     crate::runner::{ProtoLayout, Runner},
     clap::{Parser, Subcommand},
@@ -109,30 +107,34 @@ enum SubCommand {
         #[arg(short, long)]
         verbose: bool,
     },
-    #[cfg(feature = "feature-matrix")]
+    /// Run fixtures under a baseline FeatureSet and automatically generated feature variants, then compare parity and compute units.
     Matrix {
         #[arg(required = true)]
         elf_path: String,
+        /// Path to a directory containing Mollusk fixtures (`.fix` files).
         #[arg(required = true)]
-        fixtures_dir: String,
+        fixture: String,
+        /// The ID to use for the program.
         #[arg(value_parser = Pubkey::from_str)]
         program_id: Pubkey,
-        #[arg(long)]
-        variant: Vec<String>,
+
         #[arg(long)]
         feature: Vec<String>,
-        #[arg(long, default_value = "cartesian")]
-        matrix: MatrixStrategy,
+        /// Maximum absolute compute unit delta threshold for pass/fail.
         #[arg(long)]
         max_cu_delta_abs: Option<u64>,
+        /// Maximum percentage compute unit delta threshold for pass/fail.
         #[arg(long)]
         max_cu_delta_percent: Option<f32>,
+            
         #[arg(long)]
         out_dir: Option<String>,
         #[arg(long)]
         markdown: bool,
+        
         #[arg(long)]
         json: bool,
+        
         #[arg(long, default_value = "mollusk")]
         proto: ProtoLayout,
     },
@@ -144,11 +146,6 @@ struct Cli {
     pub command: SubCommand,
 }
 
-#[cfg(feature = "feature-matrix")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-enum MatrixStrategy {
-    Cartesian,
-}
 
 fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     fn search_path_recursive(
@@ -262,14 +259,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .run_all(Some(&mut mollusk_ground), &mut mollusk_test, &fixtures)?
         }
-        #[cfg(feature = "feature-matrix")]
         SubCommand::Matrix {
             elf_path,
-            fixtures_dir,
+            fixture,
             program_id,
-            variant,
             feature,
-            matrix,
             max_cu_delta_abs,
             max_cu_delta_percent,
             out_dir,
@@ -295,36 +289,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             });
 
             let mut variants_list: Vec<FeatureVariant> = Vec::new();
-            for spec in &variant {
-                let (name, list) = match spec.split_once(':') {
-                    Some(v) => v,
-                    None => {
-                        eprintln!(
-                            "[matrix] ignoring malformed --variant (missing ':'): {}",
-                            spec
-                        );
-                        continue;
-                    }
-                };
-                let ids: Vec<solana_pubkey::Pubkey> = list
-                    .split(',')
-                    .filter(|s| !s.is_empty())
-                    .filter_map(|s| bs58::decode(s).into_vec().ok())
-                    .filter(|v| v.len() == 32)
-                    .map(|v| solana_pubkey::Pubkey::new_from_array(v.try_into().unwrap()))
-                    .collect();
-                if ids.is_empty() {
-                    eprintln!(
-                        "[matrix] ignoring --variant '{}' with no valid feature ids",
-                        name
-                    );
-                    continue;
-                }
-                variants_list.push(FeatureVariant {
-                    name: name.to_string(),
-                    enable: ids,
-                });
-            }
             if !feature.is_empty() {
                 let feature_ids: Vec<solana_pubkey::Pubkey> = feature
                     .iter()
@@ -333,35 +297,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .map(|v| solana_pubkey::Pubkey::new_from_array(v.try_into().unwrap()))
                     .collect();
                 if feature_ids.is_empty() {
-                    eprintln!("[matrix] no valid --feature ids provided");
+                    println!("[matrix] no valid --feature ids provided");
                 } else {
-                    match matrix {
-                        MatrixStrategy::Cartesian => {
-                            let n = feature_ids.len();
-                            let total = 1usize << n;
-                            for mask in 1..total {
-                                let mut ids = Vec::new();
-                                let mut parts: Vec<String> = Vec::new();
-                                for (idx, fid) in feature_ids.iter().enumerate().take(n) {
-                                    if (mask >> idx) & 1 == 1 {
-                                        let id = *fid;
-                                        ids.push(id);
-                                        let short = bs58::encode(id.to_bytes()).into_string();
-                                        parts.push(short.chars().take(8).collect());
-                                    }
-                                }
-                                let name = parts.join("+");
-                                variants_list.push(FeatureVariant { name, enable: ids });
+                    // Always use cartesian product generation
+                    let n = feature_ids.len();
+                    let total = 1usize << n;
+                    for mask in 1..total {
+                        let mut ids = Vec::new();
+                        let mut parts: Vec<String> = Vec::new();
+                        for (idx, fid) in feature_ids.iter().enumerate().take(n) {
+                            if (mask >> idx) & 1 == 1 {
+                                let id = *fid;
+                                ids.push(id);
+                                let short = bs58::encode(id.to_bytes()).into_string();
+                                parts.push(short.chars().take(8).collect());
                             }
                         }
+                        let name = parts.join("+");
+                        variants_list.push(FeatureVariant { name, enable: ids });
                     }
                 }
             }
 
-            let fixtures = search_paths(&fixtures_dir, "fix")?;
+            let fixtures = search_paths(&fixture, "fix")?;
             if matches!(proto, ProtoLayout::Firedancer) {
-                eprintln!("[matrix] Firedancer fixtures are not supported by the matrix runner yet. Use --proto mollusk.");
-                std::process::exit(2);
+                println!("[matrix] Firedancer fixtures are not supported by the matrix runner yet. Use --proto mollusk.");
+                std::process::exit(1);
             }
 
             use std::collections::HashMap;
@@ -426,8 +387,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let (_md, _js) = fm.generate_reports(&runs);
         }
-        #[cfg(not(feature = "feature-matrix"))]
-        _ => {}
     }
     Ok(())
 }
@@ -437,8 +396,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(feature = "feature-matrix")]
-    fn test_matrix_parsing_with_features_and_strategy() {
+    fn test_matrix_parsing_with_features() {
         let args = vec![
             "mollusk",
             "matrix",
@@ -449,8 +407,6 @@ mod tests {
             "2yDdYzg56LgRBzX1UeMNcrsXphJ4yTZe4cCvEoGzbXDc",
             "--feature",
             "5GDFSoKFJWWEkttfwTwWXfehKH7DGiL9v8bNChjJ5Q5g",
-            "--matrix",
-            "cartesian",
             "--markdown",
         ];
 
@@ -459,7 +415,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "feature-matrix")]
     fn test_matrix_rejects_baseline_slot_flag() {
         let args = vec![
             "mollusk",
