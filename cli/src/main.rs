@@ -107,7 +107,8 @@ enum SubCommand {
         #[arg(short, long)]
         verbose: bool,
     },
-    /// Run fixtures under a baseline FeatureSet and automatically generated feature variants, then compare parity and compute units.
+    /// Run fixtures under a baseline FeatureSet and automatically generated
+    /// feature variants, then compare parity and compute units.
     Matrix {
         #[arg(required = true)]
         elf_path: String,
@@ -126,15 +127,15 @@ enum SubCommand {
         /// Maximum percentage compute unit delta threshold for pass/fail.
         #[arg(long)]
         max_cu_delta_percent: Option<f32>,
-            
+
         #[arg(long)]
         out_dir: Option<String>,
         #[arg(long)]
         markdown: bool,
-        
+
         #[arg(long)]
         json: bool,
-        
+
         #[arg(long, default_value = "mollusk")]
         proto: ProtoLayout,
     },
@@ -145,7 +146,6 @@ struct Cli {
     #[clap(subcommand)]
     pub command: SubCommand,
 }
-
 
 fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     fn search_path_recursive(
@@ -271,9 +271,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             json,
             proto,
         } => {
-            use bs58;
-            use mollusk_svm::feature_matrix::{
-                BaselineConfig, FeatureMatrix, FeatureVariant, ReportConfig, Thresholds,
+            use {
+                bs58,
+                mollusk_svm::feature_matrix::{
+                    BaselineConfig, FeatureMatrix, FeatureVariant, ReportConfig, Thresholds,
+                },
             };
             let mut mollusk = Mollusk::default();
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
@@ -321,7 +323,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let fixtures = search_paths(&fixture, "fix")?;
             if matches!(proto, ProtoLayout::Firedancer) {
-                println!("[matrix] Firedancer fixtures are not supported by the matrix runner yet. Use --proto mollusk.");
+                println!(
+                    "[matrix] Firedancer fixtures are not supported by the matrix runner yet. Use \
+                     --proto mollusk."
+                );
                 std::process::exit(1);
             }
 

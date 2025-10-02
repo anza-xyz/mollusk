@@ -1,8 +1,9 @@
-//! Feature-activation matrix runner for testing program behavior across different FeatureSet configurations.
+//! Feature-activation matrix runner for testing program behavior across
+//! different FeatureSet configurations.
 //!
-//! This module provides functionality to run fixtures under different feature combinations
-//! and compare results. Currently only used by the CLI, but kept in the harness for
-//! potential reuse by other tools.
+//! This module provides functionality to run fixtures under different feature
+//! combinations and compare results. Currently only used by the CLI, but kept
+//! in the harness for potential reuse by other tools.
 
 use {
     crate::{program::ProgramCache, Mollusk},
@@ -141,7 +142,8 @@ impl FeatureMatrix {
         }
     }
 
-    /// Apply a `FeatureVariant` on top of a `FeatureSet` and return the new set.
+    /// Apply a `FeatureVariant` on top of a `FeatureSet` and return the new
+    /// set.
     pub fn apply_variant(&self, base: &FeatureSet, variant: &FeatureVariant) -> FeatureSet {
         if variant.enable.is_empty() {
             return base.clone();
@@ -204,11 +206,13 @@ impl FeatureMatrix {
         mollusk
     }
 
-    /// Execute a user-provided setup and test against the baseline and all variants.
+    /// Execute a user-provided setup and test against the baseline and all
+    /// variants.
     ///
-    /// `setup` should load programs and prepare any required state on the provided
-    /// Mollusk instance (e.g., `add_program`, context wiring, etc.).
-    /// `exec` runs the actual test/fixture and returns an output value.
+    /// `setup` should load programs and prepare any required state on the
+    /// provided Mollusk instance (e.g., `add_program`, context wiring,
+    /// etc.). `exec` runs the actual test/fixture and returns an output
+    /// value.
     pub fn run_with_setup<T, S, E>(&self, setup: S, exec: E) -> Vec<VariantRun<T>>
     where
         S: Fn(&mut Mollusk),
@@ -282,8 +286,8 @@ impl FeatureMatrix {
     /// Produce per-variant diffs against the baseline for core fields.
     ///
     /// Fields covered: program result, return data, resulting accounts.
-    /// (Err index and logs are not part of `InstructionResult`; can be added via
-    /// extended outputs in the caller if needed.)
+    /// (Err index and logs are not part of `InstructionResult`; can be added
+    /// via extended outputs in the caller if needed.)
     pub fn diff_instruction_results(
         &self,
         runs: &[VariantRun<result_model::InstructionResult>],
@@ -484,8 +488,9 @@ impl FeatureMatrix {
         md
     }
 
-    /// Generate reports (Markdown/JSON) for a set of variant runs whose output is `InstructionResult`.
-    /// Writes to `report.out_dir` when configured and returns the rendered content strings.
+    /// Generate reports (Markdown/JSON) for a set of variant runs whose output
+    /// is `InstructionResult`. Writes to `report.out_dir` when configured
+    /// and returns the rendered content strings.
     pub fn generate_reports(
         &self,
         runs: &[VariantRun<result_model::InstructionResult>],

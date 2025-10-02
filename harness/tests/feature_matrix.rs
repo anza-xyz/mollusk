@@ -31,7 +31,8 @@ fn test_featureset_apply_variant_enables_ids() {
     let baseline = BaselineConfig::Explicit(FeatureSet::default());
     let fm = FeatureMatrix::new(mollusk, baseline);
 
-    // Create a random feature id to enable (not asserting semantics, only insertion).
+    // Create a random feature id to enable (not asserting semantics, only
+    // insertion).
     let fid = Pubkey::new_unique();
     let base = FeatureSet::default();
     assert!(!base.is_active(&fid));
