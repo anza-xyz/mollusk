@@ -12,6 +12,7 @@ version = { workspace = true }
 [features]
 default = []
 all-builtins = [
+    "dep:solana-loader-v4-program",
     "dep:solana-stake-program",
 ]
 fuzz = [
@@ -52,6 +53,7 @@ solana-instruction = { workspace = true }
 solana-instruction-error = { workspace = true, features = ["serde"] }
 solana-loader-v3-interface = { workspace = true, features = ["serde"] }
 solana-loader-v4-interface = { workspace = true }
+solana-loader-v4-program = { workspace = true, optional = true }
 solana-logger = { workspace = true }
 solana-precompile-error = { workspace = true }
 solana-program-error = { workspace = true }

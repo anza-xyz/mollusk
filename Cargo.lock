@@ -1850,6 +1850,7 @@ dependencies = [
  "solana-instruction-error",
  "solana-loader-v3-interface",
  "solana-loader-v4-interface",
+ "solana-loader-v4-program",
  "solana-logger",
  "solana-native-token",
  "solana-precompile-error",
@@ -3496,6 +3497,31 @@ dependencies = [
  "solana-pubkey",
  "solana-sdk-ids",
  "solana-system-interface",
+]
+
+[[package]]
+name = "solana-loader-v4-program"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "293c1a6fb01621bbe24926440766ad1810f922c34b7512884602cbc1330c2aee"
+dependencies = [
+ "log",
+ "qualifier_attr",
+ "solana-account",
+ "solana-bincode",
+ "solana-bpf-loader-program",
+ "solana-instruction",
+ "solana-loader-v3-interface",
+ "solana-loader-v4-interface",
+ "solana-packet",
+ "solana-program-runtime",
+ "solana-pubkey",
+ "solana-sbpf",
+ "solana-sdk-ids",
+ "solana-svm-log-collector",
+ "solana-svm-measure",
+ "solana-svm-type-overrides",
+ "solana-transaction-context",
 ]
 
 [[package]]
