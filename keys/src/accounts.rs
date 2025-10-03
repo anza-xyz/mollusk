@@ -2,7 +2,7 @@
 
 use {
     crate::keys::KeyMap,
-    mollusk_svm_error::error::{MolluskError, MolluskPanic},
+    mollusk_svm_error::error::MolluskError,
     solana_account::{Account, AccountSharedData},
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
@@ -56,17 +56,22 @@ pub fn compile_transaction_accounts_for_instruction(
     key_map
         .keys()
         .map(|key| {
-            if let Some(stub_out_program_account) = &stub_out_program_account {
-                if instruction.program_id == *key {
-                    return (*key, stub_out_program_account().into());
-                }
-            }
             let account = accounts
                 .iter()
                 .find(|(k, _)| k == key)
-                .map(|(_, account)| AccountSharedData::from(account.clone()))
-                .or_panic_with(MolluskError::AccountMissing(key));
-            (*key, account)
+                .map(|(_, account)| AccountSharedData::from(account.clone()));
+
+            if let Some(account) = account {
+                (*key, account)
+            } else if let Some(stub_out_program_account) = &stub_out_program_account {
+                if instruction.program_id == *key {
+                    (*key, stub_out_program_account().into())
+                } else {
+                    panic!("{}", MolluskError::AccountMissing(key))
+                }
+            } else {
+                panic!("{}", MolluskError::AccountMissing(key))
+            }
         })
         .collect()
 }
@@ -80,17 +85,22 @@ pub fn compile_transaction_accounts(
     key_map
         .keys()
         .map(|key| {
-            if let Some(stub_out_program_account) = &stub_out_program_account {
-                if instructions.iter().any(|ix| ix.program_id == *key) {
-                    return (*key, stub_out_program_account().into());
-                }
-            }
             let account = accounts
                 .iter()
                 .find(|(k, _)| k == key)
-                .map(|(_, account)| AccountSharedData::from(account.clone()))
-                .or_panic_with(MolluskError::AccountMissing(key));
-            (*key, account)
+                .map(|(_, account)| AccountSharedData::from(account.clone()));
+
+            if let Some(account) = account {
+                (*key, account)
+            } else if let Some(stub_out_program_account) = &stub_out_program_account {
+                if instructions.iter().any(|ix| ix.program_id == *key) {
+                    (*key, stub_out_program_account().into())
+                } else {
+                    panic!("{}", MolluskError::AccountMissing(key))
+                }
+            } else {
+                panic!("{}", MolluskError::AccountMissing(key))
+            }
         })
         .collect()
 }

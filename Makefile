@@ -82,6 +82,10 @@ clippy-fix:
 check-features:
 	@cargo hack check --feature-powerset --no-dev-deps
 
+build:
+	@$(MAKE) build-test-programs
+	@cargo build
+
 test:
 	@$(MAKE) build-test-programs
 	@cargo test --all-features
