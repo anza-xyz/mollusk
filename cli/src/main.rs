@@ -107,6 +107,38 @@ enum SubCommand {
         #[arg(short, long)]
         verbose: bool,
     },
+    /// Run fixtures under a baseline FeatureSet and automatically generated
+    /// feature variants, then compare parity and compute units.
+    Matrix {
+        #[arg(required = true)]
+        elf_path: String,
+        /// Path to a directory containing Mollusk fixtures (`.fix` files).
+        #[arg(required = true)]
+        fixture: String,
+        /// The ID to use for the program.
+        #[arg(value_parser = Pubkey::from_str)]
+        program_id: Pubkey,
+
+        #[arg(long)]
+        feature: Vec<String>,
+        /// Maximum absolute compute unit delta threshold for pass/fail.
+        #[arg(long)]
+        max_cu_delta_abs: Option<u64>,
+        /// Maximum percentage compute unit delta threshold for pass/fail.
+        #[arg(long)]
+        max_cu_delta_percent: Option<f32>,
+
+        #[arg(long)]
+        out_dir: Option<String>,
+        #[arg(long)]
+        markdown: bool,
+
+        #[arg(long)]
+        json: bool,
+
+        #[arg(long, default_value = "mollusk")]
+        proto: ProtoLayout,
+    },
 }
 
 #[derive(Parser)]
@@ -227,6 +259,178 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .run_all(Some(&mut mollusk_ground), &mut mollusk_test, &fixtures)?
         }
+        SubCommand::Matrix {
+            elf_path,
+            fixture,
+            program_id,
+            feature,
+            max_cu_delta_abs,
+            max_cu_delta_percent,
+            out_dir,
+            markdown,
+            json,
+            proto,
+        } => {
+            use {
+                bs58,
+                mollusk_svm::feature_matrix::{
+                    BaselineConfig, FeatureMatrix, FeatureVariant, ReportConfig, Thresholds,
+                },
+            };
+            let mut mollusk = Mollusk::default();
+            add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
+
+            let fm = FeatureMatrix::new(
+                mollusk,
+                BaselineConfig::Explicit(mollusk_svm::Mollusk::default().feature_set.clone()),
+            )
+            .thresholds(Thresholds {
+                max_cu_delta_abs,
+                max_cu_delta_percent,
+                require_result_parity: true,
+            });
+
+            let mut variants_list: Vec<FeatureVariant> = Vec::new();
+            if !feature.is_empty() {
+                let feature_ids: Vec<solana_pubkey::Pubkey> = feature
+                    .iter()
+                    .filter_map(|s| bs58::decode(s).into_vec().ok())
+                    .filter(|v| v.len() == 32)
+                    .map(|v| solana_pubkey::Pubkey::new_from_array(v.try_into().unwrap()))
+                    .collect();
+                if feature_ids.is_empty() {
+                    println!("[matrix] no valid --feature ids provided");
+                } else {
+                    // Always use cartesian product generation
+                    let n = feature_ids.len();
+                    let total = 1usize << n;
+                    for mask in 1..total {
+                        let mut ids = Vec::new();
+                        let mut parts: Vec<String> = Vec::new();
+                        for (idx, fid) in feature_ids.iter().enumerate().take(n) {
+                            if (mask >> idx) & 1 == 1 {
+                                let id = *fid;
+                                ids.push(id);
+                                let short = bs58::encode(id.to_bytes()).into_string();
+                                parts.push(short.chars().take(8).collect());
+                            }
+                        }
+                        let name = parts.join("+");
+                        variants_list.push(FeatureVariant { name, enable: ids });
+                    }
+                }
+            }
+
+            let fixtures = search_paths(&fixture, "fix")?;
+            if matches!(proto, ProtoLayout::Firedancer) {
+                println!(
+                    "[matrix] Firedancer fixtures are not supported by the matrix runner yet. Use \
+                     --proto mollusk."
+                );
+                std::process::exit(1);
+            }
+
+            use std::collections::HashMap;
+            let mut aggregates: HashMap<String, mollusk_svm::result::InstructionResult> =
+                HashMap::new();
+            aggregates.entry("baseline".to_string()).or_default();
+            for v in &variants_list {
+                aggregates.entry(v.name.clone()).or_default();
+            }
+
+            for path in &fixtures {
+                let fixture = mollusk_svm_fuzz_fixture::Fixture::load_from_blob_file(path);
+                let base_fs = fixture.input.feature_set.clone();
+
+                {
+                    let features = base_fs.clone();
+                    let mut m = fm.build_mollusk_for_featureset(&features);
+                    add_elf_to_mollusk(&mut m, &elf_path, &program_id);
+                    let res = m.process_fixture(&fixture);
+                    let entry = aggregates.entry("baseline".to_string()).or_default();
+                    let mut total = entry.clone();
+                    total.absorb(res);
+                    *entry = total;
+                }
+
+                for v in &variants_list {
+                    let features = fm.apply_variant(&base_fs, v);
+                    let mut m = fm.build_mollusk_for_featureset(&features);
+                    add_elf_to_mollusk(&mut m, &elf_path, &program_id);
+                    let res = m.process_fixture(&fixture);
+                    let entry = aggregates.entry(v.name.clone()).or_default();
+                    let mut total = entry.clone();
+                    total.absorb(res);
+                    *entry = total;
+                }
+            }
+
+            let mut runs: Vec<
+                mollusk_svm::feature_matrix::VariantRun<mollusk_svm::result::InstructionResult>,
+            > = Vec::new();
+            let meta_base = fm.resolve_baseline_featureset();
+            runs.push(mollusk_svm::feature_matrix::VariantRun {
+                name: "baseline".to_string(),
+                features: meta_base.clone(),
+                output: aggregates.remove("baseline").unwrap_or_default(),
+            });
+            for v in variants_list {
+                runs.push(mollusk_svm::feature_matrix::VariantRun {
+                    name: v.name.clone(),
+                    features: meta_base.clone(),
+                    output: aggregates.remove(&v.name).unwrap_or_default(),
+                });
+            }
+
+            let fm = fm
+                .report(ReportConfig {
+                    out_dir: out_dir.clone().map(Into::into),
+                    markdown,
+                    json,
+                })
+                .build();
+
+            let (_md, _js) = fm.generate_reports(&runs);
+        }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_matrix_parsing_with_features() {
+        let args = vec![
+            "mollusk",
+            "matrix",
+            "./programs/token/src/elf/token.so",
+            "./harness/tests",
+            "11111111111111111111111111111112",
+            "--feature",
+            "2yDdYzg56LgRBzX1UeMNcrsXphJ4yTZe4cCvEoGzbXDc",
+            "--feature",
+            "5GDFSoKFJWWEkttfwTwWXfehKH7DGiL9v8bNChjJ5Q5g",
+            "--markdown",
+        ];
+
+        let parsed = Cli::try_parse_from(args);
+        assert!(parsed.is_ok());
+    }
+
+    #[test]
+    fn test_matrix_rejects_baseline_slot_flag() {
+        let args = vec![
+            "mollusk",
+            "matrix",
+            "./programs/token/src/elf/token.so",
+            "./harness/tests",
+            "11111111111111111111111111111112",
+            "--baseline-slot",
+            "250000000",
+        ];
+        let parsed = Cli::try_parse_from(args);
+        assert!(parsed.is_err());
+    }
 }
