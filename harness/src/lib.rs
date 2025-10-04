@@ -673,7 +673,7 @@ impl Mollusk {
         mut observer: F,
     ) -> InstructionResult
     where
-        F: FnMut(&InstructionResult, &InvokeContext),
+        F: FnMut(&Instruction, &InstructionResult, &InvokeContext),
     {
         let mut compute_units_consumed = 0;
         let mut timings = ExecuteTimings::default();
@@ -795,7 +795,7 @@ impl Mollusk {
                 resulting_accounts,
             };
 
-            observer(&instruction_result, &invoke_context);
+            observer(instruction, &instruction_result, &invoke_context);
 
             instruction_result
         };
@@ -810,7 +810,7 @@ impl Mollusk {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        self.process_instruction_core(instruction, accounts, |_, _| {})
+        self.process_instruction_core(instruction, accounts, |_, _, _| {})
     }
 
     /// Process a chain of instructions using the minified Solana Virtual
@@ -892,12 +892,12 @@ impl Mollusk {
         observer: F,
     ) -> InstructionResult
     where
-        F: FnOnce(&InstructionResult, &InvokeContext),
+        F: FnOnce(&Instruction, &InstructionResult, &InvokeContext),
     {
         let mut maybe = Some(observer);
-        let result = self.process_instruction_core(instruction, accounts, |r, ctx| {
+        let result = self.process_instruction_core(instruction, accounts, |instr, r, ctx| {
             if let Some(f) = maybe.take() {
-                f(r, ctx);
+                f(instr, r, ctx);
             }
         });
 
@@ -967,7 +967,7 @@ impl Mollusk {
         mut observer: F,
     ) -> InstructionResult
     where
-        F: FnMut(usize, &InstructionResult, &InvokeContext),
+        F: FnMut(usize, &Instruction, &InstructionResult, &InvokeContext),
     {
         let mut result = InstructionResult {
             resulting_accounts: accounts.to_vec(),
@@ -975,10 +975,11 @@ impl Mollusk {
         };
 
         for (index, (instruction, checks)) in instructions.iter().enumerate() {
-            let this_result =
-                self.process_instruction_core(instruction, &result.resulting_accounts, |r, ctx| {
-                    observer(index, r, ctx)
-                });
+            let this_result = self.process_instruction_core(
+                instruction,
+                &result.resulting_accounts,
+                |instr, r, ctx| observer(index, instr, r, ctx),
+            );
 
             #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
             fuzz::generate_fixtures_from_mollusk_test(
@@ -1400,7 +1401,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
         observer: F,
     ) -> InstructionResult
     where
-        F: FnOnce(&InstructionResult, &InvokeContext),
+        F: FnOnce(&Instruction, &InstructionResult, &InvokeContext),
     {
         let accounts = self.load_accounts_for_instructions(once(instruction));
         let result = self.mollusk.process_and_validate_instruction_with_observer(
@@ -1421,7 +1422,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
         observer: F,
     ) -> InstructionResult
     where
-        F: FnMut(usize, &InstructionResult, &InvokeContext),
+        F: FnMut(usize, &Instruction, &InstructionResult, &InvokeContext),
     {
         let accounts = self.load_accounts_for_instructions(
             instructions.iter().map(|(instruction, _)| *instruction),
