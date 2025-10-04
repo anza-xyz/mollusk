@@ -1390,4 +1390,50 @@ impl<AS: AccountStore> MolluskContext<AS> {
         self.consume_mollusk_result(&result);
         result
     }
+
+    /// Process an instruction using the minified Solana Virtual Machine (SVM)
+    /// environment with a per-call observer, then perform checks on the result.
+    pub fn process_and_validate_instruction_with_observer<F>(
+        &self,
+        instruction: &Instruction,
+        checks: &[Check],
+        observer: F,
+    ) -> InstructionResult
+    where
+        F: FnOnce(&InstructionResult, &InvokeContext),
+    {
+        let accounts = self.load_accounts_for_instructions(once(instruction));
+        let result = self.mollusk.process_and_validate_instruction_with_observer(
+            instruction,
+            &accounts,
+            checks,
+            observer,
+        );
+        self.consume_mollusk_result(&result);
+        result
+    }
+
+    /// Process a chain of instructions with a per-call observer invoked for each step,
+    /// then perform checks on each step's result.
+    pub fn process_and_validate_instruction_chain_with_observer<F>(
+        &self,
+        instructions: &[(&Instruction, &[Check])],
+        observer: F,
+    ) -> InstructionResult
+    where
+        F: FnMut(usize, &InstructionResult, &InvokeContext),
+    {
+        let accounts = self.load_accounts_for_instructions(
+            instructions.iter().map(|(instruction, _)| *instruction),
+        );
+        let result = self
+            .mollusk
+            .process_and_validate_instruction_chain_with_observer(
+                instructions,
+                &accounts,
+                observer,
+            );
+        self.consume_mollusk_result(&result);
+        result
+    }
 }
