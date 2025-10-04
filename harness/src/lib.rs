@@ -661,13 +661,20 @@ impl Mollusk {
         self.sysvars.warp_to_slot(slot)
     }
 
-    /// Process an instruction using the minified Solana Virtual Machine (SVM)
-    /// environment. Simply returns the result.
-    pub fn process_instruction(
+    /// Core instruction processor with an observer hook.
+    ///
+    /// The observer is invoked once per processed instruction with the final
+    /// `InstructionResult` and a reference to the live `InvokeContext` so
+    /// consumers can inspect accounts, logs, and execution internals.
+    fn process_instruction_core<F>(
         &self,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
-    ) -> InstructionResult {
+        mut observer: F,
+    ) -> InstructionResult
+    where
+        F: FnMut(&InstructionResult, &InvokeContext),
+    {
         let mut compute_units_consumed = 0;
         let mut timings = ExecuteTimings::default();
 
@@ -694,7 +701,7 @@ impl Mollusk {
             self.compute_budget.max_instruction_trace_length,
         );
 
-        let invoke_result = {
+        let result: InstructionResult = {
             let mut program_cache = self.program_cache.cache();
             let callback = MolluskInvokeContextCallback {
                 epoch_stake: &self.epoch_stake,
@@ -735,7 +742,7 @@ impl Mollusk {
                 &invoke_context,
             );
 
-            let result = if invoke_context.is_precompile(&instruction.program_id) {
+            let invoke_result = if invoke_context.is_precompile(&instruction.program_id) {
                 invoke_context.process_precompile(
                     &instruction.program_id,
                     &instruction.data,
@@ -749,41 +756,61 @@ impl Mollusk {
             self.invocation_inspect_callback
                 .after_invocation(&invoke_context);
 
-            result
+            let return_data = invoke_context
+                .transaction_context
+                .get_return_data()
+                .1
+                .to_vec();
+
+            let resulting_accounts: Vec<(Pubkey, Account)> = if invoke_result.is_ok() {
+                accounts
+                    .iter()
+                    .map(|(pubkey, account)| {
+                        invoke_context
+                            .transaction_context
+                            .find_index_of_account(pubkey)
+                            .map(|index| {
+                                let resulting_account = invoke_context
+                                    .transaction_context
+                                    .accounts()
+                                    .try_borrow(index)
+                                    .unwrap()
+                                    .clone()
+                                    .into();
+                                (*pubkey, resulting_account)
+                            })
+                            .unwrap_or((*pubkey, account.clone()))
+                    })
+                    .collect()
+            } else {
+                accounts.to_vec()
+            };
+
+            let instruction_result = InstructionResult {
+                compute_units_consumed,
+                execution_time: timings.details.execute_us.0,
+                program_result: invoke_result.clone().into(),
+                raw_result: invoke_result,
+                return_data,
+                resulting_accounts,
+            };
+
+            observer(&instruction_result, &invoke_context);
+
+            instruction_result
         };
 
-        let return_data = transaction_context.get_return_data().1.to_vec();
+        result
+    }
 
-        let resulting_accounts: Vec<(Pubkey, Account)> = if invoke_result.is_ok() {
-            accounts
-                .iter()
-                .map(|(pubkey, account)| {
-                    transaction_context
-                        .find_index_of_account(pubkey)
-                        .map(|index| {
-                            let resulting_account = transaction_context
-                                .accounts()
-                                .try_borrow(index)
-                                .unwrap()
-                                .clone()
-                                .into();
-                            (*pubkey, resulting_account)
-                        })
-                        .unwrap_or((*pubkey, account.clone()))
-                })
-                .collect()
-        } else {
-            accounts.to_vec()
-        };
-
-        InstructionResult {
-            compute_units_consumed,
-            execution_time: timings.details.execute_us.0,
-            program_result: invoke_result.clone().into(),
-            raw_result: invoke_result,
-            return_data,
-            resulting_accounts,
-        }
+    /// Process an instruction using the minified Solana Virtual Machine (SVM)
+    /// environment. Simply returns the result.
+    pub fn process_instruction(
+        &self,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+    ) -> InstructionResult {
+        self.process_instruction_core(instruction, accounts, |_, _| {})
     }
 
     /// Process a chain of instructions using the minified Solana Virtual
@@ -856,6 +883,31 @@ impl Mollusk {
         result
     }
 
+    /// Process and validate with a per-call observer hook.
+    pub fn process_and_validate_instruction_with_observer<F>(
+        &self,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+        checks: &[Check],
+        observer: F,
+    ) -> InstructionResult
+    where
+        F: FnOnce(&InstructionResult, &InvokeContext),
+    {
+        let mut maybe = Some(observer);
+        let result = self.process_instruction_core(instruction, accounts, |r, ctx| {
+            if let Some(f) = maybe.take() {
+                f(r, ctx);
+            }
+        });
+
+        #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
+        fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &result);
+
+        result.run_checks(checks, &self.config, self);
+        result
+    }
+
     /// Process a chain of instructions using the minified Solana Virtual
     /// Machine (SVM) environment, then perform checks on the result.
     /// Panics if any checks fail.
@@ -896,6 +948,47 @@ impl Mollusk {
                 &result.resulting_accounts,
                 checks,
             );
+
+            result.absorb(this_result);
+
+            if result.program_result.is_err() {
+                break;
+            }
+        }
+
+        result
+    }
+
+    /// Process and validate a chain with a per-call observer hook invoked for each step.
+    pub fn process_and_validate_instruction_chain_with_observer<F>(
+        &self,
+        instructions: &[(&Instruction, &[Check])],
+        accounts: &[(Pubkey, Account)],
+        mut observer: F,
+    ) -> InstructionResult
+    where
+        F: FnMut(usize, &InstructionResult, &InvokeContext),
+    {
+        let mut result = InstructionResult {
+            resulting_accounts: accounts.to_vec(),
+            ..Default::default()
+        };
+
+        for (index, (instruction, checks)) in instructions.iter().enumerate() {
+            let this_result =
+                self.process_instruction_core(instruction, &result.resulting_accounts, |r, ctx| {
+                    observer(index, r, ctx)
+                });
+
+            #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
+            fuzz::generate_fixtures_from_mollusk_test(
+                self,
+                instruction,
+                &result.resulting_accounts,
+                &this_result,
+            );
+
+            this_result.run_checks(checks, &self.config, self);
 
             result.absorb(this_result);
 
