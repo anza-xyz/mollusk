@@ -81,7 +81,8 @@ impl FeatureMatrix {
         }
     }
 
-    /// Apply a `FeatureVariant` on top of a `FeatureSet` and return the new set.
+    /// Apply a `FeatureVariant` on top of a `FeatureSet` and return the new
+    /// set.
     pub fn apply_variant(&self, base: &FeatureSet, variant: &FeatureVariant) -> FeatureSet {
         if variant.enable.is_empty() {
             return base.clone();

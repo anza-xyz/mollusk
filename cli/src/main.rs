@@ -114,7 +114,8 @@ enum SubCommand {
         /// The path to the ELF file.
         #[arg(required = true)]
         elf_path: String,
-        /// Path to an instruction fixture (`.fix` file) or a directory containing them.
+        /// Path to an instruction fixture (`.fix` file) or a directory
+        /// containing them.
         #[arg(required = true)]
         fixture: String,
         /// The ID to use for the program.
@@ -278,8 +279,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             json,
             proto,
         } => {
-            use crate::matrix;
-            use bs58;
+            use {crate::matrix, bs58};
             let mut mollusk = Mollusk::default();
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
@@ -338,7 +338,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let fixtures = search_paths(&fixture, "fix")?;
             if matches!(proto, ProtoLayout::Firedancer) {
-                return Err("Firedancer fixtures are not supported by the matrix runner yet. Use --proto mollusk.".into());
+                return Err(
+                    "Firedancer fixtures are not supported by the matrix runner yet. Use --proto \
+                     mollusk."
+                        .into(),
+                );
             }
 
             let mut aggregates: HashMap<String, mollusk_svm::result::InstructionResult> =
