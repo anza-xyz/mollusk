@@ -439,7 +439,6 @@
 //! Fixtures can be loaded from files or decoded from raw blobs. These
 //! capabilities are provided by the respective fixture crates.
 
-
 pub mod account_store;
 mod compile_accounts;
 pub mod epoch_stake;

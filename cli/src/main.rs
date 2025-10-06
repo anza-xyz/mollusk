@@ -1,8 +1,8 @@
 //! Mollusk CLI.
 
 mod config;
-mod runner;
 mod matrix;
+mod runner;
 
 use {
     crate::runner::{ProtoLayout, Runner},
@@ -278,14 +278,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             json,
             proto,
         } => {
+            use crate::matrix;
             use bs58;
-            use crate::matrix as matrix;
             let mut mollusk = Mollusk::default();
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
             let fm = matrix::FeatureMatrix::new(
                 mollusk,
-                matrix::BaselineConfig::Explicit(mollusk_svm::Mollusk::default().feature_set.clone()),
+                matrix::BaselineConfig::Explicit(
+                    mollusk_svm::Mollusk::default().feature_set.clone(),
+                ),
             )
             .thresholds(matrix::Thresholds {
                 max_cu_delta_abs,
@@ -305,13 +307,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } else {
                     // guardrail: hard cap variants to avoid explosion
                     const MAX_VARIANTS: usize = 1 << 12; // 4096
-                    // Always use cartesian product generation
+                                                         // Always use cartesian product generation
                     let n = feature_ids.len();
                     let total = 1usize << n;
                     if total > MAX_VARIANTS {
                         return Err(format!(
                             "requested {} features generates {} variants; cap is {}",
-                            n, total - 1, MAX_VARIANTS - 1
+                            n,
+                            total - 1,
+                            MAX_VARIANTS - 1
                         )
                         .into());
                     }
@@ -366,7 +370,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            let mut runs: Vec<matrix::VariantRun<mollusk_svm::result::InstructionResult>> = Vec::new();
+            let mut runs: Vec<matrix::VariantRun<mollusk_svm::result::InstructionResult>> =
+                Vec::new();
             let _base_features = fm.resolve_baseline_featureset();
             runs.push(matrix::VariantRun {
                 name: "baseline".to_string(),
