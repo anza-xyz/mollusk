@@ -52,7 +52,7 @@ fn test_observer_accesses_result_logs_and_context() {
         &instruction,
         &[(key, account.clone())],
         &[Check::success()],
-        move |res, ctx| {
+        move |_inst, res, ctx| {
             // Access compute units from the result.
             *cu_ref.borrow_mut() = res.compute_units_consumed;
 
