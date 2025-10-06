@@ -874,13 +874,12 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         checks: &[Check],
     ) -> InstructionResult {
-        let result = self.process_instruction(instruction, accounts);
-
-        #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
-        fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &result);
-
-        result.run_checks(checks, &self.config, self);
-        result
+        self.process_and_validate_instruction_with_observer(
+            instruction,
+            accounts,
+            checks,
+            |_, _, _| {},
+        )
     }
 
     /// Process and validate with a per-call observer hook.
@@ -937,26 +936,11 @@ impl Mollusk {
         instructions: &[(&Instruction, &[Check])],
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let mut result = InstructionResult {
-            resulting_accounts: accounts.to_vec(),
-            ..Default::default()
-        };
-
-        for (instruction, checks) in instructions.iter() {
-            let this_result = self.process_and_validate_instruction(
-                instruction,
-                &result.resulting_accounts,
-                checks,
-            );
-
-            result.absorb(this_result);
-
-            if result.program_result.is_err() {
-                break;
-            }
-        }
-
-        result
+        self.process_and_validate_instruction_chain_with_observer(
+            instructions,
+            accounts,
+            |_, _, _, _| {},
+        )
     }
 
     /// Process and validate a chain with a per-call observer hook invoked for each step.
@@ -1368,12 +1352,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
         instruction: &Instruction,
         checks: &[Check],
     ) -> InstructionResult {
-        let accounts = self.load_accounts_for_instructions(once(instruction));
-        let result = self
-            .mollusk
-            .process_and_validate_instruction(instruction, &accounts, checks);
-        self.consume_mollusk_result(&result);
-        result
+        self.process_and_validate_instruction_with_observer(instruction, checks, |_, _, _| {})
     }
 
     /// Process a chain of instructions using the minified Solana Virtual
@@ -1382,14 +1361,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
         &self,
         instructions: &[(&Instruction, &[Check])],
     ) -> InstructionResult {
-        let accounts = self.load_accounts_for_instructions(
-            instructions.iter().map(|(instruction, _)| *instruction),
-        );
-        let result = self
-            .mollusk
-            .process_and_validate_instruction_chain(instructions, &accounts);
-        self.consume_mollusk_result(&result);
-        result
+        self.process_and_validate_instruction_chain_with_observer(instructions, |_, _, _, _| {})
     }
 
     /// Process an instruction using the minified Solana Virtual Machine (SVM)
