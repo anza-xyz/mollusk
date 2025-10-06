@@ -4,8 +4,7 @@ use {
     solana_instruction::{AccountMeta, Instruction},
     solana_pubkey::Pubkey,
     solana_svm_log_collector::LogCollector,
-    std::cell::RefCell,
-    std::rc::Rc,
+    std::{cell::RefCell, rc::Rc},
 };
 
 #[test]

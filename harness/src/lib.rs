@@ -943,7 +943,8 @@ impl Mollusk {
         )
     }
 
-    /// Process and validate a chain with a per-call observer hook invoked for each step.
+    /// Process and validate a chain with a per-call observer hook invoked for
+    /// each step.
     pub fn process_and_validate_instruction_chain_with_observer<F>(
         &self,
         instructions: &[(&Instruction, &[Check])],
@@ -1386,8 +1387,8 @@ impl<AS: AccountStore> MolluskContext<AS> {
         result
     }
 
-    /// Process a chain of instructions with a per-call observer invoked for each step,
-    /// then perform checks on each step's result.
+    /// Process a chain of instructions with a per-call observer invoked for
+    /// each step, then perform checks on each step's result.
     pub fn process_and_validate_instruction_chain_with_observer<F>(
         &self,
         instructions: &[(&Instruction, &[Check])],
