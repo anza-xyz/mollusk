@@ -507,10 +507,12 @@ Mollusk CLI (WIP).
 
 ### Feature Matrix
 
-The Feature Matrix lets you run fixtures under a baseline FeatureSet and automatically generated feature variants, then compare parity and compute units.
+The Feature Matrix enables you to test how your program behaves when different Solana protocol features are activated. It runs each fixture once with the fixture’s baseline `FeatureSet`, then runs additional variants where targeted features are toggled on/off, and compares result parity and compute units.
 
-- Baseline FeatureSet is derived from each fixture's `SlotContext`/`Context.feature_set`. The matrix toggles the targeted features on and off in separate runs.
-- Cartesian product generation is the default behavior for feature combinations.
+Use it to catch regressions across protocol feature activations/deactivations before they reach mainnet.
+
+- Baseline FeatureSet is derived from each fixture’s `Context.feature_set`; the matrix toggles only the features you provide.
+- Cartesian product generation is the default behavior for feature combinations (all non-empty subsets).
 
 CLI example:
 

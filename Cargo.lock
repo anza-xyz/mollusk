@@ -1892,6 +1892,7 @@ dependencies = [
 name = "mollusk-svm-cli"
 version = "0.6.1"
 dependencies = [
+ "agave-feature-set",
  "bs58",
  "chrono",
  "clap",

@@ -12,6 +12,7 @@ version = { workspace = true }
 bs58 = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
+agave-feature-set = { workspace = true }
 mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd", "serde"] }
 mollusk-svm-bencher = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true }
@@ -23,9 +24,6 @@ solana-logger = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-sdk-ids = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-
-[features]
-default = []
 
 [[bin]]
 name = "mollusk"

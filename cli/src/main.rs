@@ -2,6 +2,7 @@
 
 mod config;
 mod runner;
+mod matrix;
 
 use {
     crate::runner::{ProtoLayout, Runner},
@@ -10,7 +11,7 @@ use {
     mollusk_svm::{result::Compare, Mollusk},
     runner::CusReport,
     solana_pubkey::Pubkey,
-    std::{fs, path::Path, str::FromStr},
+    std::{collections::HashMap, fs, path::Path, str::FromStr},
 };
 
 #[derive(Subcommand)]
@@ -110,15 +111,17 @@ enum SubCommand {
     /// Run fixtures under a baseline FeatureSet and automatically generated
     /// feature variants, then compare parity and compute units.
     Matrix {
+        /// The path to the ELF file.
         #[arg(required = true)]
         elf_path: String,
-        /// Path to a directory containing Mollusk fixtures (`.fix` files).
+        /// Path to an instruction fixture (`.fix` file) or a directory containing them.
         #[arg(required = true)]
         fixture: String,
         /// The ID to use for the program.
         #[arg(value_parser = Pubkey::from_str)]
         program_id: Pubkey,
 
+        /// Repeatable feature ID to include in the matrix (base58 pubkey).
         #[arg(long)]
         feature: Vec<String>,
         /// Maximum absolute compute unit delta threshold for pass/fail.
@@ -128,11 +131,13 @@ enum SubCommand {
         #[arg(long)]
         max_cu_delta_percent: Option<f32>,
 
+        /// Output directory for generated reports.
         #[arg(long)]
         out_dir: Option<String>,
         #[arg(long)]
         markdown: bool,
 
+        /// Emit a JSON report.
         #[arg(long)]
         json: bool,
 
@@ -179,6 +184,8 @@ fn add_elf_to_mollusk(mollusk: &mut Mollusk, elf_path: &str, program_id: &Pubkey
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize logging for consistent output from log::* macros.
+    solana_logger::setup_with("");
     match Cli::parse().command {
         SubCommand::ExecuteFixture {
             elf_path,
@@ -271,26 +278,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             json,
             proto,
         } => {
-            use {
-                bs58,
-                mollusk_svm::feature_matrix::{
-                    BaselineConfig, FeatureMatrix, FeatureVariant, ReportConfig, Thresholds,
-                },
-            };
+            use bs58;
+            use crate::matrix as matrix;
             let mut mollusk = Mollusk::default();
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
-            let fm = FeatureMatrix::new(
+            let fm = matrix::FeatureMatrix::new(
                 mollusk,
-                BaselineConfig::Explicit(mollusk_svm::Mollusk::default().feature_set.clone()),
+                matrix::BaselineConfig::Explicit(mollusk_svm::Mollusk::default().feature_set.clone()),
             )
-            .thresholds(Thresholds {
+            .thresholds(matrix::Thresholds {
                 max_cu_delta_abs,
                 max_cu_delta_percent,
-                require_result_parity: true,
             });
 
-            let mut variants_list: Vec<FeatureVariant> = Vec::new();
+            let mut variants_list: Vec<matrix::FeatureVariant> = Vec::new();
             if !feature.is_empty() {
                 let feature_ids: Vec<solana_pubkey::Pubkey> = feature
                     .iter()
@@ -299,11 +301,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .map(|v| solana_pubkey::Pubkey::new_from_array(v.try_into().unwrap()))
                     .collect();
                 if feature_ids.is_empty() {
-                    println!("[matrix] no valid --feature ids provided");
+                    eprintln!("[matrix] no valid --feature ids provided");
                 } else {
+                    // guardrail: hard cap variants to avoid explosion
+                    const MAX_VARIANTS: usize = 1 << 12; // 4096
                     // Always use cartesian product generation
                     let n = feature_ids.len();
                     let total = 1usize << n;
+                    if total > MAX_VARIANTS {
+                        return Err(format!(
+                            "requested {} features generates {} variants; cap is {}",
+                            n, total - 1, MAX_VARIANTS - 1
+                        )
+                        .into());
+                    }
                     for mask in 1..total {
                         let mut ids = Vec::new();
                         let mut parts: Vec<String> = Vec::new();
@@ -316,21 +327,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                         let name = parts.join("+");
-                        variants_list.push(FeatureVariant { name, enable: ids });
+                        variants_list.push(matrix::FeatureVariant { name, enable: ids });
                     }
                 }
             }
 
             let fixtures = search_paths(&fixture, "fix")?;
             if matches!(proto, ProtoLayout::Firedancer) {
-                println!(
-                    "[matrix] Firedancer fixtures are not supported by the matrix runner yet. Use \
-                     --proto mollusk."
-                );
-                std::process::exit(1);
+                return Err("Firedancer fixtures are not supported by the matrix runner yet. Use --proto mollusk.".into());
             }
 
-            use std::collections::HashMap;
             let mut aggregates: HashMap<String, mollusk_svm::result::InstructionResult> =
                 HashMap::new();
             aggregates.entry("baseline".to_string()).or_default();
@@ -340,57 +346,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             for path in &fixtures {
                 let fixture = mollusk_svm_fuzz_fixture::Fixture::load_from_blob_file(path);
-                let base_fs = fixture.input.feature_set.clone();
+                let fs_base = fixture.input.feature_set.clone();
 
                 {
-                    let features = base_fs.clone();
-                    let mut m = fm.build_mollusk_for_featureset(&features);
+                    let mut m = fm.build_mollusk_for_featureset(&fs_base);
                     add_elf_to_mollusk(&mut m, &elf_path, &program_id);
                     let res = m.process_fixture(&fixture);
                     let entry = aggregates.entry("baseline".to_string()).or_default();
-                    let mut total = entry.clone();
-                    total.absorb(res);
-                    *entry = total;
+                    entry.absorb(res);
                 }
 
                 for v in &variants_list {
-                    let features = fm.apply_variant(&base_fs, v);
+                    let features = fm.apply_variant(&fs_base, v);
                     let mut m = fm.build_mollusk_for_featureset(&features);
                     add_elf_to_mollusk(&mut m, &elf_path, &program_id);
                     let res = m.process_fixture(&fixture);
                     let entry = aggregates.entry(v.name.clone()).or_default();
-                    let mut total = entry.clone();
-                    total.absorb(res);
-                    *entry = total;
+                    entry.absorb(res);
                 }
             }
 
-            let mut runs: Vec<
-                mollusk_svm::feature_matrix::VariantRun<mollusk_svm::result::InstructionResult>,
-            > = Vec::new();
-            let meta_base = fm.resolve_baseline_featureset();
-            runs.push(mollusk_svm::feature_matrix::VariantRun {
+            let mut runs: Vec<matrix::VariantRun<mollusk_svm::result::InstructionResult>> = Vec::new();
+            let _base_features = fm.resolve_baseline_featureset();
+            runs.push(matrix::VariantRun {
                 name: "baseline".to_string(),
-                features: meta_base.clone(),
                 output: aggregates.remove("baseline").unwrap_or_default(),
             });
             for v in variants_list {
-                runs.push(mollusk_svm::feature_matrix::VariantRun {
+                runs.push(matrix::VariantRun {
                     name: v.name.clone(),
-                    features: meta_base.clone(),
                     output: aggregates.remove(&v.name).unwrap_or_default(),
                 });
             }
 
             let fm = fm
-                .report(ReportConfig {
+                .report(matrix::ReportConfig {
                     out_dir: out_dir.clone().map(Into::into),
                     markdown,
                     json,
                 })
                 .build();
 
-            let (_md, _js) = fm.generate_reports(&runs);
+            let (_md, _js) = fm.generate_reports(&runs)?;
         }
     }
     Ok(())
