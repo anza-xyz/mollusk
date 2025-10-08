@@ -20,8 +20,7 @@ pub fn create_mock_epoch_stake(target_total: u64) -> EpochStake {
     let base_stake = target_total / num_accounts;
     let remainder = target_total % num_accounts;
 
-    std::iter::repeat(base_stake)
-        .take(num_accounts as usize - 1)
+    std::iter::repeat_n(base_stake, num_accounts as usize - 1)
         .chain(std::iter::once(base_stake + remainder))
         .for_each(|stake| {
             epoch_stake.insert(Pubkey::new_unique(), stake);

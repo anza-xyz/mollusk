@@ -71,7 +71,7 @@ impl<'a> Check<'a> {
     }
 
     /// Check a resulting account after executing the instruction.
-    pub fn account(pubkey: &Pubkey) -> AccountCheckBuilder {
+    pub fn account(pubkey: &Pubkey) -> AccountCheckBuilder<'_> {
         AccountCheckBuilder::new(pubkey)
     }
 

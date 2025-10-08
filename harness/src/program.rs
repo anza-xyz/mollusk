@@ -84,7 +84,7 @@ impl ProgramCache {
         me
     }
 
-    pub(crate) fn cache(&self) -> RefMut<ProgramCacheForTxBatch> {
+    pub(crate) fn cache(&self) -> RefMut<'_, ProgramCacheForTxBatch> {
         self.cache.borrow_mut()
     }
 

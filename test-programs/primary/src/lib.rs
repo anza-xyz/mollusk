@@ -95,7 +95,7 @@ fn process_instruction(
                 vec![AccountMeta::new(*account_info.key, true)],
             );
 
-            invoke(&instruction, &[account_info.clone()])?;
+            invoke(&instruction, std::slice::from_ref(account_info))?;
         }
         Some((5, _)) => {
             // Load the same account twice and assert both infos share the

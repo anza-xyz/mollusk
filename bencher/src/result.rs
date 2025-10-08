@@ -93,7 +93,7 @@ Solana CLI Version: {}
     )
 }
 
-fn parse_last_md_table(content: &str) -> Vec<MolluskComputeUnitBenchResult> {
+fn parse_last_md_table(content: &str) -> Vec<MolluskComputeUnitBenchResult<'_>> {
     let mut results = vec![];
 
     for line in content.lines().skip(6) {
