@@ -31,6 +31,7 @@ pub mod loader_keys {
     };
 }
 
+#[cfg(feature = "precompiles")]
 pub mod precompile_keys {
     use solana_pubkey::Pubkey;
     pub use solana_sdk_ids::{
@@ -43,6 +44,15 @@ pub mod precompile_keys {
             *program_id,
             ED25519_PROGRAM | SECP256K1_PROGRAM | SECP256R1_PROGRAM
         )
+    }
+}
+
+#[cfg(not(feature = "precompiles"))]
+pub mod precompile_keys {
+    use solana_pubkey::Pubkey;
+
+    pub(crate) fn is_precompile(_program_id: &Pubkey) -> bool {
+        false
     }
 }
 

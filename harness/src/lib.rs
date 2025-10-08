@@ -452,6 +452,8 @@ pub mod sysvar;
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
+#[cfg(feature = "precompiles")]
+use solana_precompile_error::PrecompileError;
 #[cfg(feature = "invocation-inspect-callback")]
 use solana_transaction_context::InstructionAccount;
 use {
@@ -466,7 +468,6 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
-    solana_precompile_error::PrecompileError,
     solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
@@ -579,6 +580,7 @@ impl CheckContext for Mollusk {
 }
 
 struct MolluskInvokeContextCallback<'a> {
+    #[cfg_attr(not(feature = "precompiles"), allow(dead_code))]
     feature_set: &'a FeatureSet,
     epoch_stake: &'a EpochStake,
 }
@@ -592,12 +594,19 @@ impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
         self.epoch_stake.get(vote_address).copied().unwrap_or(0)
     }
 
+    #[cfg(feature = "precompiles")]
     fn is_precompile(&self, program_id: &Pubkey) -> bool {
         agave_precompiles::is_precompile(program_id, |feature_id| {
             self.feature_set.is_active(feature_id)
         })
     }
 
+    #[cfg(not(feature = "precompiles"))]
+    fn is_precompile(&self, _program_id: &Pubkey) -> bool {
+        false
+    }
+
+    #[cfg(feature = "precompiles")]
     fn process_precompile(
         &self,
         program_id: &Pubkey,
@@ -611,6 +620,16 @@ impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
         } else {
             Err(PrecompileError::InvalidPublicKey)
         }
+    }
+
+    #[cfg(not(feature = "precompiles"))]
+    fn process_precompile(
+        &self,
+        _program_id: &Pubkey,
+        _data: &[u8],
+        _instruction_datas: Vec<&[u8]>,
+    ) -> Result<(), solana_precompile_error::PrecompileError> {
+        panic!("precompiles feature not enabled");
     }
 }
 

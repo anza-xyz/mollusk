@@ -25,6 +25,7 @@ fuzz-fd = [
     "dep:mollusk-svm-fuzz-fs",
 ]
 invocation-inspect-callback = []
+precompiles = ["dep:agave-precompiles"]
 serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
@@ -32,7 +33,7 @@ serde = [
 
 [dependencies]
 agave-feature-set = { workspace = true }
-agave-precompiles = { workspace = true }
+agave-precompiles = { workspace = true, optional = true }
 agave-syscalls = { workspace = true }
 bincode = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
