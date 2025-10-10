@@ -500,3 +500,32 @@ for file in fs::read_dir(Path::new("fixtures-dir"))? {
 
 Fixtures can be loaded from files or decoded from raw blobs. These
 capabilities are provided by the respective fixture crates.
+
+## CLI
+
+Mollusk CLI (WIP).
+
+### Feature Matrix
+
+The Feature Matrix enables you to test how your program behaves when different Solana protocol features are activated. It runs each fixture once with the fixture’s baseline `FeatureSet`, then runs additional variants where targeted features are toggled on/off, and compares result parity and compute units.
+
+Use it to catch regressions across protocol feature activations/deactivations before they reach mainnet.
+
+- Baseline FeatureSet is derived from each fixture’s `Context.feature_set`; the matrix toggles only the features you provide.
+- Cartesian product generation is the default behavior for feature combinations (all non-empty subsets).
+
+CLI example:
+
+```bash
+mollusk matrix \
+  ./programs/token/src/elf/token.so \
+  ./harness/tests \
+  11111111111111111111111111111112 \
+  --feature 2yDdYzg56LgRBzX1UeMNcrsXphJ4yTZe4cCvEoGzbXDc \
+  --feature 5GDFSoKFJWWEkttfwTwWXfehKH7DGiL9v8bNChjJ5Q5g \
+  --max-cu-delta-abs 1000 \
+  --max-cu-delta-percent 5.0 \
+  --out-dir ./feature-validation-reports \
+  --markdown \
+  --json
+```

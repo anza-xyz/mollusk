@@ -9,15 +9,17 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
+bs58 = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-serde_yaml = { workspace = true }
+agave-feature-set = { workspace = true }
+mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd", "serde"] }
 mollusk-svm-bencher = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true }
-mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd", "serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 solana-logger = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-sdk-ids = { workspace = true }
