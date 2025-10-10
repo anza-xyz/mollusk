@@ -1,26 +1,13 @@
 //! Feature-activation matrix runner for testing program behavior across
 //! different FeatureSet configurations. CLI-only implementation.
 
-use {
-    agave_feature_set::FeatureSet,
-    mollusk_svm::{program::ProgramCache, result as result_model, Mollusk},
-};
+use {agave_feature_set::FeatureSet, mollusk_svm::{program::ProgramCache, result as result_model, Mollusk}};
 
 /// Baseline selector for feature-activation comparisons.
-#[derive(Clone, Debug)]
-pub enum BaselineConfig {
-    /// Use an explicit `FeatureSet`.
-    Explicit(FeatureSet),
-}
+// BaselineConfig removed; baseline now derives from each fixture.
 
 /// A named variant of features to enable for comparison.
-#[derive(Clone, Debug, Default)]
-pub struct FeatureVariant {
-    /// Human-friendly name for reports.
-    pub name: String,
-    /// Features to explicitly enable on top of the baseline.
-    pub enable: Vec<solana_pubkey::Pubkey>,
-}
+// FeatureVariant removed; variants are generated in CLI.
 
 /// Thresholds used to flag regressions in comparisons.
 #[derive(Clone, Debug, Default)]
@@ -46,16 +33,14 @@ pub struct ReportConfig {
 pub struct FeatureMatrix {
     /// Seed `Mollusk` instance provided by the caller.
     _seed: Mollusk,
-    baseline: BaselineConfig,
     thresholds: Thresholds,
     report: Option<ReportConfig>,
 }
 
 impl FeatureMatrix {
-    pub fn new(mollusk: Mollusk, baseline: BaselineConfig) -> Self {
+    pub fn new(mollusk: Mollusk) -> Self {
         Self {
             _seed: mollusk,
-            baseline,
             thresholds: Thresholds::default(),
             report: None,
         }
@@ -75,24 +60,7 @@ impl FeatureMatrix {
         self
     }
 
-    pub fn resolve_baseline_featureset(&self) -> FeatureSet {
-        match &self.baseline {
-            BaselineConfig::Explicit(fs) => fs.clone(),
-        }
-    }
-
-    /// Apply a `FeatureVariant` on top of a `FeatureSet` and return the new
-    /// set.
-    pub fn apply_variant(&self, base: &FeatureSet, variant: &FeatureVariant) -> FeatureSet {
-        if variant.enable.is_empty() {
-            return base.clone();
-        }
-        let mut fs = base.clone();
-        for feature_id in &variant.enable {
-            fs.active_mut().insert(*feature_id, 0);
-        }
-        fs
-    }
+    // Variant application/reset handled in CLI.
 
     pub fn build_mollusk_for_featureset(&self, features: &FeatureSet) -> Mollusk {
         let mut mollusk = Mollusk::default();

@@ -1,7 +1,7 @@
 //! CLI config file.
 
 use {
-    mollusk_svm::result::Compare,
+    mollusk_svm_result::Compare,
     serde::{Deserialize, Serialize},
 };
 

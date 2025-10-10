@@ -526,6 +526,6 @@ mollusk matrix \
   --max-cu-delta-abs 1000 \
   --max-cu-delta-percent 5.0 \
   --out-dir ./feature-validation-reports \
-  --markdown \
-  --json
+  --output markdown \
+  --output json
 ```

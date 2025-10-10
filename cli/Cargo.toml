@@ -9,14 +9,15 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
+agave-feature-set = { workspace = true }
 bs58 = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-agave-feature-set = { workspace = true }
-mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd", "serde"] }
+mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd"] }
 mollusk-svm-bencher = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true }
+mollusk-svm-result = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
