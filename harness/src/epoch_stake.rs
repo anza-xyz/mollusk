@@ -18,7 +18,7 @@ pub fn create_mock_epoch_stake(target_total: u64) -> EpochStake {
     let num_accounts = target_total.div_ceil(1_000_000_000);
 
     let base_stake = target_total / num_accounts;
-    let remainder = target_total % num_accounts;
+    let remainder = target_total % base_stake;
 
     std::iter::repeat_n(base_stake, num_accounts as usize - 1)
         .chain(std::iter::once(base_stake + remainder))
