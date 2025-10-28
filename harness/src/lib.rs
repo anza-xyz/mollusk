@@ -455,8 +455,6 @@ pub use mollusk_svm_result as result;
 use mollusk_svm_result::Compare;
 #[cfg(feature = "precompiles")]
 use solana_precompile_error::PrecompileError;
-#[cfg(feature = "invocation-inspect-callback")]
-use solana_transaction_context::InstructionAccount;
 use {
     crate::{
         account_store::AccountStore,
@@ -464,7 +462,7 @@ use {
         epoch_stake::EpochStake,
         program::ProgramCache,
         sysvar::Sysvars,
-        vm::{agave::AgaveVM, SolanaVM},
+        vm::{agave::AgaveVM, SolanaVM, SolanaVMContext, SolanaVMInstruction, SolanaVMTrace},
     },
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
@@ -473,13 +471,18 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
-    solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
+    solana_program_runtime::invoke_context::EnvironmentConfig,
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
     std::{cell::RefCell, collections::HashSet, iter::once, marker::PhantomData, rc::Rc},
+};
+#[cfg(feature = "invocation-inspect-callback")]
+use {
+    solana_program_runtime::invoke_context::InvokeContext,
+    solana_transaction_context::InstructionAccount,
 };
 
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
@@ -795,54 +798,39 @@ impl<VM: SolanaVM> Mollusk<VM> {
             };
             let runtime_features = self.feature_set.runtime_features();
             let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
-            let mut invoke_context = InvokeContext::new(
-                &mut transaction_context,
-                &mut program_cache,
-                EnvironmentConfig::new(
+
+            let context = SolanaVMContext {
+                transaction_context: &mut transaction_context,
+                program_cache: &mut program_cache,
+                compute_budget: self.compute_budget,
+                environment_config: EnvironmentConfig::new(
                     Hash::default(),
                     /* blockhash_lamports_per_signature */ 5000, // The default value
                     &callback,
                     &runtime_features,
                     &sysvar_cache,
                 ),
-                self.logger.clone(),
-                self.compute_budget.to_budget(),
-                self.compute_budget.to_cost(),
-            );
-
-            // Configure the next instruction frame for this invocation.
-            invoke_context
-                .transaction_context
-                .configure_next_instruction_for_tests(
-                    program_id_index,
-                    instruction_accounts.clone(),
-                    &instruction.data,
-                )
-                .expect("failed to configure next instruction");
-
-            #[cfg(feature = "invocation-inspect-callback")]
-            self.invocation_inspect_callback.before_invocation(
-                &instruction.program_id,
-                &instruction.data,
-                &instruction_accounts,
-                &invoke_context,
-            );
-
-            let result = if invoke_context.is_precompile(&instruction.program_id) {
-                invoke_context.process_precompile(
-                    &instruction.program_id,
-                    &instruction.data,
-                    std::iter::once(instruction.data.as_ref()),
-                )
-            } else {
-                invoke_context.process_instruction(&mut compute_units_consumed, &mut timings)
             };
 
-            #[cfg(feature = "invocation-inspect-callback")]
-            self.invocation_inspect_callback
-                .after_invocation(&invoke_context);
+            let instruction = SolanaVMInstruction {
+                program_id_index,
+                accounts: instruction_accounts,
+                data: &instruction.data,
+            };
 
-            result
+            let trace = SolanaVMTrace {
+                compute_units_consumed: &mut compute_units_consumed,
+                execute_timings: &mut timings,
+                log_collector: self.logger.clone(),
+            };
+
+            VM::process_instruction(
+                context,
+                instruction,
+                trace,
+                #[cfg(feature = "invocation-inspect-callback")]
+                self.invocation_inspect_callback.as_ref(),
+            )
         };
 
         let return_data = transaction_context.get_return_data().1.to_vec();
