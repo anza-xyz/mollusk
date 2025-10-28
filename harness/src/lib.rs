@@ -447,6 +447,7 @@ pub mod file;
 pub mod fuzz;
 pub mod program;
 pub mod sysvar;
+pub mod vm;
 
 // Re-export result module from mollusk-svm-result crate
 pub use mollusk_svm_result as result;
@@ -458,8 +459,12 @@ use solana_precompile_error::PrecompileError;
 use solana_transaction_context::InstructionAccount;
 use {
     crate::{
-        account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
-        program::ProgramCache, sysvar::Sysvars,
+        account_store::AccountStore,
+        compile_accounts::CompiledAccounts,
+        epoch_stake::EpochStake,
+        program::ProgramCache,
+        sysvar::Sysvars,
+        vm::{agave::AgaveVM, SolanaVM},
     },
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
@@ -474,7 +479,7 @@ use {
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
-    std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc},
+    std::{cell::RefCell, collections::HashSet, iter::once, marker::PhantomData, rc::Rc},
 };
 
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
@@ -483,7 +488,7 @@ pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgrade
 ///
 /// All fields can be manipulated through a handful of helper methods, but
 /// users can also directly access and modify them if they desire more control.
-pub struct Mollusk {
+pub struct Mollusk<VM: SolanaVM = AgaveVM> {
     pub config: Config,
     pub compute_budget: ComputeBudget,
     pub epoch_stake: EpochStake,
@@ -491,6 +496,8 @@ pub struct Mollusk {
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
+
+    vm: PhantomData<VM>,
 
     /// The callback which can be used to inspect invoke_context
     /// and extract low-level information such as bpf traces, transaction
@@ -531,7 +538,24 @@ impl InvocationInspectCallback for EmptyInvocationInspectCallback {
     fn after_invocation(&self, _: &InvokeContext) {}
 }
 
-impl Default for Mollusk {
+// Fields from `Mollusk`, minus the generic VM.
+struct MolluskFields {
+    config: Config,
+    compute_budget: ComputeBudget,
+    epoch_stake: EpochStake,
+    feature_set: FeatureSet,
+    logger: Option<Rc<RefCell<LogCollector>>>,
+    program_cache: ProgramCache,
+    sysvars: Sysvars,
+
+    #[cfg(feature = "invocation-inspect-callback")]
+    invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
+
+    #[cfg(feature = "fuzz-fd")]
+    slot: u64,
+}
+
+impl Default for MolluskFields {
     fn default() -> Self {
         #[rustfmt::skip]
         solana_logger::setup_with_default(
@@ -572,7 +596,35 @@ impl Default for Mollusk {
     }
 }
 
-impl CheckContext for Mollusk {
+impl MolluskFields {
+    fn vend<VM: SolanaVM>(self) -> Mollusk<VM> {
+        Mollusk {
+            config: self.config,
+            compute_budget: self.compute_budget,
+            epoch_stake: self.epoch_stake,
+            feature_set: self.feature_set,
+            logger: self.logger,
+            program_cache: self.program_cache,
+            sysvars: self.sysvars,
+
+            vm: PhantomData,
+
+            #[cfg(feature = "invocation-inspect-callback")]
+            invocation_inspect_callback: self.invocation_inspect_callback,
+
+            #[cfg(feature = "fuzz-fd")]
+            slot: self.slot,
+        }
+    }
+}
+
+impl Default for Mollusk {
+    fn default() -> Self {
+        MolluskFields::default().vend()
+    }
+}
+
+impl<VM: SolanaVM> CheckContext for Mollusk<VM> {
     fn is_rent_exempt(&self, lamports: u64, space: usize, owner: Pubkey) -> bool {
         owner.eq(&Pubkey::default()) && lamports == 0
             || self.sysvars.rent.is_exempt(lamports, space)
@@ -649,7 +701,29 @@ impl Mollusk {
     /// - The directory specified by the `SBF_OUT_DIR` environment variable
     /// - The current working directory
     pub fn new(program_id: &Pubkey, program_name: &str) -> Self {
-        let mut mollusk = Self::default();
+        let mut mollusk = MolluskFields::default().vend();
+        mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
+        mollusk
+    }
+}
+
+impl<VM: SolanaVM> Mollusk<VM> {
+    /// Create a new Mollusk instance with a custom VM type.
+    ///
+    /// Attempts to load the program's ELF file from the default search paths.
+    /// Once loaded, adds the program to the program cache and returns the
+    /// newly created Mollusk instance.
+    ///
+    /// # Default Search Paths
+    ///
+    /// The following locations are checked in order:
+    ///
+    /// - `tests/fixtures`
+    /// - The directory specified by the `BPF_OUT_DIR` environment variable
+    /// - The directory specified by the `SBF_OUT_DIR` environment variable
+    /// - The current working directory
+    pub fn new_with_vm(program_id: &Pubkey, program_name: &str) -> Self {
+        let mut mollusk = MolluskFields::default().vend();
         mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
         mollusk
     }
@@ -1163,7 +1237,7 @@ impl Mollusk {
     /// instruction executions, starting with the provided account store.
     ///
     /// See [`MolluskContext`] for more details on how to use it.
-    pub fn with_context<AS: AccountStore>(self, mut account_store: AS) -> MolluskContext<AS> {
+    pub fn with_context<AS: AccountStore>(self, mut account_store: AS) -> MolluskContext<AS, VM> {
         // For convenience, load all program accounts into the account store,
         // but only if they don't exist.
         self.program_cache
@@ -1199,13 +1273,13 @@ impl Mollusk {
 /// management and a streamlined interface. Namely, the input `accounts` slice
 /// is no longer required, and the returned result does not contain a
 /// `resulting_accounts` field.
-pub struct MolluskContext<AS: AccountStore> {
-    pub mollusk: Mollusk,
+pub struct MolluskContext<AS: AccountStore, VM: SolanaVM> {
+    pub mollusk: Mollusk<VM>,
     pub account_store: Rc<RefCell<AS>>,
     pub hydrate_store: bool,
 }
 
-impl<AS: AccountStore> MolluskContext<AS> {
+impl<AS: AccountStore, VM: SolanaVM> MolluskContext<AS, VM> {
     fn load_accounts_for_instructions<'a>(
         &self,
         instructions: impl Iterator<Item = &'a Instruction>,
