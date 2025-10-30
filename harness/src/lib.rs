@@ -440,7 +440,6 @@
 //! capabilities are provided by the respective fixture crates.
 
 pub mod account_store;
-mod compile_accounts;
 pub mod epoch_stake;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
@@ -456,8 +455,8 @@ use mollusk_svm_result::Compare;
 use solana_precompile_error::PrecompileError;
 use {
     crate::{
-        account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
-        program::ProgramCache, sysvar::Sysvars,
+        account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
+        sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
@@ -473,7 +472,6 @@ use {
     solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
-    solana_transaction_context::TransactionContext,
     std::{cell::RefCell, collections::HashSet, iter::once, marker::PhantomData, rc::Rc},
 };
 
@@ -749,94 +747,46 @@ impl<VM: SolanaVM> Mollusk<VM> {
                 .account_owner()
         };
 
-        let CompiledAccounts {
-            program_id_index,
-            instruction_accounts,
-            transaction_accounts,
-        } = crate::compile_accounts::compile_accounts(instruction, accounts, loader_key);
+        let mut program_cache = self.program_cache.cache();
+        let callback = MolluskInvokeContextCallback {
+            epoch_stake: &self.epoch_stake,
+            feature_set: &self.feature_set,
+        };
+        let runtime_features = self.feature_set.runtime_features();
+        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
-        let mut transaction_context = TransactionContext::new(
-            transaction_accounts,
-            self.sysvars.rent.clone(),
-            self.compute_budget.max_instruction_stack_depth,
-            self.compute_budget.max_instruction_trace_length,
-        );
-
-        let invoke_result = {
-            let mut program_cache = self.program_cache.cache();
-            let callback = MolluskInvokeContextCallback {
-                epoch_stake: &self.epoch_stake,
-                feature_set: &self.feature_set,
-            };
-            let runtime_features = self.feature_set.runtime_features();
-            let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
-
-            let context = SolanaVMContext {
-                transaction_context: &mut transaction_context,
-                program_cache: &mut program_cache,
-                compute_budget: self.compute_budget,
-                environment_config: EnvironmentConfig::new(
-                    Hash::default(),
-                    /* blockhash_lamports_per_signature */ 5000, // The default value
-                    &callback,
-                    &runtime_features,
-                    &sysvar_cache,
-                ),
-            };
-
-            let instruction = SolanaVMInstruction {
-                program_id_index,
-                accounts: instruction_accounts,
-                data: &instruction.data,
-            };
-
-            let trace = SolanaVMTrace {
-                compute_units_consumed: &mut compute_units_consumed,
-                execute_timings: &mut timings,
-                log_collector: self.logger.clone(),
-            };
-
-            VM::process_instruction(
-                context,
-                instruction,
-                trace,
-                #[cfg(feature = "invocation-inspect-callback")]
-                self.invocation_inspect_callback.as_ref(),
-            )
+        let vm_context = SolanaVMContext {
+            program_cache: &mut program_cache,
+            compute_budget: self.compute_budget,
+            environment_config: EnvironmentConfig::new(
+                Hash::default(),
+                /* blockhash_lamports_per_signature */ 5000, // The default value
+                &callback,
+                &runtime_features,
+                &sysvar_cache,
+            ),
+            rent: self.sysvars.rent.clone(),
         };
 
-        let return_data = transaction_context.get_return_data().1.to_vec();
-
-        let resulting_accounts: Vec<(Pubkey, Account)> = if invoke_result.is_ok() {
-            accounts
-                .iter()
-                .map(|(pubkey, account)| {
-                    transaction_context
-                        .find_index_of_account(pubkey)
-                        .map(|index| {
-                            let resulting_account = transaction_context
-                                .accounts()
-                                .try_borrow(index)
-                                .unwrap()
-                                .clone()
-                                .into();
-                            (*pubkey, resulting_account)
-                        })
-                        .unwrap_or((*pubkey, account.clone()))
-                })
-                .collect()
-        } else {
-            accounts.to_vec()
+        let vm_instruction = SolanaVMInstruction {
+            instruction,
+            accounts,
+            loader_key,
         };
 
-        InstructionResult {
-            compute_units_consumed,
-            execution_time: timings.details.execute_us.0,
-            program_result: invoke_result.clone().into(),
-            raw_result: invoke_result,
-            return_data,
-            resulting_accounts,
-        }
+        let vm_trace = SolanaVMTrace {
+            compute_units_consumed: &mut compute_units_consumed,
+            execute_timings: &mut timings,
+            log_collector: self.logger.clone(),
+        };
+
+        VM::process_instruction(
+            vm_context,
+            vm_instruction,
+            vm_trace,
+            #[cfg(feature = "invocation-inspect-callback")]
+            self.invocation_inspect_callback.as_ref(),
+        )
     }
 
     /// Process a chain of instructions using the minified Solana Virtual

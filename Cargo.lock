@@ -2019,10 +2019,13 @@ dependencies = [
 name = "mollusk-svm-vm"
 version = "0.7.0"
 dependencies = [
+ "mollusk-svm-result",
+ "solana-account",
  "solana-compute-budget",
- "solana-instruction-error",
+ "solana-instruction",
  "solana-program-runtime",
  "solana-pubkey",
+ "solana-rent",
  "solana-svm-log-collector",
  "solana-svm-timings",
  "solana-transaction-context",
@@ -2032,9 +2035,15 @@ dependencies = [
 name = "mollusk-svm-vm-agave"
 version = "0.7.0"
 dependencies = [
+ "mollusk-svm-keys",
+ "mollusk-svm-result",
  "mollusk-svm-vm",
+ "solana-account",
+ "solana-instruction",
  "solana-instruction-error",
  "solana-program-runtime",
+ "solana-pubkey",
+ "solana-transaction-context",
 ]
 
 [[package]]
@@ -3089,7 +3098,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f885ce7f937871ecb56aadbeaaec963b234a580b7d6ebbdb8fa4249a36f92433"
 dependencies = [
  "bincode",
- "qualifier_attr",
  "serde",
  "serde_bytes",
  "serde_derive",
@@ -4209,7 +4217,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0de80299b069929cfd14aabc606605867810dc4c1a57fb488a8c84a1273e545d"
 dependencies = [
  "bincode",
- "qualifier_attr",
  "serde",
  "serde_derive",
  "solana-account",

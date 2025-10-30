@@ -76,7 +76,6 @@ solana-svm-timings = { workspace = true }
 solana-system-program = { workspace = true }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }
-solana-transaction-context = { workspace = true, features = ["dev-context-only-utils"] }
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -91,6 +90,7 @@ solana-native-token = { workspace = true }
 solana-secp256k1-program = { workspace = true, features = ["bincode"] }
 solana-secp256r1-program = { workspace = true }
 solana-system-interface = { workspace = true }
+solana-transaction-context = { workspace = true }
 
 [[bench]]
 name = "ips"

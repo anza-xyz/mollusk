@@ -1,36 +1,38 @@
 //! Virtual Machine API for using Mollusk with custom VMs.
 
-#[cfg(feature = "invocation-inspect-callback")]
-use solana_program_runtime::invoke_context::InvokeContext;
-#[cfg(feature = "invocation-inspect-callback")]
-use solana_pubkey::Pubkey;
-#[cfg(feature = "invocation-inspect-callback")]
-use solana_transaction_context::InstructionAccount;
 use {
+    mollusk_svm_result::InstructionResult,
+    solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_instruction_error::InstructionError,
+    solana_instruction::Instruction,
     solana_program_runtime::{
         invoke_context::EnvironmentConfig, loaded_programs::ProgramCacheForTxBatch,
     },
+    solana_pubkey::Pubkey,
+    solana_rent::Rent,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
-    solana_transaction_context::TransactionContext,
     std::{cell::RefCell, rc::Rc},
+};
+#[cfg(feature = "invocation-inspect-callback")]
+use {
+    solana_program_runtime::invoke_context::InvokeContext,
+    solana_transaction_context::InstructionAccount,
 };
 
 /// Context required to process a Solana instruction in a VM.
 pub struct SolanaVMContext<'a> {
-    pub transaction_context: &'a mut TransactionContext,
     pub program_cache: &'a mut ProgramCacheForTxBatch,
     pub compute_budget: ComputeBudget,
     pub environment_config: EnvironmentConfig<'a>,
+    pub rent: Rent,
 }
 
 /// A Solana instruction to be processed by a VM.
 pub struct SolanaVMInstruction<'a> {
-    pub program_id_index: u16,
-    pub accounts: Vec<solana_transaction_context::InstructionAccount>,
-    pub data: &'a [u8],
+    pub instruction: &'a Instruction,
+    pub accounts: &'a [(Pubkey, Account)],
+    pub loader_key: Pubkey,
 }
 
 /// Trace information about a Solana VM instruction invocation.
@@ -73,5 +75,5 @@ pub trait SolanaVM {
         trace: SolanaVMTrace,
         #[cfg(feature = "invocation-inspect-callback")]
         invocation_inspect_callback: &dyn InvocationInspectCallback,
-    ) -> Result<(), InstructionError>;
+    ) -> InstructionResult;
 }

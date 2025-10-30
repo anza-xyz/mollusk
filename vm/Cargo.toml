@@ -12,10 +12,13 @@ version = { workspace = true }
 invocation-inspect-callback = []
 
 [dependencies]
+mollusk-svm-result = { workspace = true }
+solana-account = { workspace = true }
 solana-compute-budget = { workspace = true }
-solana-instruction-error = { workspace = true }
+solana-instruction = { workspace = true }
 solana-program-runtime = { workspace = true }
 solana-pubkey = { workspace = true }
+solana-rent = { workspace = true }
 solana-svm-log-collector = { workspace = true }
 solana-svm-timings = { workspace = true }
 solana-transaction-context = { workspace = true }
