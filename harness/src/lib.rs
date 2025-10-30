@@ -461,7 +461,7 @@ use {
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
-    mollusk_svm_vm::{SolanaVM, SolanaVMContext, SolanaVMInstruction, SolanaVMTrace},
+    mollusk_svm_vm::{SolanaVM, SolanaVMContext, SolanaVMTrace},
     mollusk_svm_vm_agave::AgaveVM,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
@@ -768,12 +768,6 @@ impl<VM: SolanaVM> Mollusk<VM> {
             rent: self.sysvars.rent.clone(),
         };
 
-        let vm_instruction = SolanaVMInstruction {
-            instruction,
-            accounts,
-            loader_key,
-        };
-
         let vm_trace = SolanaVMTrace {
             compute_units_consumed: &mut compute_units_consumed,
             execute_timings: &mut timings,
@@ -782,7 +776,9 @@ impl<VM: SolanaVM> Mollusk<VM> {
 
         VM::process_instruction(
             vm_context,
-            vm_instruction,
+            instruction,
+            accounts,
+            loader_key,
             vm_trace,
             #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.as_ref(),

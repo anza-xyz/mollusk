@@ -7,9 +7,11 @@ use mollusk_svm_vm::InvocationInspectCallback;
 use {
     compile_accounts::{compile_accounts, CompiledAccounts},
     mollusk_svm_result::InstructionResult,
-    mollusk_svm_vm::{SolanaVM, SolanaVMContext, SolanaVMInstruction, SolanaVMTrace},
+    mollusk_svm_vm::{SolanaVM, SolanaVMContext, SolanaVMTrace},
     solana_account::Account,
+    solana_instruction::Instruction,
     solana_program_runtime::invoke_context::InvokeContext,
+    solana_pubkey::Pubkey,
     solana_transaction_context::TransactionContext,
 };
 
@@ -19,17 +21,13 @@ pub struct AgaveVM;
 impl SolanaVM for AgaveVM {
     fn process_instruction(
         context: SolanaVMContext,
-        instruction: SolanaVMInstruction,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+        loader_key: Pubkey,
         trace: SolanaVMTrace,
         #[cfg(feature = "invocation-inspect-callback")]
         invocation_inspect_callback: &dyn InvocationInspectCallback,
     ) -> InstructionResult {
-        let SolanaVMInstruction {
-            instruction,
-            accounts,
-            loader_key,
-        } = instruction;
-
         let CompiledAccounts {
             program_id_index,
             instruction_accounts,

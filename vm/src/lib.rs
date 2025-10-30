@@ -28,13 +28,6 @@ pub struct SolanaVMContext<'a> {
     pub rent: Rent,
 }
 
-/// A Solana instruction to be processed by a VM.
-pub struct SolanaVMInstruction<'a> {
-    pub instruction: &'a Instruction,
-    pub accounts: &'a [(Pubkey, Account)],
-    pub loader_key: Pubkey,
-}
-
 /// Trace information about a Solana VM instruction invocation.
 pub struct SolanaVMTrace<'a> {
     pub compute_units_consumed: &'a mut u64,
@@ -71,7 +64,9 @@ pub trait SolanaVM {
     /// Process a Solana instruction.
     fn process_instruction(
         context: SolanaVMContext,
-        instruction: SolanaVMInstruction,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+        loader_key: Pubkey,
         trace: SolanaVMTrace,
         #[cfg(feature = "invocation-inspect-callback")]
         invocation_inspect_callback: &dyn InvocationInspectCallback,
