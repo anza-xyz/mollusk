@@ -7,11 +7,12 @@ use mollusk_svm_vm::InvocationInspectCallback;
 use {
     compile_accounts::{compile_accounts, CompiledAccounts},
     mollusk_svm_result::InstructionResult,
-    mollusk_svm_vm::{SolanaVM, SolanaVMContext, SolanaVMTrace},
+    mollusk_svm_vm::{SolanaVM, SolanaVMContext},
     solana_account::Account,
     solana_instruction::Instruction,
     solana_program_runtime::invoke_context::InvokeContext,
     solana_pubkey::Pubkey,
+    solana_svm_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
 };
 
@@ -24,10 +25,12 @@ impl SolanaVM for AgaveVM {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
         loader_key: Pubkey,
-        trace: SolanaVMTrace,
         #[cfg(feature = "invocation-inspect-callback")]
         invocation_inspect_callback: &dyn InvocationInspectCallback,
     ) -> InstructionResult {
+        let mut compute_units_consumed = 0;
+        let mut timings = ExecuteTimings::default();
+
         let CompiledAccounts {
             program_id_index,
             instruction_accounts,
@@ -46,7 +49,7 @@ impl SolanaVM for AgaveVM {
                 &mut transaction_context,
                 context.program_cache,
                 context.environment_config,
-                trace.log_collector,
+                context.log_collector,
                 context.compute_budget.to_budget(),
                 context.compute_budget.to_cost(),
             );
@@ -82,8 +85,7 @@ impl SolanaVM for AgaveVM {
                     std::iter::once(&instruction.data[..]),
                 )
             } else {
-                invoke_context
-                    .process_instruction(trace.compute_units_consumed, trace.execute_timings)
+                invoke_context.process_instruction(&mut compute_units_consumed, &mut timings)
             };
 
             #[cfg(feature = "invocation-inspect-callback")]
@@ -117,8 +119,8 @@ impl SolanaVM for AgaveVM {
         };
 
         InstructionResult {
-            compute_units_consumed: *trace.compute_units_consumed,
-            execution_time: trace.execute_timings.details.execute_us.0,
+            compute_units_consumed,
+            execution_time: timings.details.execute_us.0,
             program_result: invoke_result.clone().into(),
             raw_result: invoke_result,
             return_data,

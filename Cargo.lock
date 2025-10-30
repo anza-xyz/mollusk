@@ -1868,7 +1868,6 @@ dependencies = [
  "solana-stake-program",
  "solana-svm-callback",
  "solana-svm-log-collector",
- "solana-svm-timings",
  "solana-system-interface",
  "solana-system-program",
  "solana-sysvar",
@@ -2043,6 +2042,7 @@ dependencies = [
  "solana-instruction-error",
  "solana-program-runtime",
  "solana-pubkey",
+ "solana-svm-timings",
  "solana-transaction-context",
 ]
 

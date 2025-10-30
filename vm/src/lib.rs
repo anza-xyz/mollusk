@@ -11,7 +11,6 @@ use {
     solana_pubkey::Pubkey,
     solana_rent::Rent,
     solana_svm_log_collector::LogCollector,
-    solana_svm_timings::ExecuteTimings,
     std::{cell::RefCell, rc::Rc},
 };
 #[cfg(feature = "invocation-inspect-callback")]
@@ -25,14 +24,8 @@ pub struct SolanaVMContext<'a> {
     pub program_cache: &'a mut ProgramCacheForTxBatch,
     pub compute_budget: ComputeBudget,
     pub environment_config: EnvironmentConfig<'a>,
-    pub rent: Rent,
-}
-
-/// Trace information about a Solana VM instruction invocation.
-pub struct SolanaVMTrace<'a> {
-    pub compute_units_consumed: &'a mut u64,
-    pub execute_timings: &'a mut ExecuteTimings,
     pub log_collector: Option<Rc<RefCell<LogCollector>>>,
+    pub rent: Rent,
 }
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -67,7 +60,6 @@ pub trait SolanaVM {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
         loader_key: Pubkey,
-        trace: SolanaVMTrace,
         #[cfg(feature = "invocation-inspect-callback")]
         invocation_inspect_callback: &dyn InvocationInspectCallback,
     ) -> InstructionResult;

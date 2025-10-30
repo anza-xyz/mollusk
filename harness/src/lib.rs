@@ -461,7 +461,7 @@ use {
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
-    mollusk_svm_vm::{SolanaVM, SolanaVMContext, SolanaVMTrace},
+    mollusk_svm_vm::{SolanaVM, SolanaVMContext},
     mollusk_svm_vm_agave::AgaveVM,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
@@ -471,7 +471,6 @@ use {
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
-    solana_svm_timings::ExecuteTimings,
     std::{cell::RefCell, collections::HashSet, iter::once, marker::PhantomData, rc::Rc},
 };
 
@@ -734,9 +733,6 @@ impl<VM: SolanaVM> Mollusk<VM> {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let mut compute_units_consumed = 0;
-        let mut timings = ExecuteTimings::default();
-
         let loader_key = if crate::program::precompile_keys::is_precompile(&instruction.program_id)
         {
             crate::program::loader_keys::NATIVE_LOADER
@@ -765,13 +761,8 @@ impl<VM: SolanaVM> Mollusk<VM> {
                 &runtime_features,
                 &sysvar_cache,
             ),
-            rent: self.sysvars.rent.clone(),
-        };
-
-        let vm_trace = SolanaVMTrace {
-            compute_units_consumed: &mut compute_units_consumed,
-            execute_timings: &mut timings,
             log_collector: self.logger.clone(),
+            rent: self.sysvars.rent.clone(),
         };
 
         VM::process_instruction(
@@ -779,7 +770,6 @@ impl<VM: SolanaVM> Mollusk<VM> {
             instruction,
             accounts,
             loader_key,
-            vm_trace,
             #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.as_ref(),
         )

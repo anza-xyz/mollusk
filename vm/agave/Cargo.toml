@@ -20,4 +20,5 @@ solana-instruction = { workspace = true }
 solana-instruction-error = { workspace = true }
 solana-program-runtime = { workspace = true }
 solana-pubkey = { workspace = true }
+solana-svm-timings = { workspace = true }
 solana-transaction-context = { workspace = true }
