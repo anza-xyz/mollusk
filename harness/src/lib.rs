@@ -451,8 +451,6 @@ pub mod sysvar;
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
-#[cfg(feature = "precompiles")]
-use solana_precompile_error::PrecompileError;
 use {
     crate::{
         account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
@@ -464,11 +462,8 @@ use {
     mollusk_svm_vm_agave::AgaveVM,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
-    solana_program_runtime::invoke_context::EnvironmentConfig,
     solana_pubkey::Pubkey,
-    solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
     std::{cell::RefCell, collections::HashSet, iter::once, marker::PhantomData, rc::Rc},
 };
@@ -602,60 +597,6 @@ impl<VM: SolanaVM> CheckContext for Mollusk<VM> {
     }
 }
 
-struct MolluskInvokeContextCallback<'a> {
-    #[cfg_attr(not(feature = "precompiles"), allow(dead_code))]
-    feature_set: &'a FeatureSet,
-    epoch_stake: &'a EpochStake,
-}
-
-impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
-    fn get_epoch_stake(&self) -> u64 {
-        self.epoch_stake.values().sum()
-    }
-
-    fn get_epoch_stake_for_vote_account(&self, vote_address: &Pubkey) -> u64 {
-        self.epoch_stake.get(vote_address).copied().unwrap_or(0)
-    }
-
-    #[cfg(feature = "precompiles")]
-    fn is_precompile(&self, program_id: &Pubkey) -> bool {
-        agave_precompiles::is_precompile(program_id, |feature_id| {
-            self.feature_set.is_active(feature_id)
-        })
-    }
-
-    #[cfg(not(feature = "precompiles"))]
-    fn is_precompile(&self, _program_id: &Pubkey) -> bool {
-        false
-    }
-
-    #[cfg(feature = "precompiles")]
-    fn process_precompile(
-        &self,
-        program_id: &Pubkey,
-        data: &[u8],
-        instruction_datas: Vec<&[u8]>,
-    ) -> Result<(), PrecompileError> {
-        if let Some(precompile) = agave_precompiles::get_precompile(program_id, |feature_id| {
-            self.feature_set.is_active(feature_id)
-        }) {
-            precompile.verify(data, &instruction_datas, self.feature_set)
-        } else {
-            Err(PrecompileError::InvalidPublicKey)
-        }
-    }
-
-    #[cfg(not(feature = "precompiles"))]
-    fn process_precompile(
-        &self,
-        _program_id: &Pubkey,
-        _data: &[u8],
-        _instruction_datas: Vec<&[u8]>,
-    ) -> Result<(), solana_precompile_error::PrecompileError> {
-        panic!("precompiles feature not enabled");
-    }
-}
-
 impl Mollusk {
     /// Create a new Mollusk instance containing the provided program.
     ///
@@ -733,23 +674,14 @@ impl<VM: SolanaVM> Mollusk<VM> {
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
         let mut program_cache = self.program_cache.cache();
-        let callback = MolluskInvokeContextCallback {
-            epoch_stake: &self.epoch_stake,
-            feature_set: &self.feature_set,
-        };
-        let runtime_features = self.feature_set.runtime_features();
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         let vm_context = SolanaVMContext {
             program_cache: &mut program_cache,
             compute_budget: self.compute_budget,
-            environment_config: EnvironmentConfig::new(
-                Hash::default(),
-                /* blockhash_lamports_per_signature */ 5000, // The default value
-                &callback,
-                &runtime_features,
-                &sysvar_cache,
-            ),
+            feature_set: &self.feature_set,
+            epoch_stake: &self.epoch_stake,
+            sysvar_cache: &sysvar_cache,
             log_collector: self.logger.clone(),
             rent: self.sysvars.rent.clone(),
         };

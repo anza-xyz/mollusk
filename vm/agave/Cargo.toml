@@ -10,18 +10,23 @@ version = { workspace = true }
 
 [features]
 invocation-inspect-callback = ["mollusk-svm-vm/invocation-inspect-callback"]
-precompiles = []
+precompiles = ["dep:agave-precompiles"]
 
 [dependencies]
+agave-feature-set = { workspace = true }
+agave-precompiles = { workspace = true, optional = true }
 mollusk-svm-error = { workspace = true }
 mollusk-svm-keys = { workspace = true }
 mollusk-svm-result = { workspace = true }
 mollusk-svm-vm = { workspace = true }
 solana-account = { workspace = true }
+solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
 solana-instruction-error = { workspace = true }
+solana-precompile-error = { workspace = true }
 solana-program-runtime = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-sdk-ids = { workspace = true }
+solana-svm-callback = { workspace = true }
 solana-svm-timings = { workspace = true }
 solana-transaction-context = { workspace = true }

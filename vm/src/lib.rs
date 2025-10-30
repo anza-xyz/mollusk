@@ -1,17 +1,16 @@
 //! Virtual Machine API for using Mollusk with custom VMs.
 
 use {
+    agave_feature_set::FeatureSet,
     mollusk_svm_result::InstructionResult,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::Instruction,
-    solana_program_runtime::{
-        invoke_context::EnvironmentConfig, loaded_programs::ProgramCacheForTxBatch,
-    },
+    solana_program_runtime::{loaded_programs::ProgramCacheForTxBatch, sysvar_cache::SysvarCache},
     solana_pubkey::Pubkey,
     solana_rent::Rent,
     solana_svm_log_collector::LogCollector,
-    std::{cell::RefCell, rc::Rc},
+    std::{cell::RefCell, collections::HashMap, rc::Rc},
 };
 #[cfg(feature = "invocation-inspect-callback")]
 use {
@@ -23,7 +22,9 @@ use {
 pub struct SolanaVMContext<'a> {
     pub program_cache: &'a mut ProgramCacheForTxBatch,
     pub compute_budget: ComputeBudget,
-    pub environment_config: EnvironmentConfig<'a>,
+    pub feature_set: &'a FeatureSet,
+    pub epoch_stake: &'a HashMap<Pubkey, u64>,
+    pub sysvar_cache: &'a SysvarCache,
     pub log_collector: Option<Rc<RefCell<LogCollector>>>,
     pub rent: Rent,
 }

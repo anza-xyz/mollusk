@@ -28,10 +28,7 @@ invocation-inspect-callback = [
     "mollusk-svm-vm/invocation-inspect-callback",
     "mollusk-svm-vm-agave/invocation-inspect-callback",
 ]
-precompiles = [
-    "dep:agave-precompiles",
-    "mollusk-svm-vm-agave/precompiles",
-]
+precompiles = ["mollusk-svm-vm-agave/precompiles"]
 serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
@@ -39,7 +36,6 @@ serde = [
 
 [dependencies]
 agave-feature-set = { workspace = true }
-agave-precompiles = { workspace = true, optional = true }
 agave-syscalls = { workspace = true }
 bincode = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
@@ -64,7 +60,6 @@ solana-loader-v3-interface = { workspace = true, features = ["serde"] }
 solana-loader-v4-interface = { workspace = true }
 solana-loader-v4-program = { workspace = true, optional = true }
 solana-logger = { workspace = true }
-solana-precompile-error = { workspace = true }
 solana-program-error = { workspace = true }
 solana-program-runtime = { workspace = true }
 solana-pubkey = { workspace = true }
@@ -73,7 +68,6 @@ solana-sdk-ids = { workspace = true }
 solana-slot-hashes = { workspace = true }
 solana-stake-interface = { workspace = true }
 solana-stake-program = { workspace = true, optional = true }
-solana-svm-callback = { workspace = true }
 solana-svm-log-collector = { workspace = true }
 solana-system-program = { workspace = true }
 solana-sysvar = { workspace = true }

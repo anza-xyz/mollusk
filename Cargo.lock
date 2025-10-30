@@ -1821,7 +1821,6 @@ name = "mollusk-svm"
 version = "0.7.0"
 dependencies = [
  "agave-feature-set",
- "agave-precompiles",
  "agave-syscalls",
  "bincode",
  "criterion",
@@ -1855,7 +1854,6 @@ dependencies = [
  "solana-loader-v4-program",
  "solana-logger",
  "solana-native-token",
- "solana-precompile-error",
  "solana-program-error",
  "solana-program-runtime",
  "solana-pubkey",
@@ -1866,7 +1864,6 @@ dependencies = [
  "solana-slot-hashes",
  "solana-stake-interface",
  "solana-stake-program",
- "solana-svm-callback",
  "solana-svm-log-collector",
  "solana-system-interface",
  "solana-system-program",
@@ -2018,6 +2015,7 @@ dependencies = [
 name = "mollusk-svm-vm"
 version = "0.7.0"
 dependencies = [
+ "agave-feature-set",
  "mollusk-svm-result",
  "solana-account",
  "solana-compute-budget",
@@ -2034,16 +2032,21 @@ dependencies = [
 name = "mollusk-svm-vm-agave"
 version = "0.7.0"
 dependencies = [
+ "agave-feature-set",
+ "agave-precompiles",
  "mollusk-svm-error",
  "mollusk-svm-keys",
  "mollusk-svm-result",
  "mollusk-svm-vm",
  "solana-account",
+ "solana-hash",
  "solana-instruction",
  "solana-instruction-error",
+ "solana-precompile-error",
  "solana-program-runtime",
  "solana-pubkey",
  "solana-sdk-ids",
+ "solana-svm-callback",
  "solana-svm-timings",
  "solana-transaction-context",
 ]

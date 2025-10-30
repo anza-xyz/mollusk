@@ -12,6 +12,7 @@ version = { workspace = true }
 invocation-inspect-callback = []
 
 [dependencies]
+agave-feature-set = { workspace = true }
 mollusk-svm-result = { workspace = true }
 solana-account = { workspace = true }
 solana-compute-budget = { workspace = true }

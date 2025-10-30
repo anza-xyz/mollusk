@@ -11,9 +11,12 @@ use {
     mollusk_svm_result::InstructionResult,
     mollusk_svm_vm::{SolanaVM, SolanaVMContext},
     solana_account::Account,
+    solana_hash::Hash,
     solana_instruction::Instruction,
-    solana_program_runtime::invoke_context::InvokeContext,
+    solana_precompile_error::PrecompileError,
+    solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
     solana_pubkey::Pubkey,
+    solana_svm_callback::InvokeContextCallback,
     solana_svm_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
 };
@@ -32,11 +35,20 @@ impl SolanaVM for AgaveVM {
         let mut compute_units_consumed = 0;
         let mut timings = ExecuteTimings::default();
 
+        let SolanaVMContext {
+            program_cache,
+            compute_budget,
+            feature_set,
+            epoch_stake,
+            sysvar_cache,
+            log_collector,
+            rent,
+        } = context;
+
         let loader_key = if crate::precompile_keys::is_precompile(&instruction.program_id) {
             solana_sdk_ids::native_loader::id()
         } else {
-            context
-                .program_cache
+            program_cache
                 .find(&instruction.program_id)
                 .or_panic_with(MolluskError::ProgramNotCached(&instruction.program_id))
                 .account_owner()
@@ -50,19 +62,32 @@ impl SolanaVM for AgaveVM {
 
         let mut transaction_context = TransactionContext::new(
             transaction_accounts,
-            context.rent,
-            context.compute_budget.max_instruction_stack_depth,
-            context.compute_budget.max_instruction_trace_length,
+            rent,
+            compute_budget.max_instruction_stack_depth,
+            compute_budget.max_instruction_trace_length,
         );
 
         let invoke_result = {
+            let callback = AgaveInvokeContextCallback {
+                feature_set,
+                epoch_stake,
+            };
+            let runtime_features = feature_set.runtime_features();
+            let environment_config = EnvironmentConfig::new(
+                Hash::default(),
+                /* blockhash_lamports_per_signature */ 5000, // The default value
+                &callback,
+                &runtime_features,
+                sysvar_cache,
+            );
+
             let mut invoke_context = InvokeContext::new(
                 &mut transaction_context,
-                context.program_cache,
-                context.environment_config,
-                context.log_collector,
-                context.compute_budget.to_budget(),
-                context.compute_budget.to_cost(),
+                program_cache,
+                environment_config,
+                log_collector,
+                compute_budget.to_budget(),
+                compute_budget.to_cost(),
             );
 
             // Configure the next instruction frame for this invocation.
@@ -137,5 +162,59 @@ impl SolanaVM for AgaveVM {
             return_data,
             resulting_accounts,
         }
+    }
+}
+
+struct AgaveInvokeContextCallback<'a> {
+    #[cfg_attr(not(feature = "precompiles"), allow(dead_code))]
+    feature_set: &'a agave_feature_set::FeatureSet,
+    epoch_stake: &'a std::collections::HashMap<Pubkey, u64>,
+}
+
+impl InvokeContextCallback for AgaveInvokeContextCallback<'_> {
+    fn get_epoch_stake(&self) -> u64 {
+        self.epoch_stake.values().sum()
+    }
+
+    fn get_epoch_stake_for_vote_account(&self, vote_address: &Pubkey) -> u64 {
+        self.epoch_stake.get(vote_address).copied().unwrap_or(0)
+    }
+
+    #[cfg(feature = "precompiles")]
+    fn is_precompile(&self, program_id: &Pubkey) -> bool {
+        agave_precompiles::is_precompile(program_id, |feature_id| {
+            self.feature_set.is_active(feature_id)
+        })
+    }
+
+    #[cfg(not(feature = "precompiles"))]
+    fn is_precompile(&self, _program_id: &Pubkey) -> bool {
+        false
+    }
+
+    #[cfg(feature = "precompiles")]
+    fn process_precompile(
+        &self,
+        program_id: &Pubkey,
+        data: &[u8],
+        instruction_datas: Vec<&[u8]>,
+    ) -> Result<(), PrecompileError> {
+        if let Some(precompile) = agave_precompiles::get_precompile(program_id, |feature_id| {
+            self.feature_set.is_active(feature_id)
+        }) {
+            precompile.verify(data, &instruction_datas, self.feature_set)
+        } else {
+            Err(PrecompileError::InvalidPublicKey)
+        }
+    }
+
+    #[cfg(not(feature = "precompiles"))]
+    fn process_precompile(
+        &self,
+        _program_id: &Pubkey,
+        _data: &[u8],
+        _instruction_datas: Vec<&[u8]>,
+    ) -> Result<(), PrecompileError> {
+        panic!("precompiles feature not enabled");
     }
 }
