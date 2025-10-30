@@ -459,7 +459,6 @@ use {
         sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
-    mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
     mollusk_svm_vm::{SolanaVM, SolanaVMContext},
     mollusk_svm_vm_agave::AgaveVM,
@@ -733,16 +732,6 @@ impl<VM: SolanaVM> Mollusk<VM> {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let loader_key = if crate::program::precompile_keys::is_precompile(&instruction.program_id)
-        {
-            crate::program::loader_keys::NATIVE_LOADER
-        } else {
-            self.program_cache
-                .load_program(&instruction.program_id)
-                .or_panic_with(MolluskError::ProgramNotCached(&instruction.program_id))
-                .account_owner()
-        };
-
         let mut program_cache = self.program_cache.cache();
         let callback = MolluskInvokeContextCallback {
             epoch_stake: &self.epoch_stake,
@@ -769,7 +758,6 @@ impl<VM: SolanaVM> Mollusk<VM> {
             vm_context,
             instruction,
             accounts,
-            loader_key,
             #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.as_ref(),
         )

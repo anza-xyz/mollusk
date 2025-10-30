@@ -28,7 +28,10 @@ invocation-inspect-callback = [
     "mollusk-svm-vm/invocation-inspect-callback",
     "mollusk-svm-vm-agave/invocation-inspect-callback",
 ]
-precompiles = ["dep:agave-precompiles"]
+precompiles = [
+    "dep:agave-precompiles",
+    "mollusk-svm-vm-agave/precompiles",
+]
 serde = [
     "dep:serde",
     "mollusk-svm-result/serde",

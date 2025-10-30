@@ -2034,6 +2034,7 @@ dependencies = [
 name = "mollusk-svm-vm-agave"
 version = "0.7.0"
 dependencies = [
+ "mollusk-svm-error",
  "mollusk-svm-keys",
  "mollusk-svm-result",
  "mollusk-svm-vm",
@@ -2042,6 +2043,7 @@ dependencies = [
  "solana-instruction-error",
  "solana-program-runtime",
  "solana-pubkey",
+ "solana-sdk-ids",
  "solana-svm-timings",
  "solana-transaction-context",
 ]

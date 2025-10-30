@@ -1,11 +1,13 @@
 //! The SBPF virtual machine used in Anza's Agave validator.
 
 pub mod compile_accounts;
+pub mod precompile_keys;
 
 #[cfg(feature = "invocation-inspect-callback")]
 use mollusk_svm_vm::InvocationInspectCallback;
 use {
     compile_accounts::{compile_accounts, CompiledAccounts},
+    mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::InstructionResult,
     mollusk_svm_vm::{SolanaVM, SolanaVMContext},
     solana_account::Account,
@@ -24,12 +26,21 @@ impl SolanaVM for AgaveVM {
         context: SolanaVMContext,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
-        loader_key: Pubkey,
         #[cfg(feature = "invocation-inspect-callback")]
         invocation_inspect_callback: &dyn InvocationInspectCallback,
     ) -> InstructionResult {
         let mut compute_units_consumed = 0;
         let mut timings = ExecuteTimings::default();
+
+        let loader_key = if crate::precompile_keys::is_precompile(&instruction.program_id) {
+            solana_sdk_ids::native_loader::id()
+        } else {
+            context
+                .program_cache
+                .find(&instruction.program_id)
+                .or_panic_with(MolluskError::ProgramNotCached(&instruction.program_id))
+                .account_owner()
+        };
 
         let CompiledAccounts {
             program_id_index,

@@ -59,7 +59,6 @@ pub trait SolanaVM {
         context: SolanaVMContext,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
-        loader_key: Pubkey,
         #[cfg(feature = "invocation-inspect-callback")]
         invocation_inspect_callback: &dyn InvocationInspectCallback,
     ) -> InstructionResult;

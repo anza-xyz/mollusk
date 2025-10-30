@@ -1,5 +1,9 @@
 //! Module for working with Solana programs.
 
+/// Precompile keys and utilities, re-exported from the Agave VM crate for
+/// convenience.
+#[cfg(feature = "precompiles")]
+pub use mollusk_svm_vm_agave::precompile_keys;
 use {
     agave_feature_set::FeatureSet,
     agave_syscalls::create_program_runtime_environment_v1,
@@ -29,31 +33,6 @@ pub mod loader_keys {
         bpf_loader_upgradeable::ID as LOADER_V3, loader_v4::ID as LOADER_V4,
         native_loader::ID as NATIVE_LOADER,
     };
-}
-
-#[cfg(feature = "precompiles")]
-pub mod precompile_keys {
-    use solana_pubkey::Pubkey;
-    pub use solana_sdk_ids::{
-        ed25519_program::ID as ED25519_PROGRAM, secp256k1_program::ID as SECP256K1_PROGRAM,
-        secp256r1_program::ID as SECP256R1_PROGRAM,
-    };
-
-    pub(crate) fn is_precompile(program_id: &Pubkey) -> bool {
-        matches!(
-            *program_id,
-            ED25519_PROGRAM | SECP256K1_PROGRAM | SECP256R1_PROGRAM
-        )
-    }
-}
-
-#[cfg(not(feature = "precompiles"))]
-pub mod precompile_keys {
-    use solana_pubkey::Pubkey;
-
-    pub(crate) fn is_precompile(_program_id: &Pubkey) -> bool {
-        false
-    }
 }
 
 pub struct ProgramCache {
