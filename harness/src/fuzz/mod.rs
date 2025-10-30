@@ -4,11 +4,8 @@ pub mod firedancer;
 pub mod mollusk;
 
 use {
-    crate::{vm::SolanaVM, Mollusk},
-    mollusk_svm_fuzz_fs::FsHandler,
-    mollusk_svm_result::InstructionResult,
-    solana_account::Account,
-    solana_instruction::Instruction,
+    crate::Mollusk, mollusk_svm_fuzz_fs::FsHandler, mollusk_svm_result::InstructionResult,
+    mollusk_svm_vm::SolanaVM, solana_account::Account, solana_instruction::Instruction,
     solana_pubkey::Pubkey,
 };
 

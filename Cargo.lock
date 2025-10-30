@@ -1833,6 +1833,8 @@ dependencies = [
  "mollusk-svm-fuzz-fs",
  "mollusk-svm-keys",
  "mollusk-svm-result",
+ "mollusk-svm-vm",
+ "mollusk-svm-vm-agave",
  "openssl",
  "rand 0.7.3",
  "rayon",
@@ -2011,6 +2013,28 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "solana-rent",
+]
+
+[[package]]
+name = "mollusk-svm-vm"
+version = "0.7.0"
+dependencies = [
+ "solana-compute-budget",
+ "solana-instruction-error",
+ "solana-program-runtime",
+ "solana-pubkey",
+ "solana-svm-log-collector",
+ "solana-svm-timings",
+ "solana-transaction-context",
+]
+
+[[package]]
+name = "mollusk-svm-vm-agave"
+version = "0.7.0"
+dependencies = [
+ "mollusk-svm-vm",
+ "solana-instruction-error",
+ "solana-program-runtime",
 ]
 
 [[package]]

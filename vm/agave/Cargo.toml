@@ -1,0 +1,17 @@
+[package]
+name = "mollusk-svm-vm-agave"
+description = "Anza's Agave VM implementation for Mollusk"
+authors = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+license-file = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[features]
+invocation-inspect-callback = ["mollusk-svm-vm/invocation-inspect-callback"]
+
+[dependencies]
+mollusk-svm-vm = { workspace = true }
+solana-instruction-error = { workspace = true }
+solana-program-runtime = { workspace = true }

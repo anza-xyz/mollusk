@@ -1,15 +1,15 @@
 //! The SBPF virtual machine used in Anza's Agave validator.
 
 #[cfg(feature = "invocation-inspect-callback")]
-use crate::InvocationInspectCallback;
+use mollusk_svm_vm::InvocationInspectCallback;
 use {
-    super::{SolanaVM, SolanaVMContext, SolanaVMInstruction, SolanaVMTrace},
+    mollusk_svm_vm::{SolanaVM, SolanaVMContext, SolanaVMInstruction, SolanaVMTrace},
     solana_instruction_error::InstructionError,
     solana_program_runtime::invoke_context::InvokeContext,
 };
 
 /// The SBPF virtual machine used in Anza's Agave validator.
-pub struct AgaveVM {}
+pub struct AgaveVM;
 
 impl SolanaVM for AgaveVM {
     fn process_instruction(

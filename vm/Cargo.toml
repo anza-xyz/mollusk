@@ -1,0 +1,21 @@
+[package]
+name = "mollusk-svm-vm"
+description = "Mollusk VM interface"
+authors = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+license-file = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[features]
+invocation-inspect-callback = []
+
+[dependencies]
+solana-compute-budget = { workspace = true }
+solana-instruction-error = { workspace = true }
+solana-program-runtime = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-svm-log-collector = { workspace = true }
+solana-svm-timings = { workspace = true }
+solana-transaction-context = { workspace = true }

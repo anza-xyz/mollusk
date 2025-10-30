@@ -9,6 +9,8 @@ members = [
     "programs/*",
     "result",
     "test-programs/*",
+    "vm",
+    "vm/agave",
 ]
 resolver = "2"
 
@@ -40,8 +42,10 @@ mollusk-svm-fuzz-fixture-firedancer = { path = "fuzz/fixture-fd", version = "0.7
 mollusk-svm-fuzz-fs = { path = "fuzz/fs", version = "0.7.0" }
 mollusk-svm-keys = { path = "keys", version = "0.7.0" }
 mollusk-svm-programs-memo = { path = "programs/memo", version = "0.7.0" }
-mollusk-svm-result = { path = "result", version = "0.7.0" }
 mollusk-svm-programs-token = { path = "programs/token", version = "0.7.0" }
+mollusk-svm-result = { path = "result", version = "0.7.0" }
+mollusk-svm-vm = { path = "vm", version = "0.7.0" }
+mollusk-svm-vm-agave = { path = "vm/agave", version = "0.7.0" }
 num-format = "0.4.4"
 openssl = "0.10.72"
 prost = "0.9"

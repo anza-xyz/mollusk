@@ -447,7 +447,6 @@ pub mod file;
 pub mod fuzz;
 pub mod program;
 pub mod sysvar;
-pub mod vm;
 
 // Re-export result module from mollusk-svm-result crate
 pub use mollusk_svm_result as result;
@@ -457,16 +456,14 @@ use mollusk_svm_result::Compare;
 use solana_precompile_error::PrecompileError;
 use {
     crate::{
-        account_store::AccountStore,
-        compile_accounts::CompiledAccounts,
-        epoch_stake::EpochStake,
-        program::ProgramCache,
-        sysvar::Sysvars,
-        vm::{agave::AgaveVM, SolanaVM, SolanaVMContext, SolanaVMInstruction, SolanaVMTrace},
+        account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
+        program::ProgramCache, sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
+    mollusk_svm_vm::{SolanaVM, SolanaVMContext, SolanaVMInstruction, SolanaVMTrace},
+    mollusk_svm_vm_agave::AgaveVM,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
@@ -478,11 +475,6 @@ use {
     solana_svm_timings::ExecuteTimings,
     solana_transaction_context::TransactionContext,
     std::{cell::RefCell, collections::HashSet, iter::once, marker::PhantomData, rc::Rc},
-};
-#[cfg(feature = "invocation-inspect-callback")]
-use {
-    solana_program_runtime::invoke_context::InvokeContext,
-    solana_transaction_context::InstructionAccount,
 };
 
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
@@ -517,29 +509,9 @@ pub struct Mollusk<VM: SolanaVM = AgaveVM> {
     pub slot: u64,
 }
 
+// Re-export for backwards compatibility
 #[cfg(feature = "invocation-inspect-callback")]
-pub trait InvocationInspectCallback {
-    fn before_invocation(
-        &self,
-        program_id: &Pubkey,
-        instruction_data: &[u8],
-        instruction_accounts: &[InstructionAccount],
-        invoke_context: &InvokeContext,
-    );
-
-    fn after_invocation(&self, invoke_context: &InvokeContext);
-}
-
-#[cfg(feature = "invocation-inspect-callback")]
-pub struct EmptyInvocationInspectCallback;
-
-#[cfg(feature = "invocation-inspect-callback")]
-impl InvocationInspectCallback for EmptyInvocationInspectCallback {
-    fn before_invocation(&self, _: &Pubkey, _: &[u8], _: &[InstructionAccount], _: &InvokeContext) {
-    }
-
-    fn after_invocation(&self, _: &InvokeContext) {}
-}
+pub use mollusk_svm_vm::{EmptyInvocationInspectCallback, InvocationInspectCallback};
 
 // Fields from `Mollusk`, minus the generic VM.
 struct MolluskFields {

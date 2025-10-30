@@ -24,7 +24,10 @@ fuzz-fd = [
     "dep:mollusk-svm-fuzz-fixture-firedancer",
     "dep:mollusk-svm-fuzz-fs",
 ]
-invocation-inspect-callback = []
+invocation-inspect-callback = [
+    "mollusk-svm-vm/invocation-inspect-callback",
+    "mollusk-svm-vm-agave/invocation-inspect-callback",
+]
 precompiles = ["dep:agave-precompiles"]
 serde = [
     "dep:serde",
@@ -43,6 +46,8 @@ mollusk-svm-fuzz-fixture-firedancer = { workspace = true, optional = true }
 mollusk-svm-fuzz-fs = { workspace = true, optional = true }
 mollusk-svm-keys = { workspace = true }
 mollusk-svm-result = { workspace = true }
+mollusk-svm-vm = { workspace = true }
+mollusk-svm-vm-agave = { workspace = true }
 solana-account = { workspace = true }
 solana-bpf-loader-program = { workspace = true }
 solana-clock = { workspace = true }

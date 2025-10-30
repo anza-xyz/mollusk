@@ -5,13 +5,14 @@
 //! Only available when the `fuzz` feature is enabled.
 
 use {
-    crate::{sysvar::Sysvars, vm::SolanaVM, Mollusk},
+    crate::{sysvar::Sysvars, Mollusk},
     agave_feature_set::FeatureSet,
     mollusk_svm_fuzz_fixture::{
         context::Context as FuzzContext, effects::Effects as FuzzEffects,
         sysvars::Sysvars as FuzzSysvars, Fixture as FuzzFixture,
     },
     mollusk_svm_result::InstructionResult,
+    mollusk_svm_vm::SolanaVM,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::Instruction,
