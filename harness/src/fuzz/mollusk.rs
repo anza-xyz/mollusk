@@ -5,7 +5,7 @@
 //! Only available when the `fuzz` feature is enabled.
 
 use {
-    crate::{sysvar::Sysvars, Mollusk},
+    crate::{sysvar::Sysvars, vm::SolanaVM, Mollusk},
     agave_feature_set::FeatureSet,
     mollusk_svm_fuzz_fixture::{
         context::Context as FuzzContext, effects::Effects as FuzzEffects,
@@ -102,8 +102,8 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
     }
 }
 
-pub fn build_fixture_from_mollusk_test(
-    mollusk: &Mollusk,
+pub fn build_fixture_from_mollusk_test<VM: SolanaVM>(
+    mollusk: &Mollusk<VM>,
     instruction: &Instruction,
     accounts: &[(Pubkey, Account)],
     result: &InstructionResult,

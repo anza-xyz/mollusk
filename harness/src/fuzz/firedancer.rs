@@ -7,6 +7,7 @@
 use {
     crate::{
         compile_accounts::{compile_accounts, CompiledAccounts},
+        vm::SolanaVM,
         Mollusk, DEFAULT_LOADER_KEY,
     },
     agave_feature_set::FeatureSet,
@@ -235,8 +236,8 @@ fn instruction_metadata() -> FuzzMetadata {
     }
 }
 
-pub fn build_fixture_from_mollusk_test(
-    mollusk: &Mollusk,
+pub fn build_fixture_from_mollusk_test<VM: SolanaVM>(
+    mollusk: &Mollusk<VM>,
     instruction: &Instruction,
     accounts: &[(Pubkey, Account)],
     result: &InstructionResult,

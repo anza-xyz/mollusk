@@ -4,12 +4,16 @@ pub mod firedancer;
 pub mod mollusk;
 
 use {
-    crate::Mollusk, mollusk_svm_fuzz_fs::FsHandler, mollusk_svm_result::InstructionResult,
-    solana_account::Account, solana_instruction::Instruction, solana_pubkey::Pubkey,
+    crate::{vm::SolanaVM, Mollusk},
+    mollusk_svm_fuzz_fs::FsHandler,
+    mollusk_svm_result::InstructionResult,
+    solana_account::Account,
+    solana_instruction::Instruction,
+    solana_pubkey::Pubkey,
 };
 
-pub fn generate_fixtures_from_mollusk_test(
-    mollusk: &Mollusk,
+pub fn generate_fixtures_from_mollusk_test<VM: SolanaVM>(
+    mollusk: &Mollusk<VM>,
     instruction: &Instruction,
     accounts: &[(Pubkey, Account)],
     result: &InstructionResult,
