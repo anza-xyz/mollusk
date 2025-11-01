@@ -722,7 +722,7 @@ impl Mollusk {
             self.compute_budget.max_instruction_stack_depth,
             self.compute_budget.max_instruction_trace_length,
         );
-        transaction_context.set_top_level_instruction_index(instruction_index);
+        // transaction_context.set_top_level_instruction_index(instruction_index);
 
         let invoke_result = {
             let mut program_cache = self.program_cache.cache();
