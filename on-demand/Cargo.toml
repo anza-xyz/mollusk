@@ -1,0 +1,20 @@
+[package]
+name = "mollusk-svm-on-demand"
+description = "Automatically fetch and use mainnet accounts with the Mollusk SVM harness."
+documentation = ""
+authors = ["Leonardo Donatacci <leo@blueshift.gg>", "Anza Technology Maintainers <maintainers@anza.xyz>"]
+repository = { workspace = true }
+readme = { workspace = true }
+license-file = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+mollusk-svm = { workspace = true }
+solana-account = { workspace = true }
+solana-commitment-config = { workspace = true }
+solana-instruction = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-rpc-client = { workspace = true }
+solana-rpc-client-api = { workspace = true }
+thiserror = { workspace = true }
