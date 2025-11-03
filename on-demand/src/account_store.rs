@@ -358,12 +358,4 @@ impl RpcAccountStore {
         mollusk.warp_to_slot(slot);
         Ok(self)
     }
-
-    /// Deprecated: Use `with_synced_slot` instead.
-    ///
-    /// This method will be removed in a future version.
-    #[deprecated(since = "0.0.1", note = "Use `with_synced_slot` instead")]
-    pub async fn sync_slot(self, mollusk: &mut Mollusk) -> Result<Self, RpcError> {
-        self.with_synced_slot(mollusk).await
-    }
 }
