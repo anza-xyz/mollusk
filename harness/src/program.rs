@@ -228,11 +228,22 @@ static BUILTINS: &[Builtin] = &[
     },
     #[cfg(feature = "all-builtins")]
     Builtin {
+        program_id: loader_keys::LOADER_V1,
+        name: "solana_bpf_loader_deprecated_program",
+        entrypoint: solana_bpf_loader_program::Entrypoint::vm,
+    },
+    #[cfg(feature = "all-builtins")]
+    Builtin {
         program_id: loader_keys::LOADER_V4,
         name: "solana_loader_v4_program",
         entrypoint: solana_loader_v4_program::Entrypoint::vm,
     },
-    /* ... */
+    #[cfg(feature = "all-builtins")]
+    Builtin {
+        program_id: solana_sdk_ids::zk_elgamal_proof_program::id(),
+        name: "zk_elgamal_proof_program",
+        entrypoint: solana_zk_elgamal_proof_program::Entrypoint::vm,
+    },
 ];
 
 /// Create a key and account for a builtin program.
