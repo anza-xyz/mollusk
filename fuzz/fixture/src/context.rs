@@ -66,11 +66,12 @@ impl From<ProtoContext> for Context {
         let feature_set: FeatureSet = value.feature_set.map(Into::into).unwrap_or_default();
         let simd_0268_active =
             feature_set.is_active(&agave_feature_set::raise_cpi_nesting_limit_to_8::id());
+        let simd_0339_active =
+            feature_set.is_active(&agave_feature_set::increase_cpi_account_info_limit::id());
 
-        let compute_budget = value
-            .compute_budget
-            .map(Into::into)
-            .unwrap_or_else(|| ComputeBudget::new_with_defaults(simd_0268_active));
+        let compute_budget = value.compute_budget.map(Into::into).unwrap_or_else(|| {
+            ComputeBudget::new_with_defaults(simd_0268_active, simd_0339_active)
+        });
 
         Self {
             compute_budget,
@@ -151,12 +152,15 @@ mod tests {
             ComputeBudget as ProtoComputeBudget, FeatureSet as ProtoFeatureSet,
             InstrContext as ProtoContext,
         },
+        solana_pubkey::Pubkey,
     };
 
-    fn proto_feature_set_with(feature_id: solana_pubkey::Pubkey) -> ProtoFeatureSet {
-        let discr = u64::from_le_bytes(feature_id.to_bytes()[0..8].try_into().unwrap());
+    fn proto_feature_set_with(features: &[Pubkey]) -> ProtoFeatureSet {
         ProtoFeatureSet {
-            features: vec![discr],
+            features: features
+                .iter()
+                .map(|id| u64::from_le_bytes(id.to_bytes()[0..8].try_into().unwrap()))
+                .collect(),
         }
     }
 
@@ -175,12 +179,13 @@ mod tests {
     #[test]
     fn test_defaults_use_feature_flag_when_active() {
         let mut proto = empty_proto_context();
-        proto.feature_set = Some(proto_feature_set_with(
+        proto.feature_set = Some(proto_feature_set_with(&[
             agave_feature_set::raise_cpi_nesting_limit_to_8::id(),
-        ));
+            agave_feature_set::increase_cpi_account_info_limit::id(),
+        ]));
 
         let ctx: Context = proto.into();
-        let expected = ComputeBudget::new_with_defaults(true);
+        let expected = ComputeBudget::new_with_defaults(true, true);
         assert_eq!(ctx.compute_budget, expected);
     }
 
@@ -188,7 +193,7 @@ mod tests {
     fn test_defaults_use_feature_flag_when_inactive() {
         let proto = empty_proto_context();
         let ctx: Context = proto.into();
-        let expected = ComputeBudget::new_with_defaults(false);
+        let expected = ComputeBudget::new_with_defaults(false, false);
         assert_eq!(ctx.compute_budget, expected);
     }
 
@@ -202,9 +207,10 @@ mod tests {
         proto.compute_budget = Some(cb);
 
         // Whether the feature is present or not should not affect passthrough
-        proto.feature_set = Some(proto_feature_set_with(
+        proto.feature_set = Some(proto_feature_set_with(&[
             agave_feature_set::raise_cpi_nesting_limit_to_8::id(),
-        ));
+            agave_feature_set::increase_cpi_account_info_limit::id(),
+        ]));
 
         let ctx: Context = proto.into();
         assert_eq!(ctx.compute_budget.compute_unit_limit, 12345);

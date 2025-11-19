@@ -9,16 +9,16 @@ use {
         },
         keys::KeyMap,
     },
-    solana_account::{Account, WritableAccount},
+    solana_account::{Account, AccountSharedData, WritableAccount},
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
-    solana_transaction_context::{InstructionAccount, TransactionAccount},
+    solana_transaction_context::InstructionAccount,
 };
 
 pub struct CompiledAccounts {
     pub program_id_index: u16,
     pub instruction_accounts: Vec<InstructionAccount>,
-    pub transaction_accounts: Vec<TransactionAccount>,
+    pub transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
 }
 
 pub fn compile_accounts<'a>(

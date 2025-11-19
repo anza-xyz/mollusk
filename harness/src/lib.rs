@@ -460,19 +460,25 @@ use {
         program::ProgramCache, sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
+    agave_syscalls::{
+        create_program_runtime_environment_v1, create_program_runtime_environment_v2,
+    },
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
-    solana_account::{Account, AccountSharedData},
+    solana_account::{Account, AccountSharedData, ReadableAccount},
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
-    solana_program_runtime::invoke_context::{EnvironmentConfig, InvokeContext},
+    solana_program_runtime::{
+        invoke_context::{EnvironmentConfig, InvokeContext},
+        loaded_programs::ProgramRuntimeEnvironments,
+    },
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
     solana_transaction_context::{InstructionAccount, TransactionContext},
-    std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc},
+    std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc, sync::Arc},
 };
 
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
@@ -537,7 +543,7 @@ impl Default for Mollusk {
              solana_runtime::message_processor=debug,\
              solana_runtime::system_instruction_processor=trace",
         );
-        let compute_budget = ComputeBudget::new_with_defaults(true);
+        let compute_budget = ComputeBudget::new_with_defaults(true, true);
 
         #[cfg(feature = "fuzz")]
         let feature_set = {
@@ -713,8 +719,26 @@ impl Mollusk {
                 epoch_stake: &self.epoch_stake,
                 feature_set: &self.feature_set,
             };
+            let execution_budget = self.compute_budget.to_budget();
             let runtime_features = self.feature_set.runtime_features();
             let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+
+            let program_runtime_environments = ProgramRuntimeEnvironments {
+                program_runtime_v1: Arc::new(
+                    create_program_runtime_environment_v1(
+                        &runtime_features,
+                        &execution_budget,
+                        /* reject_deployment_of_broken_elfs */ false,
+                        /* debugging_features */ false,
+                    )
+                    .unwrap(),
+                ),
+                program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
+                    &execution_budget,
+                    /* debugging_features */ false,
+                )),
+            };
+
             let mut invoke_context = InvokeContext::new(
                 &mut transaction_context,
                 &mut program_cache,
@@ -723,6 +747,8 @@ impl Mollusk {
                     /* blockhash_lamports_per_signature */ 5000, // The default value
                     &callback,
                     &runtime_features,
+                    &program_runtime_environments,
+                    &program_runtime_environments,
                     &sysvar_cache,
                 ),
                 self.logger.clone(),
@@ -736,7 +762,7 @@ impl Mollusk {
                 .configure_next_instruction_for_tests(
                     program_id_index,
                     instruction_accounts.clone(),
-                    &instruction.data,
+                    instruction.data.clone(),
                 )
                 .expect("failed to configure next instruction");
 
@@ -774,12 +800,15 @@ impl Mollusk {
                     transaction_context
                         .find_index_of_account(pubkey)
                         .map(|index| {
-                            let resulting_account = transaction_context
-                                .accounts()
-                                .try_borrow(index)
-                                .unwrap()
-                                .clone()
-                                .into();
+                            let account_ref =
+                                transaction_context.accounts().try_borrow(index).unwrap();
+                            let resulting_account = Account {
+                                lamports: account_ref.lamports(),
+                                data: account_ref.data().to_vec(),
+                                owner: *account_ref.owner(),
+                                executable: account_ref.executable(),
+                                rent_epoch: account_ref.rent_epoch(),
+                            };
                             (*pubkey, resulting_account)
                         })
                         .unwrap_or((*pubkey, account.clone()))

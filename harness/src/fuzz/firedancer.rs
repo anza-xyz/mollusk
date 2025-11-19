@@ -114,7 +114,7 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
 
     let compute_budget = ComputeBudget {
         compute_unit_limit: *compute_units_available,
-        ..ComputeBudget::new_with_defaults(true)
+        ..ComputeBudget::new_with_defaults(true, true)
     };
 
     let accounts = accounts

@@ -80,7 +80,7 @@ clippy-fix:
 	@cargo +$(NIGHTLY_TOOLCHAIN) clippy --all --all-features --all-targets --fix --allow-dirty --allow-staged -- -D warnings
 
 check-features:
-	@cargo hack check --feature-powerset --no-dev-deps
+	@cargo hack --feature-powerset --no-dev-deps check
 
 build:
 	@$(MAKE) build-test-programs

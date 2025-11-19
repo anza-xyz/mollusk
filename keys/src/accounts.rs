@@ -6,8 +6,7 @@ use {
     solana_account::{Account, AccountSharedData},
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
-    solana_transaction_context::{IndexOfAccount, InstructionAccount, TransactionAccount},
-    std::collections::HashMap,
+    solana_transaction_context::{IndexOfAccount, InstructionAccount},
 };
 
 // Helper struct to avoid cloning instruction data.
@@ -53,16 +52,8 @@ pub fn compile_transaction_accounts_for_instruction<'a>(
     instruction: &Instruction,
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
     stub_out_program_account: Option<Box<dyn Fn() -> Account>>,
-) -> Vec<TransactionAccount> {
-    let len = key_map.len();
-    let mut by_key: HashMap<Pubkey, AccountSharedData> = HashMap::with_capacity(len);
-
-    for (key, account) in accounts {
-        if key_map.contains_key(key) {
-            by_key.insert(*key, AccountSharedData::from(account.clone()));
-        }
-    }
-
+) -> Vec<(Pubkey, AccountSharedData)> {
+    let accounts: Vec<_> = accounts.collect();
     key_map
         .keys()
         .map(|key| {
@@ -71,8 +62,10 @@ pub fn compile_transaction_accounts_for_instruction<'a>(
                     return (*key, stub_out_program_account().into());
                 }
             }
-            let account = by_key
-                .remove(key)
+            let account = accounts
+                .iter()
+                .find(|(k, _)| k == key)
+                .map(|(_, a)| AccountSharedData::from(a.clone()))
                 .or_panic_with(MolluskError::AccountMissing(key));
             (*key, account)
         })
@@ -84,16 +77,8 @@ pub fn compile_transaction_accounts<'a>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
     stub_out_program_account: Option<Box<dyn Fn() -> Account>>,
-) -> Vec<TransactionAccount> {
-    let len = key_map.len();
-    let mut by_key: HashMap<Pubkey, AccountSharedData> = HashMap::with_capacity(len);
-
-    for (key, account) in accounts {
-        if key_map.contains_key(key) {
-            by_key.insert(*key, AccountSharedData::from(account.clone()));
-        }
-    }
-
+) -> Vec<(Pubkey, AccountSharedData)> {
+    let accounts: Vec<_> = accounts.collect();
     key_map
         .keys()
         .map(|key| {
@@ -102,8 +87,10 @@ pub fn compile_transaction_accounts<'a>(
                     return (*key, stub_out_program_account().into());
                 }
             }
-            let account = by_key
-                .remove(key)
+            let account = accounts
+                .iter()
+                .find(|(k, _)| k == key)
+                .map(|(_, a)| AccountSharedData::from(a.clone()))
                 .or_panic_with(MolluskError::AccountMissing(key));
             (*key, account)
         })

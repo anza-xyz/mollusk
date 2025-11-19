@@ -15,7 +15,7 @@ prost = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 solana-account = { workspace = true }
 solana-clock = { workspace = true }
-solana-compute-budget = { workspace = true }
+solana-compute-budget = { workspace = true, features = ["agave-unstable-api"] }
 solana-epoch-rewards = { workspace = true }
 solana-epoch-schedule = { workspace = true }
 solana-hash = { workspace = true }
