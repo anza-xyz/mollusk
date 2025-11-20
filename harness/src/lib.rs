@@ -562,13 +562,15 @@ impl Default for Mollusk {
         #[cfg(not(feature = "fuzz"))]
         let feature_set = FeatureSet::all_enabled();
 
-        let _enable_register_tracing = false;
-        #[cfg(feature = "register-tracing")]
-        let _enable_register_tracing = std::env::var("SBF_TRACE_DIR").is_ok();
+        let enable_register_tracing = if cfg!(feature = "register-tracing") {
+            std::env::var("SBF_TRACE_DIR").is_ok()
+        } else {
+            false
+        };
 
         let program_cache =
-            ProgramCache::new(&feature_set, &compute_budget, _enable_register_tracing);
-        let mut svm = Self {
+            ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
+        Self {
             config: Config::default(),
             compute_budget,
             epoch_stake: EpochStake::default(),
@@ -578,21 +580,19 @@ impl Default for Mollusk {
             sysvars: Sysvars::default(),
 
             #[cfg(feature = "invocation-inspect-callback")]
-            invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
+            invocation_inspect_callback: if cfg!(feature = "register-tracing")
+                && enable_register_tracing
+            {
+                Box::new(register_tracing::DefaultRegisterTracingCallback {})
+            } else {
+                Box::new(EmptyInvocationInspectCallback {})
+            },
 
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
 
-            enable_register_tracing: _enable_register_tracing,
-        };
-
-        #[cfg(feature = "register-tracing")]
-        {
-            svm.invocation_inspect_callback =
-                Box::new(register_tracing::DefaultRegisterTracingCallback {});
+            enable_register_tracing,
         }
-
-        svm
     }
 }
 
@@ -674,6 +674,24 @@ impl Mollusk {
     /// - The current working directory
     pub fn new(program_id: &Pubkey, program_name: &str) -> Self {
         let mut mollusk = Self::default();
+        mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
+        mollusk
+    }
+
+    /// Create a new Mollusk instance just like the `new` method but
+    /// with register tracing enabled using a default callback.
+    #[cfg(feature = "register-tracing")]
+    pub fn with_register_tracing(program_id: &Pubkey, program_name: &str) -> Self {
+        let mut mollusk = Self::default();
+        mollusk.enable_register_tracing = true;
+        let program_cache = ProgramCache::new(
+            &mollusk.feature_set,
+            &mollusk.compute_budget,
+            mollusk.enable_register_tracing,
+        );
+        mollusk.program_cache = program_cache;
+        mollusk.invocation_inspect_callback =
+            Box::new(register_tracing::DefaultRegisterTracingCallback {});
         mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
         mollusk
     }
