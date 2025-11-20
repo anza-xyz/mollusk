@@ -447,6 +447,8 @@ pub mod file;
 pub mod fuzz;
 pub mod instructions_sysvar;
 pub mod program;
+#[cfg(feature = "register-tracing")]
+pub mod register_tracing;
 pub mod sysvar;
 
 // Re-export result module from mollusk-svm-result crate
@@ -510,6 +512,8 @@ pub struct Mollusk {
     /// programs comes from the sysvars.
     #[cfg(feature = "fuzz-fd")]
     pub slot: u64,
+
+    pub enable_register_tracing: bool,
 }
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -558,8 +562,14 @@ impl Default for Mollusk {
         };
         #[cfg(not(feature = "fuzz"))]
         let feature_set = FeatureSet::all_enabled();
-        let program_cache = ProgramCache::new(&feature_set, &compute_budget);
-        Self {
+
+        let _enable_register_tracing = false;
+        #[cfg(feature = "register-tracing")]
+        let _enable_register_tracing = std::env::var("SBF_TRACE_DIR").is_ok();
+
+        let program_cache =
+            ProgramCache::new(&feature_set, &compute_budget, _enable_register_tracing);
+        let mut svm = Self {
             config: Config::default(),
             compute_budget,
             epoch_stake: EpochStake::default(),
@@ -573,7 +583,17 @@ impl Default for Mollusk {
 
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
+
+            enable_register_tracing: _enable_register_tracing,
+        };
+
+        #[cfg(feature = "register-tracing")]
+        {
+            svm.invocation_inspect_callback =
+                Box::new(register_tracing::DefaultRegisterTracingCallback {});
         }
+
+        svm
     }
 }
 
@@ -744,13 +764,13 @@ impl Mollusk {
                         &runtime_features,
                         &execution_budget,
                         /* reject_deployment_of_broken_elfs */ false,
-                        /* debugging_features */ false,
+                        /* debugging_features */ self.enable_register_tracing,
                     )
                     .unwrap(),
                 ),
                 program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
                     &execution_budget,
-                    /* debugging_features */ false,
+                    /* debugging_features */ self.enable_register_tracing,
                 )),
             };
 
