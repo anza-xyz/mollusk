@@ -10,7 +10,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [features]
-default = ["register-tracing"]
+default = []
 all-builtins = [
     "dep:solana-loader-v4-program",
     "dep:solana-vote-program",
