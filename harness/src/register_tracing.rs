@@ -1,10 +1,16 @@
 use {
-    crate::InvocationInspectCallback,
+    crate::{
+        file::{default_shared_object_dirs, read_file},
+        InvocationInspectCallback,
+    },
     sha2::{Digest, Sha256},
-    solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
+    solana_program_runtime::{
+        invoke_context::{Executable, InvokeContext, RegisterTrace},
+        loaded_programs::{LoadProgramMetrics, ProgramCacheEntry, ProgramCacheEntryType},
+    },
     solana_pubkey::Pubkey,
     solana_transaction_context::{InstructionAccount, InstructionContext},
-    std::io::Write,
+    std::{io::Write, path::PathBuf},
 };
 
 pub struct DefaultRegisterTracingCallback;
@@ -31,7 +37,7 @@ impl InvocationInspectCallback for DefaultRegisterTracingCallback {
 }
 
 pub fn default_register_tracing_callback(
-    _instruction_context: InstructionContext,
+    instruction_context: InstructionContext,
     executable: &Executable,
     register_trace: RegisterTrace,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -45,13 +51,24 @@ pub fn default_register_tracing_callback(
         let sbf_trace_dir = current_dir.join(sbf_trace_dir);
         std::fs::create_dir_all(&sbf_trace_dir)?;
 
-        let digest = Sha256::digest(as_bytes(register_trace));
-        let base_fname = sbf_trace_dir.join(&hex::encode(digest)[..16]);
+        let trace_digest = compute_hash(as_bytes(register_trace));
+        let base_fname = sbf_trace_dir.join(&trace_digest[..16]);
         let mut regs_file = std::fs::File::create(base_fname.with_extension("regs"))?;
         let mut insns_file = std::fs::File::create(base_fname.with_extension("insns"))?;
+        let mut so_hash_file = std::fs::File::create(base_fname.with_extension("exec"))?;
+
+        // Get program_id.
+        let program_id = instruction_context.get_program_key()?;
 
         // Get the relocated executable.
         let (_, program) = executable.get_text_bytes();
+        let _ = so_hash_file.write(
+            find_executable_pre_load_hash(&instruction_context, executable)
+                .ok_or(format!(
+                    "Can't find shared object for executable with program_id: {program_id}"
+                ))?
+                .as_bytes(),
+        );
         for regs in register_trace.iter() {
             // The program counter is stored in r11.
             let pc = regs[11];
@@ -71,4 +88,62 @@ pub fn default_register_tracing_callback(
 
 pub(crate) fn as_bytes<T>(slice: &[T]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u8, std::mem::size_of_val(slice)) }
+}
+
+fn find_so_files(dirs: &[PathBuf]) -> Vec<PathBuf> {
+    let mut so_files = Vec::new();
+
+    for dir in dirs {
+        if dir.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() && path.extension().is_some_and(|ext| ext == "so") {
+                        so_files.push(path);
+                    }
+                }
+            }
+        }
+    }
+
+    so_files
+}
+
+fn find_executable_pre_load_hash(
+    instruction_context: &InstructionContext,
+    executable: &Executable,
+) -> Option<String> {
+    let (_vm_addr, executable_text_bytes) = executable.get_text_bytes();
+    let shared_objs_dirs = default_shared_object_dirs();
+    for file in find_so_files(&shared_objs_dirs) {
+        let so = read_file(&file);
+        let so_hash = compute_hash(&so);
+
+        // Reconstruct a cache entry only to be able to compare its
+        // relocated text bytes with the passed executable ones.
+        // Reuse everything to be consistent.
+        let cache_entry = ProgramCacheEntry::new(
+            &instruction_context.get_program_owner().ok()?,
+            executable.get_loader().clone(),
+            0,
+            0,
+            &so,
+            so.len(),
+            &mut LoadProgramMetrics::default(),
+        )
+        .ok()?;
+
+        if let ProgramCacheEntryType::Loaded(e) = &cache_entry.program {
+            let (_, reloc_text_bytes) = e.get_text_bytes();
+            if reloc_text_bytes == executable_text_bytes {
+                return Some(so_hash);
+            }
+        };
+    }
+
+    None
+}
+
+fn compute_hash(slice: &[u8]) -> String {
+    hex::encode(Sha256::digest(slice).as_slice())
 }
