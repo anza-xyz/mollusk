@@ -111,6 +111,9 @@ fn find_executable_pre_load_hash(executable: &Executable) -> Option<String> {
         .iter()
         .filter_map(|file| {
             let so = read_file(file);
+            // Reconstruct a loaded Exectuable just to compare its relocated
+            // text bytes with the passed executable ones.
+            // Return the pre load hash of the matching shared object.
             Executable::load(&so, executable.get_loader().clone())
                 .ok()
                 .map(|e| Some((so, e)))
