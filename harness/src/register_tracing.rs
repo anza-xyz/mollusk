@@ -52,7 +52,7 @@ pub fn default_register_tracing_callback(
         let base_fname = sbf_trace_dir.join(&trace_digest[..16]);
         let mut regs_file = std::fs::File::create(base_fname.with_extension("regs"))?;
         let mut insns_file = std::fs::File::create(base_fname.with_extension("insns"))?;
-        let mut so_hash_file = std::fs::File::create(base_fname.with_extension("exec"))?;
+        let mut so_hash_file = std::fs::File::create(base_fname.with_extension("exec.sha256"))?;
 
         // Get program_id.
         let program_id = instruction_context.get_program_key()?;
