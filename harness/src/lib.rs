@@ -564,6 +564,7 @@ impl Default for Mollusk {
         let feature_set = FeatureSet::all_enabled();
 
         let enable_register_tracing = if cfg!(feature = "register-tracing") {
+            // If `SBF_TRACE_DIR` is set enable register tracing.
             std::env::var("SBF_TRACE_DIR").is_ok()
         } else {
             false
@@ -584,6 +585,8 @@ impl Default for Mollusk {
             invocation_inspect_callback: if cfg!(feature = "register-tracing")
                 && enable_register_tracing
             {
+                // Have a default register tracing handler if enable_register_tracing is
+                // enabled.
                 Box::new(register_tracing::DefaultRegisterTracingCallback {})
             } else {
                 Box::new(EmptyInvocationInspectCallback {})
