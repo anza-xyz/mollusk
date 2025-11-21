@@ -682,8 +682,10 @@ impl Mollusk {
     /// with register tracing enabled using a default callback.
     #[cfg(feature = "register-tracing")]
     pub fn with_register_tracing(program_id: &Pubkey, program_name: &str) -> Self {
-        let mut mollusk = Self::default();
-        mollusk.enable_register_tracing = true;
+        let mut mollusk = Mollusk {
+            enable_register_tracing: true,
+            ..Self::default()
+        };
         let program_cache = ProgramCache::new(
             &mollusk.feature_set,
             &mollusk.compute_budget,
