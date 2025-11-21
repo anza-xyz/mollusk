@@ -57,8 +57,7 @@ pub fn default_register_tracing_callback(
         // Get program_id.
         let program_id = instruction_context.get_program_key()?;
 
-        // Get the relocated executable.
-        let (_, program) = executable.get_text_bytes();
+        // Persist the preload hash of the executable.
         let _ = so_hash_file.write(
             find_executable_pre_load_hash(executable)
                 .ok_or(format!(
@@ -66,6 +65,9 @@ pub fn default_register_tracing_callback(
                 ))?
                 .as_bytes(),
         );
+
+        // Get the relocated executable.
+        let (_, program) = executable.get_text_bytes();
         for regs in register_trace.iter() {
             // The program counter is stored in r11.
             let pc = regs[11];
@@ -113,7 +115,8 @@ fn find_executable_pre_load_hash(executable: &Executable) -> Option<String> {
             let so = read_file(file);
             // Reconstruct a loaded Exectuable just to compare its relocated
             // text bytes with the passed executable ones.
-            // Return the pre load hash of the corresponding matching shared object.
+            // If there's a match return the preload hash of the corresponding shared
+            // object.
             Executable::load(&so, executable.get_loader().clone())
                 .ok()
                 .map(|e| Some((so, e)))
