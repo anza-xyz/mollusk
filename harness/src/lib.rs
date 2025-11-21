@@ -572,7 +572,7 @@ impl Default for Mollusk {
 
         let program_cache =
             ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
-        Self {
+        let mut svm = Self {
             config: Config::default(),
             compute_budget,
             epoch_stake: EpochStake::default(),
@@ -582,21 +582,23 @@ impl Default for Mollusk {
             sysvars: Sysvars::default(),
 
             #[cfg(feature = "invocation-inspect-callback")]
-            invocation_inspect_callback: if cfg!(feature = "register-tracing")
-                && enable_register_tracing
-            {
-                // Have a default register tracing handler if enable_register_tracing is
-                // enabled.
-                Box::new(register_tracing::DefaultRegisterTracingCallback {})
-            } else {
-                Box::new(EmptyInvocationInspectCallback {})
-            },
+            invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
 
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
 
             enable_register_tracing,
+        };
+
+        #[cfg(feature = "register-tracing")]
+        if enable_register_tracing {
+            // Have a default register tracing callback if register tracing is
+            // enabled.
+            svm.invocation_inspect_callback =
+                Box::new(register_tracing::DefaultRegisterTracingCallback {});
         }
+
+        svm
     }
 }
 
