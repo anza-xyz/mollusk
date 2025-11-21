@@ -107,23 +107,18 @@ fn find_so_files(dirs: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 fn find_executable_pre_load_hash(executable: &Executable) -> Option<String> {
-    let shared_objs_dirs = default_shared_object_dirs();
-    for file in find_so_files(&shared_objs_dirs) {
-        let so = read_file(&file);
-
-        // Reconstruct a loaded Executable only to be able to compare its
-        // relocated text bytes with the passed executable ones.
-        if executable.get_text_bytes().1
-            == Executable::load(&so, executable.get_loader().clone())
-                .ok()?
-                .get_text_bytes()
-                .1
-        {
-            return Some(compute_hash(&so));
-        }
-    }
-
-    None
+    find_so_files(&default_shared_object_dirs())
+        .iter()
+        .filter_map(|file| {
+            let so = read_file(file);
+            Executable::load(&so, executable.get_loader().clone())
+                .ok()
+                .map(|e| Some((so, e)))
+                .unwrap_or(None)
+        })
+        .filter(|(_, e)| executable.get_text_bytes().1 == e.get_text_bytes().1)
+        .map(|(so, _)| compute_hash(&so))
+        .next_back()
 }
 
 fn compute_hash(slice: &[u8]) -> String {
