@@ -27,7 +27,7 @@ use {
     },
 };
 
-fn default_shared_object_dirs() -> Vec<PathBuf> {
+pub fn default_shared_object_dirs() -> Vec<PathBuf> {
     let mut search_path = vec![PathBuf::from("tests/fixtures")];
 
     if let Ok(bpf_out_dir) = std::env::var("BPF_OUT_DIR") {
