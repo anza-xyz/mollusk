@@ -7,7 +7,7 @@ use {
     solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
     solana_pubkey::Pubkey,
     solana_transaction_context::{InstructionAccount, InstructionContext},
-    std::{io::Write, path::PathBuf},
+    std::{fs::File, io::Write, path::PathBuf},
 };
 
 pub struct DefaultRegisterTracingCallback;
@@ -113,7 +113,7 @@ fn find_executable_pre_load_hash(executable: &Executable) -> Option<String> {
             let so = read_file(file);
             // Reconstruct a loaded Exectuable just to compare its relocated
             // text bytes with the passed executable ones.
-            // Return the pre load hash of the matching shared object.
+            // Return the pre load hash of the corresponding matching shared object.
             Executable::load(&so, executable.get_loader().clone())
                 .ok()
                 .map(|e| Some((so, e)))
