@@ -4,10 +4,7 @@ use {
         InvocationInspectCallback,
     },
     sha2::{Digest, Sha256},
-    solana_program_runtime::{
-        invoke_context::{Executable, InvokeContext, RegisterTrace},
-        loaded_programs::{LoadProgramMetrics, ProgramCacheEntry, ProgramCacheEntryType},
-    },
+    solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
     solana_pubkey::Pubkey,
     solana_transaction_context::{InstructionAccount, InstructionContext},
     std::{io::Write, path::PathBuf},
@@ -63,7 +60,7 @@ pub fn default_register_tracing_callback(
         // Get the relocated executable.
         let (_, program) = executable.get_text_bytes();
         let _ = so_hash_file.write(
-            find_executable_pre_load_hash(&instruction_context, executable)
+            find_executable_pre_load_hash(executable)
                 .ok_or(format!(
                     "Can't find shared object for executable with program_id: {program_id}"
                 ))?
@@ -109,36 +106,21 @@ fn find_so_files(dirs: &[PathBuf]) -> Vec<PathBuf> {
     so_files
 }
 
-fn find_executable_pre_load_hash(
-    instruction_context: &InstructionContext,
-    executable: &Executable,
-) -> Option<String> {
-    let (_vm_addr, executable_text_bytes) = executable.get_text_bytes();
+fn find_executable_pre_load_hash(executable: &Executable) -> Option<String> {
     let shared_objs_dirs = default_shared_object_dirs();
     for file in find_so_files(&shared_objs_dirs) {
         let so = read_file(&file);
-        let so_hash = compute_hash(&so);
 
-        // Reconstruct a cache entry only to be able to compare its
+        // Reconstruct a loaded Executable only to be able to compare its
         // relocated text bytes with the passed executable ones.
-        // Reuse everything to be consistent.
-        let cache_entry = ProgramCacheEntry::new(
-            &instruction_context.get_program_owner().ok()?,
-            executable.get_loader().clone(),
-            0,
-            0,
-            &so,
-            so.len(),
-            &mut LoadProgramMetrics::default(),
-        )
-        .ok()?;
-
-        if let ProgramCacheEntryType::Loaded(e) = &cache_entry.program {
-            let (_, reloc_text_bytes) = e.get_text_bytes();
-            if reloc_text_bytes == executable_text_bytes {
-                return Some(so_hash);
-            }
-        };
+        if executable.get_text_bytes().1
+            == Executable::load(&so, executable.get_loader().clone())
+                .ok()?
+                .get_text_bytes()
+                .1
+        {
+            return Some(compute_hash(&so));
+        }
     }
 
     None
