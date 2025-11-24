@@ -4,7 +4,7 @@
 //! accounts from mainnet and managing them for use with Mollusk testing.
 
 use {
-    mollusk_svm::Mollusk,
+    mollusk_svm::{account_store::AccountStore, Mollusk},
     solana_account::Account,
     solana_commitment_config::CommitmentConfig,
     solana_instruction::Instruction,
@@ -12,6 +12,7 @@ use {
     solana_rpc_client::rpc_client::RpcClient,
     solana_rpc_client_api::client_error::Error as ClientError,
     std::{
+        cell::RefCell,
         collections::{HashMap, HashSet},
         fmt,
     },
@@ -81,7 +82,7 @@ pub struct RpcAccountStore {
     ///
     /// Use this when you need direct access to accounts for custom operations.
     /// Most users should rely on the builder methods instead.
-    pub cache: HashMap<Pubkey, Account>,
+    pub cache: RefCell<HashMap<Pubkey, Account>>,
     /// If true, fetching non-existent accounts will create default (empty)
     /// accounts. If false, will return an error when accounts don't exist.
     allow_missing_accounts: bool,
@@ -92,7 +93,7 @@ pub struct RpcAccountStore {
 impl fmt::Debug for RpcAccountStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RpcAccountStore")
-            .field("accounts_cached", &self.cache.len())
+            .field("accounts_cached", &self.cache.borrow().len())
             .field("allow_missing_accounts", &self.allow_missing_accounts)
             .field("validate_programs", &self.validate_programs)
             .finish_non_exhaustive()
@@ -122,7 +123,7 @@ impl RpcAccountStore {
     pub fn new_with_commitment(rpc_url: impl Into<String>, commitment: CommitmentConfig) -> Self {
         Self {
             client: RpcClient::new_with_commitment(rpc_url.into(), commitment),
-            cache: HashMap::new(),
+            cache: RefCell::new(HashMap::new()),
             allow_missing_accounts: false,
             validate_programs: true,
         }
@@ -150,7 +151,7 @@ impl RpcAccountStore {
     ///
     /// Extracts all account pubkeys from the instruction's account metas
     /// and fetches them from the RPC endpoint using getMultipleAccounts.
-    pub fn from_instruction(mut self, instruction: &Instruction) -> Result<Self, RpcError> {
+    pub fn from_instruction(self, instruction: &Instruction) -> Result<Self, RpcError> {
         let pubkeys: Vec<_> = instruction.accounts.iter().map(|m| m.pubkey).collect();
         self.fetch_accounts(&pubkeys)?;
         Ok(self)
@@ -160,7 +161,7 @@ impl RpcAccountStore {
     ///
     /// Collects all unique pubkeys across all instructions and fetches them
     /// efficiently in a batch using getMultipleAccounts.
-    pub fn from_instructions(mut self, instructions: &[Instruction]) -> Result<Self, RpcError> {
+    pub fn from_instructions(self, instructions: &[Instruction]) -> Result<Self, RpcError> {
         let pubkeys: HashSet<Pubkey> = instructions
             .iter()
             .flat_map(|ix| ix.accounts.iter().map(|m| m.pubkey))
@@ -171,9 +172,9 @@ impl RpcAccountStore {
     }
 
     /// Add accounts to the store.
-    pub fn with_accounts(mut self, accounts: &[(Pubkey, Account)]) -> Self {
+    pub fn with_accounts(self, accounts: &[(Pubkey, Account)]) -> Self {
         for (pubkey, account) in accounts {
-            self.cache.insert(*pubkey, account.clone());
+            self.cache.borrow_mut().insert(*pubkey, account.clone());
         }
         self
     }
@@ -182,11 +183,11 @@ impl RpcAccountStore {
     ///
     /// Only fetches accounts that aren't already in the cache, allowing for
     /// efficient incremental fetching.
-    fn fetch_accounts(&mut self, pubkeys: &[Pubkey]) -> Result<(), RpcError> {
+    fn fetch_accounts(&self, pubkeys: &[Pubkey]) -> Result<(), RpcError> {
         // Filter out already cached accounts
         let missing_pubkeys: Vec<Pubkey> = pubkeys
             .iter()
-            .filter(|pubkey| !self.cache.contains_key(pubkey))
+            .filter(|pubkey| !self.cache.borrow().contains_key(pubkey))
             .copied()
             .collect();
 
@@ -197,15 +198,16 @@ impl RpcAccountStore {
         let accounts = self.client.get_multiple_accounts(&missing_pubkeys)?;
 
         // Store fetched accounts in cache
+        let mut cache = self.cache.borrow_mut();
         for (pubkey, account_opt) in missing_pubkeys.iter().zip(accounts) {
             match account_opt {
                 Some(account) => {
-                    self.cache.insert(*pubkey, account);
+                    cache.insert(*pubkey, account);
                 }
                 None => {
                     if self.allow_missing_accounts {
                         // Create a default (empty) account for missing accounts
-                        self.cache.insert(*pubkey, Account::default());
+                        cache.insert(*pubkey, Account::default());
                     } else {
                         // Return an error if the account doesn't exist
                         return Err(RpcError::AccountNotFound(*pubkey));
@@ -231,10 +233,10 @@ impl RpcAccountStore {
     /// - Program account data is malformed
     /// - Program data account is invalid or missing
     /// - ELF validation fails (if enabled)
-    pub fn add_programs(mut self, mollusk: &mut Mollusk) -> Result<Self, RpcError> {
+    pub fn add_programs(self, mollusk: &mut Mollusk) -> Result<Self, RpcError> {
         // First pass: collect program data pubkeys that need to be fetched
         let mut program_data_pubkeys = Vec::new();
-        for (pubkey, account) in self.cache.iter() {
+        for (pubkey, account) in self.cache.borrow().iter() {
             if account.executable && account.owner == mollusk_svm::program::loader_keys::LOADER_V3 {
                 if account.data.len() < 36 {
                     return Err(RpcError::MalformedProgram {
@@ -254,7 +256,7 @@ impl RpcAccountStore {
                     }
                 })?;
 
-                if !self.cache.contains_key(&program_data_pubkey) {
+                if !self.cache.borrow().contains_key(&program_data_pubkey) {
                     program_data_pubkeys.push(program_data_pubkey);
                 }
             }
@@ -266,7 +268,7 @@ impl RpcAccountStore {
         }
 
         // Second pass: add programs to mollusk
-        for (pubkey, account) in self.cache.iter() {
+        for (pubkey, account) in self.cache.borrow().iter() {
             if account.executable {
                 // For BPF Loader v2 programs, the ELF is directly in the account data
                 if account.owner == mollusk_svm::program::loader_keys::LOADER_V2 {
@@ -302,15 +304,17 @@ impl RpcAccountStore {
                             }
                         })?;
 
-                    let program_data_account =
-                        self.cache.get(&program_data_pubkey).ok_or_else(|| {
-                            RpcError::InvalidProgramData {
-                                program: *pubkey,
-                                reason: format!(
-                                    "Program data account not found: {}",
-                                    program_data_pubkey
-                                ),
-                            }
+                    let program_data_account = self
+                        .cache
+                        .borrow()
+                        .get(&program_data_pubkey)
+                        .cloned()
+                        .ok_or_else(|| RpcError::InvalidProgramData {
+                            program: *pubkey,
+                            reason: format!(
+                                "Program data account not found: {}",
+                                program_data_pubkey
+                            ),
                         })?;
 
                     // The ELF starts at offset 45 in the program data account
@@ -353,5 +357,15 @@ impl RpcAccountStore {
         let slot = self.client.get_slot()?;
         mollusk.warp_to_slot(slot);
         Ok(self)
+    }
+}
+
+impl AccountStore for RpcAccountStore {
+    fn get_account(&self, pubkey: &Pubkey) -> Option<Account> {
+        self.cache.borrow().get(pubkey).cloned()
+    }
+
+    fn store_account(&mut self, pubkey: Pubkey, account: Account) {
+        self.cache.borrow_mut().insert(pubkey, account);
     }
 }

@@ -69,15 +69,14 @@ pub fn process_instruction_with_context(
     instruction: &Instruction,
     accounts: &[(Pubkey, Account)],
 ) -> Result<InstructionResult> {
-    let cache = RpcAccountStore::new(rpc_url)
+    let store = RpcAccountStore::new(rpc_url)
         .allow_missing_accounts()
         .skip_program_validation()
         .with_accounts(accounts)
         .from_instruction(instruction)?
-        .add_programs(&mut mollusk)?
-        .cache;
+        .add_programs(&mut mollusk)?;
 
-    let context = mollusk.with_context(cache);
+    let context = mollusk.with_context(store);
     Ok(context.process_instruction(instruction))
 }
 
@@ -100,15 +99,14 @@ pub fn process_instruction_chain_with_context(
     instructions: &[Instruction],
     accounts: &[(Pubkey, Account)],
 ) -> Result<InstructionResult> {
-    let cache = RpcAccountStore::new(rpc_url)
+    let store = RpcAccountStore::new(rpc_url)
         .allow_missing_accounts()
         .skip_program_validation()
         .with_accounts(accounts)
         .from_instructions(instructions)?
-        .add_programs(&mut mollusk)?
-        .cache;
+        .add_programs(&mut mollusk)?;
 
-    let context = mollusk.with_context(cache);
+    let context = mollusk.with_context(store);
     Ok(context.process_instruction_chain(instructions))
 }
 
@@ -135,15 +133,14 @@ pub fn process_and_validate_instruction_with_context(
     accounts: &[(Pubkey, Account)],
     checks: &[mollusk_svm::result::Check<'_>],
 ) -> Result<InstructionResult> {
-    let cache = RpcAccountStore::new(rpc_url)
+    let store = RpcAccountStore::new(rpc_url)
         .allow_missing_accounts()
         .skip_program_validation()
         .with_accounts(accounts)
         .from_instruction(instruction)?
-        .add_programs(&mut mollusk)?
-        .cache;
+        .add_programs(&mut mollusk)?;
 
-    let context = mollusk.with_context(cache);
+    let context = mollusk.with_context(store);
     Ok(context.process_and_validate_instruction(instruction, checks))
 }
 
@@ -172,15 +169,14 @@ pub fn process_and_validate_instruction_chain_with_context(
 ) -> Result<InstructionResult> {
     let instructions_only: Vec<_> = instructions.iter().map(|(ix, _)| (*ix).clone()).collect();
 
-    let cache = RpcAccountStore::new(rpc_url)
+    let store = RpcAccountStore::new(rpc_url)
         .allow_missing_accounts()
         .skip_program_validation()
         .with_accounts(accounts)
         .from_instructions(&instructions_only)?
-        .add_programs(&mut mollusk)?
-        .cache;
+        .add_programs(&mut mollusk)?;
 
-    let context = mollusk.with_context(cache);
+    let context = mollusk.with_context(store);
     Ok(context.process_and_validate_instruction_chain(instructions))
 }
 
@@ -210,13 +206,12 @@ pub fn process_instruction_with_context_strict(
     instruction: &Instruction,
     accounts: &[(Pubkey, Account)],
 ) -> Result<InstructionResult> {
-    let cache = RpcAccountStore::new(rpc_url)
+    let store = RpcAccountStore::new(rpc_url)
         .with_accounts(accounts)
         .from_instruction(instruction)?
-        .add_programs(&mut mollusk)?
-        .cache;
+        .add_programs(&mut mollusk)?;
 
-    let context = mollusk.with_context(cache);
+    let context = mollusk.with_context(store);
     Ok(context.process_instruction(instruction))
 }
 
@@ -239,13 +234,12 @@ pub fn process_instruction_chain_with_context_strict(
     instructions: &[Instruction],
     accounts: &[(Pubkey, Account)],
 ) -> Result<InstructionResult> {
-    let cache = RpcAccountStore::new(rpc_url)
+    let store = RpcAccountStore::new(rpc_url)
         .with_accounts(accounts)
         .from_instructions(instructions)?
-        .add_programs(&mut mollusk)?
-        .cache;
+        .add_programs(&mut mollusk)?;
 
-    let context = mollusk.with_context(cache);
+    let context = mollusk.with_context(store);
     Ok(context.process_instruction_chain(instructions))
 }
 
@@ -272,13 +266,12 @@ pub fn process_and_validate_instruction_with_context_strict(
     accounts: &[(Pubkey, Account)],
     checks: &[mollusk_svm::result::Check<'_>],
 ) -> Result<InstructionResult> {
-    let cache = RpcAccountStore::new(rpc_url)
+    let store = RpcAccountStore::new(rpc_url)
         .with_accounts(accounts)
         .from_instruction(instruction)?
-        .add_programs(&mut mollusk)?
-        .cache;
+        .add_programs(&mut mollusk)?;
 
-    let context = mollusk.with_context(cache);
+    let context = mollusk.with_context(store);
     Ok(context.process_and_validate_instruction(instruction, checks))
 }
 
@@ -304,12 +297,11 @@ pub fn process_and_validate_instruction_chain_with_context_strict(
 ) -> Result<InstructionResult> {
     let instructions_only: Vec<_> = instructions.iter().map(|(ix, _)| (*ix).clone()).collect();
 
-    let cache = RpcAccountStore::new(rpc_url)
+    let store = RpcAccountStore::new(rpc_url)
         .with_accounts(accounts)
         .from_instructions(&instructions_only)?
-        .add_programs(&mut mollusk)?
-        .cache;
+        .add_programs(&mut mollusk)?;
 
-    let context = mollusk.with_context(cache);
+    let context = mollusk.with_context(store);
     Ok(context.process_and_validate_instruction_chain(instructions))
 }
