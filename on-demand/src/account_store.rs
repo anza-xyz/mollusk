@@ -368,4 +368,19 @@ impl AccountStore for RpcAccountStore {
     fn store_account(&mut self, pubkey: Pubkey, account: Account) {
         self.cache.borrow_mut().insert(pubkey, account);
     }
+
+    fn default_account(&self, pubkey: &Pubkey) -> Account {
+        // Try to fetch the account from RPC if it's not in the cache.
+        match self.client.get_account(pubkey) {
+            Ok(account) => {
+                // Cache the fetched account for future use.
+                self.cache.borrow_mut().insert(*pubkey, account.clone());
+                account
+            }
+            Err(_) => {
+                // If RPC fetch fails or account doesn't exist, return default.
+                Account::default()
+            }
+        }
+    }
 }
