@@ -1,9 +1,10 @@
 //! # Mollusk On-Demand
 //!
-//! Simplify Solana program testing with Mollusk by automatically fetching mainnet accounts.
+//! Simplify Solana program testing with Mollusk by automatically fetching
+//! mainnet accounts.
 //!
-//! This crate provides utility functions for testing Solana programs with real mainnet state,
-//! built on top of [Mollusk](https://github.com/buffalojoec/mollusk). The functions automatically
+//! This crate provides utility functions for testing Solana programs with real
+//! mainnet state, built on top of [Mollusk](https://github.com/buffalojoec/mollusk). The functions automatically
 //! fetch accounts from RPC and execute using Mollusk's `MolluskContext`.
 //!
 //! # Quick Start
@@ -82,7 +83,8 @@ pub async fn process_instruction_with_context(
     Ok(context.process_instruction(instruction))
 }
 
-/// Process a chain of instructions with automatic account fetching (permissive mode).
+/// Process a chain of instructions with automatic account fetching (permissive
+/// mode).
 ///
 /// # Example
 ///
@@ -228,7 +230,8 @@ pub async fn process_instruction_with_context_strict(
     Ok(context.process_instruction(instruction))
 }
 
-/// Process a chain of instructions with automatic account fetching (strict mode).
+/// Process a chain of instructions with automatic account fetching (strict
+/// mode).
 ///
 /// # Example
 ///

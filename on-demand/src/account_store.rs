@@ -11,14 +11,17 @@ use {
     solana_pubkey::Pubkey,
     solana_rpc_client::nonblocking::rpc_client::RpcClient,
     solana_rpc_client_api::client_error::Error as ClientError,
-    std::collections::{HashMap, HashSet},
-    std::fmt,
+    std::{
+        collections::{HashMap, HashSet},
+        fmt,
+    },
     thiserror::Error,
 };
 
 /// Validates that the given data contains a valid ELF header.
 ///
-/// This performs basic validation to ensure the data is likely a valid ELF binary.
+/// This performs basic validation to ensure the data is likely a valid ELF
+/// binary.
 fn validate_elf(data: &[u8]) -> Result<(), String> {
     // ELF magic number: 0x7F 'E' 'L' 'F'
     const ELF_MAGIC: &[u8] = &[0x7F, 0x45, 0x4C, 0x46];
@@ -69,9 +72,9 @@ pub enum RpcError {
 ///
 /// # Cache Access
 ///
-/// The `cache` field is publicly accessible for advanced use cases where you need
-/// direct access to fetched accounts (e.g., for use with MolluskContext or custom
-/// account manipulation). For normal usage, prefer the builder methods.
+/// The `cache` field is publicly accessible for advanced use cases where you
+/// need direct access to fetched accounts (e.g., for use with MolluskContext or
+/// custom account manipulation). For normal usage, prefer the builder methods.
 pub struct RpcAccountStore {
     client: RpcClient,
     /// Publicly accessible cache of fetched accounts.
@@ -79,8 +82,8 @@ pub struct RpcAccountStore {
     /// Use this when you need direct access to accounts for custom operations.
     /// Most users should rely on the builder methods instead.
     pub cache: HashMap<Pubkey, Account>,
-    /// If true, fetching non-existent accounts will create default (empty) accounts.
-    /// If false, will return an error when accounts don't exist.
+    /// If true, fetching non-existent accounts will create default (empty)
+    /// accounts. If false, will return an error when accounts don't exist.
     allow_missing_accounts: bool,
     /// If true, validates program ELF headers before adding to Mollusk.
     validate_programs: bool,
@@ -97,11 +100,14 @@ impl fmt::Debug for RpcAccountStore {
 }
 
 impl RpcAccountStore {
-    /// Create a new account fetcher with the default commitment level (confirmed).
+    /// Create a new account fetcher with the default commitment level
+    /// (confirmed).
     ///
     /// By default:
-    /// - Missing accounts will cause an error (use `allow_missing_accounts()` to change)
-    /// - Program validation is enabled (use `skip_program_validation()` to disable)
+    /// - Missing accounts will cause an error (use `allow_missing_accounts()`
+    ///   to change)
+    /// - Program validation is enabled (use `skip_program_validation()` to
+    ///   disable)
     pub fn new(rpc_url: impl Into<String>) -> Self {
         Self::new_with_commitment(rpc_url, CommitmentConfig::confirmed())
     }
@@ -109,12 +115,11 @@ impl RpcAccountStore {
     /// Create a new account fetcher with a specific commitment level.
     ///
     /// By default:
-    /// - Missing accounts will cause an error (use `allow_missing_accounts()` to change)
-    /// - Program validation is enabled (use `skip_program_validation()` to disable)
-    pub fn new_with_commitment(
-        rpc_url: impl Into<String>,
-        commitment: CommitmentConfig,
-    ) -> Self {
+    /// - Missing accounts will cause an error (use `allow_missing_accounts()`
+    ///   to change)
+    /// - Program validation is enabled (use `skip_program_validation()` to
+    ///   disable)
+    pub fn new_with_commitment(rpc_url: impl Into<String>, commitment: CommitmentConfig) -> Self {
         Self {
             client: RpcClient::new_with_commitment(rpc_url.into(), commitment),
             cache: HashMap::new(),
@@ -145,10 +150,7 @@ impl RpcAccountStore {
     ///
     /// Extracts all account pubkeys from the instruction's account metas
     /// and fetches them from the RPC endpoint using getMultipleAccounts.
-    pub async fn from_instruction(
-        mut self,
-        instruction: &Instruction,
-    ) -> Result<Self, RpcError> {
+    pub async fn from_instruction(mut self, instruction: &Instruction) -> Result<Self, RpcError> {
         let pubkeys: Vec<_> = instruction.accounts.iter().map(|m| m.pubkey).collect();
         self.fetch_accounts(&pubkeys).await?;
         Ok(self)
@@ -221,10 +223,11 @@ impl RpcAccountStore {
 
     /// Add programs to the Mollusk environment.
     ///
-    /// This function fetches the program data accounts for all programs that are
-    /// stored in the cache and adds them to the Mollusk environment.
+    /// This function fetches the program data accounts for all programs that
+    /// are stored in the cache and adds them to the Mollusk environment.
     ///
-    /// Note: This is needed because mollusk-svm doesn't load the programs for CPIs directly from the accounts.
+    /// Note: This is needed because mollusk-svm doesn't load the programs for
+    /// CPIs directly from the accounts.
     ///
     /// # Errors
     ///
@@ -241,7 +244,8 @@ impl RpcAccountStore {
                     return Err(RpcError::MalformedProgram {
                         program: *pubkey,
                         reason: format!(
-                            "BPF Loader v3 program account too small: {} bytes (expected at least 36)",
+                            "BPF Loader v3 program account too small: {} bytes (expected at least \
+                             36)",
                             account.data.len()
                         ),
                     });
@@ -279,11 +283,7 @@ impl RpcAccountStore {
                         })?;
                     }
 
-                    mollusk.add_program_with_elf_and_loader(
-                        pubkey,
-                        &account.data,
-                        &account.owner,
-                    );
+                    mollusk.add_program_with_elf_and_loader(pubkey, &account.data, &account.owner);
                 }
                 // For BPF Loader v3
                 else if account.owner == mollusk_svm::program::loader_keys::LOADER_V3 {
@@ -291,25 +291,31 @@ impl RpcAccountStore {
                         return Err(RpcError::MalformedProgram {
                             program: *pubkey,
                             reason: format!(
-                                "BPF Loader v3 program account too small: {} bytes (expected at least 36)",
+                                "BPF Loader v3 program account too small: {} bytes (expected at \
+                                 least 36)",
                                 account.data.len()
                             ),
                         });
                     }
 
-                    let program_data_pubkey = Pubkey::try_from(&account.data[4..36]).map_err(|e| {
-                        RpcError::MalformedProgram {
-                            program: *pubkey,
-                            reason: format!("Invalid program data pubkey: {}", e),
-                        }
-                    })?;
+                    let program_data_pubkey =
+                        Pubkey::try_from(&account.data[4..36]).map_err(|e| {
+                            RpcError::MalformedProgram {
+                                program: *pubkey,
+                                reason: format!("Invalid program data pubkey: {}", e),
+                            }
+                        })?;
 
-                    let program_data_account = self.cache.get(&program_data_pubkey).ok_or_else(|| {
-                        RpcError::InvalidProgramData {
-                            program: *pubkey,
-                            reason: format!("Program data account not found: {}", program_data_pubkey),
-                        }
-                    })?;
+                    let program_data_account =
+                        self.cache.get(&program_data_pubkey).ok_or_else(|| {
+                            RpcError::InvalidProgramData {
+                                program: *pubkey,
+                                reason: format!(
+                                    "Program data account not found: {}",
+                                    program_data_pubkey
+                                ),
+                            }
+                        })?;
 
                     // The ELF starts at offset 45 in the program data account
                     // (first 45 bytes are the ProgramData header)
@@ -326,19 +332,13 @@ impl RpcAccountStore {
                     let elf_data = &program_data_account.data[45..];
 
                     if self.validate_programs {
-                        validate_elf(elf_data).map_err(|reason| {
-                            RpcError::InvalidProgramData {
-                                program: *pubkey,
-                                reason,
-                            }
+                        validate_elf(elf_data).map_err(|reason| RpcError::InvalidProgramData {
+                            program: *pubkey,
+                            reason,
                         })?;
                     }
 
-                    mollusk.add_program_with_elf_and_loader(
-                        pubkey,
-                        elf_data,
-                        &account.owner,
-                    );
+                    mollusk.add_program_with_elf_and_loader(pubkey, elf_data, &account.owner);
                 }
             }
         }
@@ -346,13 +346,13 @@ impl RpcAccountStore {
         Ok(self)
     }
 
-
     /// Sync the Mollusk environment to the current mainnet slot.
     ///
     /// This function fetches the current slot from the RPC endpoint and updates
     /// the Mollusk instance to use that slot by calling `warp_to_slot`.
     ///
-    /// Note: This is useful for oracles that need to be synced to the current mainnet slot.
+    /// Note: This is useful for oracles that need to be synced to the current
+    /// mainnet slot.
     pub async fn with_synced_slot(self, mollusk: &mut Mollusk) -> Result<Self, RpcError> {
         let slot = self.client.get_slot().await?;
         mollusk.warp_to_slot(slot);
