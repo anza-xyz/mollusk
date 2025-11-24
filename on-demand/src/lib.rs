@@ -13,8 +13,8 @@
 //! use mollusk_on_demand::process_instruction_with_context;
 //! use mollusk_svm::Mollusk;
 //!
-//! #[tokio::test]
-//! async fn test_with_mainnet_accounts() -> Result<(), Box<dyn std::error::Error>> {
+//! #[test]
+//! fn test_with_mainnet_accounts() -> Result<(), Box<dyn std::error::Error>> {
 //!     let mollusk = Mollusk::new(&program_id, "program_name");
 //!
 //!     // Process instruction - accounts are fetched automatically!
@@ -23,7 +23,7 @@
 //!         mollusk,
 //!         &instruction,
 //!         &[]
-//!     ).await?;
+//!     )?;
 //!
 //!     Ok(())
 //! }
@@ -61,9 +61,9 @@ pub type Result<T> = std::result::Result<T, RpcError>;
 ///     mollusk,
 ///     &instruction,
 ///     &[(pubkey, account)]  // Optional: provide mocked accounts
-/// ).await?;
+/// )?;
 /// ```
-pub async fn process_instruction_with_context(
+pub fn process_instruction_with_context(
     rpc_url: &str,
     mut mollusk: Mollusk,
     instruction: &Instruction,
@@ -73,10 +73,8 @@ pub async fn process_instruction_with_context(
         .allow_missing_accounts()
         .skip_program_validation()
         .with_accounts(accounts)
-        .from_instruction(instruction)
-        .await?
-        .add_programs(&mut mollusk)
-        .await?
+        .from_instruction(instruction)?
+        .add_programs(&mut mollusk)?
         .cache;
 
     let context = mollusk.with_context(cache);
@@ -94,9 +92,9 @@ pub async fn process_instruction_with_context(
 ///     mollusk,
 ///     &[ix1, ix2, ix3],
 ///     &[]
-/// ).await?;
+/// )?;
 /// ```
-pub async fn process_instruction_chain_with_context(
+pub fn process_instruction_chain_with_context(
     rpc_url: &str,
     mut mollusk: Mollusk,
     instructions: &[Instruction],
@@ -106,10 +104,8 @@ pub async fn process_instruction_chain_with_context(
         .allow_missing_accounts()
         .skip_program_validation()
         .with_accounts(accounts)
-        .from_instructions(instructions)
-        .await?
-        .add_programs(&mut mollusk)
-        .await?
+        .from_instructions(instructions)?
+        .add_programs(&mut mollusk)?
         .cache;
 
     let context = mollusk.with_context(cache);
@@ -130,9 +126,9 @@ pub async fn process_instruction_chain_with_context(
 ///     &instruction,
 ///     &[],
 ///     &checks
-/// ).await?;
+/// )?;
 /// ```
-pub async fn process_and_validate_instruction_with_context(
+pub fn process_and_validate_instruction_with_context(
     rpc_url: &str,
     mut mollusk: Mollusk,
     instruction: &Instruction,
@@ -143,10 +139,8 @@ pub async fn process_and_validate_instruction_with_context(
         .allow_missing_accounts()
         .skip_program_validation()
         .with_accounts(accounts)
-        .from_instruction(instruction)
-        .await?
-        .add_programs(&mut mollusk)
-        .await?
+        .from_instruction(instruction)?
+        .add_programs(&mut mollusk)?
         .cache;
 
     let context = mollusk.with_context(cache);
@@ -168,9 +162,9 @@ pub async fn process_and_validate_instruction_with_context(
 ///     mollusk,
 ///     &[(&ix1, &checks1[..]), (&ix2, &checks2[..])],
 ///     &[]
-/// ).await?;
+/// )?;
 /// ```
-pub async fn process_and_validate_instruction_chain_with_context(
+pub fn process_and_validate_instruction_chain_with_context(
     rpc_url: &str,
     mut mollusk: Mollusk,
     instructions: &[(&Instruction, &[mollusk_svm::result::Check<'_>])],
@@ -182,10 +176,8 @@ pub async fn process_and_validate_instruction_chain_with_context(
         .allow_missing_accounts()
         .skip_program_validation()
         .with_accounts(accounts)
-        .from_instructions(&instructions_only)
-        .await?
-        .add_programs(&mut mollusk)
-        .await?
+        .from_instructions(&instructions_only)?
+        .add_programs(&mut mollusk)?
         .cache;
 
     let context = mollusk.with_context(cache);
@@ -210,9 +202,9 @@ pub async fn process_and_validate_instruction_chain_with_context(
 ///     mollusk,
 ///     &instruction,
 ///     &[]
-/// ).await?;
+/// )?;
 /// ```
-pub async fn process_instruction_with_context_strict(
+pub fn process_instruction_with_context_strict(
     rpc_url: &str,
     mut mollusk: Mollusk,
     instruction: &Instruction,
@@ -220,10 +212,8 @@ pub async fn process_instruction_with_context_strict(
 ) -> Result<InstructionResult> {
     let cache = RpcAccountStore::new(rpc_url)
         .with_accounts(accounts)
-        .from_instruction(instruction)
-        .await?
-        .add_programs(&mut mollusk)
-        .await?
+        .from_instruction(instruction)?
+        .add_programs(&mut mollusk)?
         .cache;
 
     let context = mollusk.with_context(cache);
@@ -241,9 +231,9 @@ pub async fn process_instruction_with_context_strict(
 ///     mollusk,
 ///     &[ix1, ix2, ix3],
 ///     &[]
-/// ).await?;
+/// )?;
 /// ```
-pub async fn process_instruction_chain_with_context_strict(
+pub fn process_instruction_chain_with_context_strict(
     rpc_url: &str,
     mut mollusk: Mollusk,
     instructions: &[Instruction],
@@ -251,10 +241,8 @@ pub async fn process_instruction_chain_with_context_strict(
 ) -> Result<InstructionResult> {
     let cache = RpcAccountStore::new(rpc_url)
         .with_accounts(accounts)
-        .from_instructions(instructions)
-        .await?
-        .add_programs(&mut mollusk)
-        .await?
+        .from_instructions(instructions)?
+        .add_programs(&mut mollusk)?
         .cache;
 
     let context = mollusk.with_context(cache);
@@ -275,9 +263,9 @@ pub async fn process_instruction_chain_with_context_strict(
 ///     &instruction,
 ///     &[],
 ///     &checks
-/// ).await?;
+/// )?;
 /// ```
-pub async fn process_and_validate_instruction_with_context_strict(
+pub fn process_and_validate_instruction_with_context_strict(
     rpc_url: &str,
     mut mollusk: Mollusk,
     instruction: &Instruction,
@@ -286,10 +274,8 @@ pub async fn process_and_validate_instruction_with_context_strict(
 ) -> Result<InstructionResult> {
     let cache = RpcAccountStore::new(rpc_url)
         .with_accounts(accounts)
-        .from_instruction(instruction)
-        .await?
-        .add_programs(&mut mollusk)
-        .await?
+        .from_instruction(instruction)?
+        .add_programs(&mut mollusk)?
         .cache;
 
     let context = mollusk.with_context(cache);
@@ -308,9 +294,9 @@ pub async fn process_and_validate_instruction_with_context_strict(
 ///     mollusk,
 ///     &[(&ix1, &checks1[..]), (&ix2, &checks2[..])],
 ///     &[]
-/// ).await?;
+/// )?;
 /// ```
-pub async fn process_and_validate_instruction_chain_with_context_strict(
+pub fn process_and_validate_instruction_chain_with_context_strict(
     rpc_url: &str,
     mut mollusk: Mollusk,
     instructions: &[(&Instruction, &[mollusk_svm::result::Check<'_>])],
@@ -320,10 +306,8 @@ pub async fn process_and_validate_instruction_chain_with_context_strict(
 
     let cache = RpcAccountStore::new(rpc_url)
         .with_accounts(accounts)
-        .from_instructions(&instructions_only)
-        .await?
-        .add_programs(&mut mollusk)
-        .await?
+        .from_instructions(&instructions_only)?
+        .add_programs(&mut mollusk)?
         .cache;
 
     let context = mollusk.with_context(cache);

@@ -9,7 +9,7 @@ use {
     solana_commitment_config::CommitmentConfig,
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
-    solana_rpc_client::nonblocking::rpc_client::RpcClient,
+    solana_rpc_client::rpc_client::RpcClient,
     solana_rpc_client_api::client_error::Error as ClientError,
     std::{
         collections::{HashMap, HashSet},
@@ -150,9 +150,9 @@ impl RpcAccountStore {
     ///
     /// Extracts all account pubkeys from the instruction's account metas
     /// and fetches them from the RPC endpoint using getMultipleAccounts.
-    pub async fn from_instruction(mut self, instruction: &Instruction) -> Result<Self, RpcError> {
+    pub fn from_instruction(mut self, instruction: &Instruction) -> Result<Self, RpcError> {
         let pubkeys: Vec<_> = instruction.accounts.iter().map(|m| m.pubkey).collect();
-        self.fetch_accounts(&pubkeys).await?;
+        self.fetch_accounts(&pubkeys)?;
         Ok(self)
     }
 
@@ -160,17 +160,13 @@ impl RpcAccountStore {
     ///
     /// Collects all unique pubkeys across all instructions and fetches them
     /// efficiently in a batch using getMultipleAccounts.
-    pub async fn from_instructions(
-        mut self,
-        instructions: &[Instruction],
-    ) -> Result<Self, RpcError> {
+    pub fn from_instructions(mut self, instructions: &[Instruction]) -> Result<Self, RpcError> {
         let pubkeys: HashSet<Pubkey> = instructions
             .iter()
             .flat_map(|ix| ix.accounts.iter().map(|m| m.pubkey))
             .collect();
 
-        self.fetch_accounts(&pubkeys.into_iter().collect::<Vec<_>>())
-            .await?;
+        self.fetch_accounts(&pubkeys.into_iter().collect::<Vec<_>>())?;
         Ok(self)
     }
 
@@ -186,7 +182,7 @@ impl RpcAccountStore {
     ///
     /// Only fetches accounts that aren't already in the cache, allowing for
     /// efficient incremental fetching.
-    async fn fetch_accounts(&mut self, pubkeys: &[Pubkey]) -> Result<(), RpcError> {
+    fn fetch_accounts(&mut self, pubkeys: &[Pubkey]) -> Result<(), RpcError> {
         // Filter out already cached accounts
         let missing_pubkeys: Vec<Pubkey> = pubkeys
             .iter()
@@ -198,7 +194,7 @@ impl RpcAccountStore {
             return Ok(());
         }
 
-        let accounts = self.client.get_multiple_accounts(&missing_pubkeys).await?;
+        let accounts = self.client.get_multiple_accounts(&missing_pubkeys)?;
 
         // Store fetched accounts in cache
         for (pubkey, account_opt) in missing_pubkeys.iter().zip(accounts) {
@@ -235,7 +231,7 @@ impl RpcAccountStore {
     /// - Program account data is malformed
     /// - Program data account is invalid or missing
     /// - ELF validation fails (if enabled)
-    pub async fn add_programs(mut self, mollusk: &mut Mollusk) -> Result<Self, RpcError> {
+    pub fn add_programs(mut self, mollusk: &mut Mollusk) -> Result<Self, RpcError> {
         // First pass: collect program data pubkeys that need to be fetched
         let mut program_data_pubkeys = Vec::new();
         for (pubkey, account) in self.cache.iter() {
@@ -266,7 +262,7 @@ impl RpcAccountStore {
 
         // Fetch all program data accounts at once
         if !program_data_pubkeys.is_empty() {
-            self.fetch_accounts(&program_data_pubkeys).await?;
+            self.fetch_accounts(&program_data_pubkeys)?;
         }
 
         // Second pass: add programs to mollusk
@@ -353,8 +349,8 @@ impl RpcAccountStore {
     ///
     /// Note: This is useful for oracles that need to be synced to the current
     /// mainnet slot.
-    pub async fn with_synced_slot(self, mollusk: &mut Mollusk) -> Result<Self, RpcError> {
-        let slot = self.client.get_slot().await?;
+    pub fn with_synced_slot(self, mollusk: &mut Mollusk) -> Result<Self, RpcError> {
+        let slot = self.client.get_slot()?;
         mollusk.warp_to_slot(slot);
         Ok(self)
     }
