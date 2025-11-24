@@ -512,8 +512,6 @@ pub struct Mollusk {
     /// programs comes from the sysvars.
     #[cfg(feature = "fuzz-fd")]
     pub slot: u64,
-
-    pub enable_register_tracing: bool,
 }
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -527,6 +525,11 @@ pub trait InvocationInspectCallback {
     );
 
     fn after_invocation(&self, invoke_context: &InvokeContext);
+
+    // By default callbacks are not used for register tracing.
+    fn is_register_tracing_callback(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -572,6 +575,8 @@ impl Default for Mollusk {
 
         let program_cache =
             ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
+
+        #[allow(unused_mut)]
         let mut svm = Self {
             config: Config::default(),
             compute_budget,
@@ -586,8 +591,6 @@ impl Default for Mollusk {
 
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
-
-            enable_register_tracing,
         };
 
         #[cfg(feature = "register-tracing")]
@@ -595,7 +598,10 @@ impl Default for Mollusk {
             // Have a default register tracing callback if register tracing is
             // enabled.
             svm.invocation_inspect_callback =
-                Box::new(register_tracing::DefaultRegisterTracingCallback {});
+                Box::new(register_tracing::DefaultRegisterTracingCallback {
+                    // SAFETY: We checked upper it isn't None.
+                    sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap(),
+                });
         }
 
         svm
@@ -686,20 +692,26 @@ impl Mollusk {
 
     /// Create a new Mollusk instance just like the `new` method but
     /// with register tracing enabled using a default callback.
+    ///
+    /// If `SBF_TRACE_DIR` is set it will override the passed `sbf_trace_dir`.
     #[cfg(feature = "register-tracing")]
-    pub fn with_register_tracing(program_id: &Pubkey, program_name: &str) -> Self {
-        let mut mollusk = Mollusk {
-            enable_register_tracing: true,
-            ..Self::default()
-        };
-        let program_cache = ProgramCache::new(
+    pub fn with_register_tracing(
+        program_id: &Pubkey,
+        program_name: &str,
+        sbf_trace_dir: &str,
+    ) -> Self {
+        let mut mollusk = Mollusk::default();
+        mollusk.invocation_inspect_callback =
+            Box::new(register_tracing::DefaultRegisterTracingCallback {
+                sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap_or(sbf_trace_dir.into()),
+            });
+        mollusk.program_cache = ProgramCache::new(
             &mollusk.feature_set,
             &mollusk.compute_budget,
-            mollusk.enable_register_tracing,
+            mollusk
+                .invocation_inspect_callback
+                .is_register_tracing_callback(),
         );
-        mollusk.program_cache = program_cache;
-        mollusk.invocation_inspect_callback =
-            Box::new(register_tracing::DefaultRegisterTracingCallback {});
         mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
         mollusk
     }
@@ -783,21 +795,28 @@ impl Mollusk {
             let runtime_features = self.feature_set.runtime_features();
             let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
-            let program_runtime_environments = ProgramRuntimeEnvironments {
-                program_runtime_v1: Arc::new(
-                    create_program_runtime_environment_v1(
-                        &runtime_features,
+            let _enable_register_tracing = false;
+            #[cfg(feature = "register-tracing")]
+            let _enable_register_tracing = self
+                .invocation_inspect_callback
+                .is_register_tracing_callback();
+
+            let program_runtime_environments: ProgramRuntimeEnvironments =
+                ProgramRuntimeEnvironments {
+                    program_runtime_v1: Arc::new(
+                        create_program_runtime_environment_v1(
+                            &runtime_features,
+                            &execution_budget,
+                            /* reject_deployment_of_broken_elfs */ false,
+                            /* debugging_features */ _enable_register_tracing,
+                        )
+                        .unwrap(),
+                    ),
+                    program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
                         &execution_budget,
-                        /* reject_deployment_of_broken_elfs */ false,
-                        /* debugging_features */ self.enable_register_tracing,
-                    )
-                    .unwrap(),
-                ),
-                program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
-                    &execution_budget,
-                    /* debugging_features */ self.enable_register_tracing,
-                )),
-            };
+                        /* debugging_features */ _enable_register_tracing,
+                    )),
+                };
 
             let mut invoke_context = InvokeContext::new(
                 &mut transaction_context,

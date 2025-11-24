@@ -10,42 +10,24 @@ use {
     std::{fs::File, io::Write, path::PathBuf},
 };
 
-pub struct DefaultRegisterTracingCallback;
-
-impl InvocationInspectCallback for DefaultRegisterTracingCallback {
-    fn before_invocation(&self, _: &Pubkey, _: &[u8], _: &[InstructionAccount], _: &InvokeContext) {
-    }
-
-    fn after_invocation(&self, invoke_context: &InvokeContext) {
-        invoke_context.iterate_vm_traces(
-            &|instruction_context: InstructionContext,
-              executable: &Executable,
-              register_trace: RegisterTrace| {
-                if let Err(e) = default_register_tracing_callback(
-                    instruction_context,
-                    executable,
-                    register_trace,
-                ) {
-                    eprintln!("Error collecting the register tracing: {}", e);
-                }
-            },
-        );
-    }
+pub struct DefaultRegisterTracingCallback {
+    pub sbf_trace_dir: String,
 }
 
-pub fn default_register_tracing_callback(
-    instruction_context: InstructionContext,
-    executable: &Executable,
-    register_trace: RegisterTrace,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if register_trace.is_empty() {
-        // Can't do much with an empty trace.
-        return Ok(());
-    }
+impl DefaultRegisterTracingCallback {
+    pub fn handler(
+        &self,
+        instruction_context: InstructionContext,
+        executable: &Executable,
+        register_trace: RegisterTrace,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if register_trace.is_empty() {
+            // Can't do much with an empty trace.
+            return Ok(());
+        }
 
-    if let Ok(sbf_trace_dir) = &std::env::var("SBF_TRACE_DIR") {
         let current_dir = std::env::current_dir()?;
-        let sbf_trace_dir = current_dir.join(sbf_trace_dir);
+        let sbf_trace_dir = current_dir.join(&self.sbf_trace_dir);
         std::fs::create_dir_all(&sbf_trace_dir)?;
 
         let trace_digest = compute_hash(as_bytes(register_trace));
@@ -80,9 +62,31 @@ pub fn default_register_tracing_callback(
             let _ = regs_file.write(as_bytes(regs.as_slice()))?;
             let _ = insns_file.write(insn.as_slice())?;
         }
+
+        Ok(())
+    }
+}
+
+impl InvocationInspectCallback for DefaultRegisterTracingCallback {
+    fn before_invocation(&self, _: &Pubkey, _: &[u8], _: &[InstructionAccount], _: &InvokeContext) {
     }
 
-    Ok(())
+    fn after_invocation(&self, invoke_context: &InvokeContext) {
+        invoke_context.iterate_vm_traces(
+            &|instruction_context: InstructionContext,
+              executable: &Executable,
+              register_trace: RegisterTrace| {
+                if let Err(e) = self.handler(instruction_context, executable, register_trace) {
+                    eprintln!("Error collecting the register tracing: {}", e);
+                }
+            },
+        );
+    }
+
+    // This callback is specifically implemented to handle register tracing.
+    fn is_register_tracing_callback(&self) -> bool {
+        true
+    }
 }
 
 pub(crate) fn as_bytes<T>(slice: &[T]) -> &[u8] {
