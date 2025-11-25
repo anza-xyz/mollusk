@@ -698,6 +698,7 @@ impl Mollusk {
 
     fn process_instruction_inner(
         &self,
+        instruction_index: usize,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
         program_id_index: u16,
@@ -713,6 +714,7 @@ impl Mollusk {
             self.compute_budget.max_instruction_stack_depth,
             self.compute_budget.max_instruction_trace_length,
         );
+        transaction_context.set_top_level_instruction_index(instruction_index);
 
         let invoke_result = {
             let mut program_cache = self.program_cache.cache();
@@ -845,6 +847,7 @@ impl Mollusk {
         } = crate::compile_accounts::compile_accounts(instruction, accounts.iter(), loader_key);
 
         self.process_instruction_inner(
+            /* instruction_index */ 0,
             instruction,
             accounts,
             program_id_index,
@@ -873,7 +876,7 @@ impl Mollusk {
             ..Default::default()
         };
 
-        for instruction in instructions {
+        for (index, instruction) in instructions.iter().enumerate() {
             let loader_key = self.get_loader_key(&instruction.program_id);
 
             let CompiledAccounts {
@@ -883,6 +886,7 @@ impl Mollusk {
             } = crate::compile_accounts::compile_accounts(instruction, accounts.iter(), loader_key);
 
             let this_result = self.process_instruction_inner(
+                index,
                 instruction,
                 accounts,
                 program_id_index,
@@ -937,6 +941,7 @@ impl Mollusk {
         } = crate::compile_accounts::compile_accounts(instruction, accounts.iter(), loader_key);
 
         let result = self.process_instruction_inner(
+            /* instruction_index */ 0,
             instruction,
             accounts,
             program_id_index,
@@ -985,7 +990,7 @@ impl Mollusk {
             ..Default::default()
         };
 
-        for (instruction, checks) in instructions.iter() {
+        for (index, (instruction, checks)) in instructions.iter().enumerate() {
             let loader_key = self.get_loader_key(&instruction.program_id);
             let accounts = &composite_result.resulting_accounts;
 
@@ -996,6 +1001,7 @@ impl Mollusk {
             } = crate::compile_accounts::compile_accounts(instruction, accounts.iter(), loader_key);
 
             let this_result = self.process_instruction_inner(
+                index,
                 instruction,
                 accounts,
                 program_id_index,
