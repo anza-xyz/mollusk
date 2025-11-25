@@ -4907,6 +4907,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-program-instructions-sysvar"
+version = "0.1.0"
+dependencies = [
+ "solana-account-info",
+ "solana-instructions-sysvar",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey 4.0.0",
+]
+
+[[package]]
 name = "test-program-primary"
 version = "0.1.0"
 dependencies = [
