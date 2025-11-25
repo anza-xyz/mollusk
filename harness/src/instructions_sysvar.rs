@@ -1,12 +1,11 @@
 use {
-    crate::Mollusk,
     solana_account::Account,
     solana_instruction::{BorrowedAccountMeta, BorrowedInstruction, Instruction},
     solana_instructions_sysvar::construct_instructions_data,
     solana_pubkey::Pubkey,
 };
 
-pub fn keyed_account(mollusk: &Mollusk, instructions: &[Instruction]) -> (Pubkey, Account) {
+pub fn keyed_account(instructions: &[Instruction]) -> (Pubkey, Account) {
     let data = construct_instructions_data(
         instructions
             .iter()
@@ -30,7 +29,7 @@ pub fn keyed_account(mollusk: &Mollusk, instructions: &[Instruction]) -> (Pubkey
     (
         solana_instructions_sysvar::ID,
         Account {
-            lamports: mollusk.sysvars.rent.minimum_balance(data.len()),
+            lamports: 0,
             data,
             owner: solana_sysvar_id::ID,
             executable: false,
