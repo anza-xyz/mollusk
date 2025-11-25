@@ -33,6 +33,8 @@ pub fn compile_accounts<'a>(
         program_account
     };
 
+    let instructions_sysvar_fallback: Option<fn(&Pubkey) -> Option<Account>> = None;
+
     let key_map = KeyMap::compile_from_instruction(instruction);
     let compiled_instruction = compile_instruction_without_data(&key_map, instruction);
     let instruction_accounts = compile_instruction_accounts(&key_map, &compiled_instruction);
@@ -41,6 +43,7 @@ pub fn compile_accounts<'a>(
         instruction,
         accounts,
         Some(Box::new(stub_out_program_account)),
+        instructions_sysvar_fallback,
     );
 
     CompiledAccounts {

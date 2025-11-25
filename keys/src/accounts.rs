@@ -47,12 +47,17 @@ pub fn compile_instruction_accounts(
         .collect()
 }
 
-pub fn compile_transaction_accounts_for_instruction<'a>(
+pub fn compile_transaction_accounts_for_instruction<'a, S, F>(
     key_map: &KeyMap,
     instruction: &Instruction,
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    stub_out_program_account: Option<Box<dyn Fn() -> Account>>,
-) -> Vec<(Pubkey, AccountSharedData)> {
+    stub_out_program_account: Option<S>,
+    fallback_account: Option<F>,
+) -> Vec<(Pubkey, AccountSharedData)>
+where
+    S: Fn() -> Account,
+    F: Fn(&Pubkey) -> Option<Account>,
+{
     let accounts: Vec<_> = accounts.collect();
     key_map
         .keys()
@@ -66,18 +71,29 @@ pub fn compile_transaction_accounts_for_instruction<'a>(
                 .iter()
                 .find(|(k, _)| k == key)
                 .map(|(_, a)| AccountSharedData::from(a.clone()))
+                .or_else(|| {
+                    fallback_account
+                        .as_ref()
+                        .and_then(|f| f(key))
+                        .map(Into::into)
+                })
                 .or_panic_with(MolluskError::AccountMissing(key));
             (*key, account)
         })
         .collect()
 }
 
-pub fn compile_transaction_accounts<'a>(
+pub fn compile_transaction_accounts<'a, S, F>(
     key_map: &KeyMap,
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    stub_out_program_account: Option<Box<dyn Fn() -> Account>>,
-) -> Vec<(Pubkey, AccountSharedData)> {
+    stub_out_program_account: Option<S>,
+    fallback_account: Option<F>,
+) -> Vec<(Pubkey, AccountSharedData)>
+where
+    S: Fn() -> Account,
+    F: Fn(&Pubkey) -> Option<Account>,
+{
     let accounts: Vec<_> = accounts.collect();
     key_map
         .keys()
@@ -91,8 +107,278 @@ pub fn compile_transaction_accounts<'a>(
                 .iter()
                 .find(|(k, _)| k == key)
                 .map(|(_, a)| AccountSharedData::from(a.clone()))
+                .or_else(|| {
+                    fallback_account
+                        .as_ref()
+                        .and_then(|f| f(key))
+                        .map(Into::into)
+                })
                 .or_panic_with(MolluskError::AccountMissing(key));
             (*key, account)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, solana_account::ReadableAccount, solana_instruction::AccountMeta};
+
+    fn test_instruction(program_id: Pubkey, account_keys: &[Pubkey]) -> Instruction {
+        Instruction::new_with_bytes(
+            program_id,
+            &[],
+            account_keys
+                .iter()
+                .map(|pk| AccountMeta::new(*pk, false))
+                .collect(),
+        )
+    }
+
+    #[test]
+    fn test_compile_instruction_without_data() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let account2 = Pubkey::new_unique();
+
+        let instruction = test_instruction(program_id, &[account1, account2]);
+        let key_map = KeyMap::compile_from_instruction(&instruction);
+
+        let compiled = compile_instruction_without_data(&key_map, &instruction);
+
+        assert_eq!(
+            compiled.program_id_index,
+            key_map.position(&program_id).unwrap() as u8
+        );
+        assert_eq!(compiled.accounts.len(), 2);
+        assert_eq!(
+            compiled.accounts[0],
+            key_map.position(&account1).unwrap() as u8
+        );
+        assert_eq!(
+            compiled.accounts[1],
+            key_map.position(&account2).unwrap() as u8
+        );
+    }
+
+    #[test]
+    fn test_compile_instruction_accounts() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let account2 = Pubkey::new_unique();
+
+        let instruction = Instruction::new_with_bytes(
+            program_id,
+            &[],
+            vec![
+                AccountMeta::new(account1, true),           // signer, writable
+                AccountMeta::new_readonly(account2, false), // not signer, not writable
+            ],
+        );
+        let key_map = KeyMap::compile_from_instruction(&instruction);
+        let compiled_ix = compile_instruction_without_data(&key_map, &instruction);
+
+        let instruction_accounts = compile_instruction_accounts(&key_map, &compiled_ix);
+
+        assert_eq!(instruction_accounts.len(), 2);
+        assert!(instruction_accounts[0].is_signer());
+        assert!(instruction_accounts[0].is_writable());
+        assert!(!instruction_accounts[1].is_signer());
+        assert!(!instruction_accounts[1].is_writable());
+    }
+
+    #[test]
+    fn test_compile_transaction_accounts_for_instruction_basic() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let account2 = Pubkey::new_unique();
+
+        let instruction = test_instruction(program_id, &[account1, account2]);
+        let key_map = KeyMap::compile_from_instruction(&instruction);
+
+        let accounts = [
+            (program_id, Account::new(1000, 0, &Pubkey::default())),
+            (account1, Account::new(100, 10, &Pubkey::default())),
+            (account2, Account::new(200, 20, &Pubkey::default())),
+        ];
+
+        let stub: Option<fn() -> Account> = None;
+        let fallback: Option<fn(&Pubkey) -> Option<Account>> = None;
+
+        let result = compile_transaction_accounts_for_instruction(
+            &key_map,
+            &instruction,
+            accounts.iter(),
+            stub,
+            fallback,
+        );
+
+        assert_eq!(result.len(), 3);
+        // Verify accounts are present (order depends on KeyMap).
+        assert!(result.iter().any(|(pk, _)| pk == &program_id));
+        assert!(result.iter().any(|(pk, _)| pk == &account1));
+        assert!(result.iter().any(|(pk, _)| pk == &account2));
+    }
+
+    #[test]
+    fn test_compile_transaction_accounts_for_instruction_with_stub() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+
+        let instruction = test_instruction(program_id, &[account1]);
+        let key_map = KeyMap::compile_from_instruction(&instruction);
+
+        // Only provide account1, not program_id.
+        let accounts = [(account1, Account::new(100, 10, &Pubkey::default()))];
+
+        let stub = || Account::new(999, 0, &Pubkey::default());
+        let fallback: Option<fn(&Pubkey) -> Option<Account>> = None;
+
+        let result = compile_transaction_accounts_for_instruction(
+            &key_map,
+            &instruction,
+            accounts.iter(),
+            Some(stub),
+            fallback,
+        );
+
+        assert_eq!(result.len(), 2);
+        // Program account should have 999 lamports from stub.
+        let program_account = result.iter().find(|(pk, _)| pk == &program_id).unwrap();
+        assert_eq!(program_account.1.lamports(), 999);
+    }
+
+    #[test]
+    fn test_compile_transaction_accounts_for_instruction_with_fallback() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let fallback_key = Pubkey::new_unique();
+
+        let instruction = test_instruction(program_id, &[account1, fallback_key]);
+        let key_map = KeyMap::compile_from_instruction(&instruction);
+
+        // Only provide program_id and account1, not fallback_key.
+        let accounts = [
+            (program_id, Account::new(1000, 0, &Pubkey::default())),
+            (account1, Account::new(100, 10, &Pubkey::default())),
+        ];
+
+        let stub: Option<fn() -> Account> = None;
+        let fallback = move |pk: &Pubkey| -> Option<Account> {
+            if pk == &fallback_key {
+                Some(Account::new(555, 5, &Pubkey::default()))
+            } else {
+                None
+            }
+        };
+
+        let result = compile_transaction_accounts_for_instruction(
+            &key_map,
+            &instruction,
+            accounts.iter(),
+            stub,
+            Some(fallback),
+        );
+
+        assert_eq!(result.len(), 3);
+        // Fallback account should have 555 lamports.
+        let fb_account = result.iter().find(|(pk, _)| pk == &fallback_key).unwrap();
+        assert_eq!(fb_account.1.lamports(), 555);
+    }
+
+    #[test]
+    fn test_compile_transaction_accounts_basic() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+
+        let instructions = [test_instruction(program_id, &[account1])];
+        let key_map = KeyMap::compile_from_instructions(instructions.iter());
+
+        let accounts = [
+            (program_id, Account::new(1000, 0, &Pubkey::default())),
+            (account1, Account::new(100, 10, &Pubkey::default())),
+        ];
+
+        let stub: Option<fn() -> Account> = None;
+        let fallback: Option<fn(&Pubkey) -> Option<Account>> = None;
+
+        let result =
+            compile_transaction_accounts(&key_map, &instructions, accounts.iter(), stub, fallback);
+
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().any(|(pk, _)| pk == &program_id));
+        assert!(result.iter().any(|(pk, _)| pk == &account1));
+    }
+
+    #[test]
+    fn test_compile_transaction_accounts_with_fallback() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let fallback_key = Pubkey::new_unique();
+
+        let instructions = [test_instruction(program_id, &[account1, fallback_key])];
+        let key_map = KeyMap::compile_from_instructions(instructions.iter());
+
+        // Only provide program_id and account1.
+        let accounts = [
+            (program_id, Account::new(1000, 0, &Pubkey::default())),
+            (account1, Account::new(100, 10, &Pubkey::default())),
+        ];
+
+        let stub: Option<fn() -> Account> = None;
+        let fallback = move |pk: &Pubkey| -> Option<Account> {
+            if pk == &fallback_key {
+                Some(Account::new(777, 7, &Pubkey::default()))
+            } else {
+                None
+            }
+        };
+
+        let result = compile_transaction_accounts(
+            &key_map,
+            &instructions,
+            accounts.iter(),
+            stub,
+            Some(fallback),
+        );
+
+        assert_eq!(result.len(), 3);
+        let fb_account = result.iter().find(|(pk, _)| pk == &fallback_key).unwrap();
+        assert_eq!(fb_account.1.lamports(), 777);
+    }
+
+    #[test]
+    fn test_fallback_not_called_when_account_present() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+
+        let instruction = test_instruction(program_id, &[account1]);
+        let key_map = KeyMap::compile_from_instruction(&instruction);
+
+        let accounts = [
+            (program_id, Account::new(1000, 0, &Pubkey::default())),
+            (account1, Account::new(100, 10, &Pubkey::default())),
+        ];
+
+        let stub: Option<fn() -> Account> = None;
+        // Fallback would return different lamports, but shouldn't be called.
+        let fallback = move |pk: &Pubkey| -> Option<Account> {
+            if pk == &account1 {
+                Some(Account::new(999, 99, &Pubkey::default()))
+            } else {
+                None
+            }
+        };
+
+        let result = compile_transaction_accounts_for_instruction(
+            &key_map,
+            &instruction,
+            accounts.iter(),
+            stub,
+            Some(fallback),
+        );
+
+        // account1 should have original 100 lamports, not 999 from fallback.
+        let acc = result.iter().find(|(pk, _)| pk == &account1).unwrap();
+        assert_eq!(acc.1.lamports(), 100);
+    }
 }
