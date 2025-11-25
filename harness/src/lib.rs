@@ -703,7 +703,6 @@ impl Mollusk {
         program_id_index: u16,
         instruction_accounts: Vec<InstructionAccount>,
         transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
-        instruction_index: usize,
     ) -> InstructionResult {
         let mut compute_units_consumed = 0;
         let mut timings = ExecuteTimings::default();
@@ -714,7 +713,6 @@ impl Mollusk {
             self.compute_budget.max_instruction_stack_depth,
             self.compute_budget.max_instruction_trace_length,
         );
-        transaction_context.set_top_level_instruction_index(instruction_index);
 
         let invoke_result = {
             let mut program_cache = self.program_cache.cache();
@@ -838,15 +836,6 @@ impl Mollusk {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        self.process_instruction_with_instruction_index(instruction, accounts, 0)
-    }
-
-    pub fn process_instruction_with_instruction_index(
-        &self,
-        instruction: &Instruction,
-        accounts: &[(Pubkey, Account)],
-        instruction_index: usize,
-    ) -> InstructionResult {
         let loader_key = self.get_loader_key(&instruction.program_id);
 
         let CompiledAccounts {
@@ -861,7 +850,6 @@ impl Mollusk {
             program_id_index,
             instruction_accounts,
             transaction_accounts,
-            instruction_index,
         )
     }
 
@@ -885,7 +873,7 @@ impl Mollusk {
             ..Default::default()
         };
 
-        for (index, instruction) in instructions.iter().enumerate() {
+        for instruction in instructions {
             let loader_key = self.get_loader_key(&instruction.program_id);
 
             let CompiledAccounts {
@@ -900,7 +888,6 @@ impl Mollusk {
                 program_id_index,
                 instruction_accounts,
                 transaction_accounts,
-                index,
             );
 
             composite_result.absorb(this_result);
@@ -955,7 +942,6 @@ impl Mollusk {
             program_id_index,
             instruction_accounts,
             transaction_accounts,
-            0,
         );
 
         #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
@@ -999,7 +985,7 @@ impl Mollusk {
             ..Default::default()
         };
 
-        for (index, (instruction, checks)) in instructions.iter().enumerate() {
+        for (instruction, checks) in instructions.iter() {
             let loader_key = self.get_loader_key(&instruction.program_id);
             let accounts = &composite_result.resulting_accounts;
 
@@ -1015,7 +1001,6 @@ impl Mollusk {
                 program_id_index,
                 instruction_accounts,
                 transaction_accounts,
-                index,
             );
 
             #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
