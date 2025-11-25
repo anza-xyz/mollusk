@@ -5,10 +5,9 @@ use {
     solana_pubkey::Pubkey,
 };
 
-pub fn keyed_account(instructions: &[Instruction]) -> (Pubkey, Account) {
+pub fn keyed_account<'a>(instructions: impl Iterator<Item = &'a Instruction>) -> (Pubkey, Account) {
     let data = construct_instructions_data(
         instructions
-            .iter()
             .map(|instruction| BorrowedInstruction {
                 program_id: &instruction.program_id,
                 accounts: instruction

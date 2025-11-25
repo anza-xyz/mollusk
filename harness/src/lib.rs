@@ -838,16 +838,23 @@ impl Mollusk {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
+        const INDEX: usize = 0;
+
         let loader_key = self.get_loader_key(&instruction.program_id);
 
         let CompiledAccounts {
             program_id_index,
             instruction_accounts,
             transaction_accounts,
-        } = crate::compile_accounts::compile_accounts(instruction, accounts.iter(), loader_key);
+        } = crate::compile_accounts::compile_accounts(
+            INDEX,
+            std::iter::once(instruction),
+            accounts.iter(),
+            loader_key,
+        );
 
         self.process_instruction_inner(
-            /* instruction_index */ 0,
+            INDEX,
             instruction,
             accounts,
             program_id_index,
@@ -883,7 +890,12 @@ impl Mollusk {
                 program_id_index,
                 instruction_accounts,
                 transaction_accounts,
-            } = crate::compile_accounts::compile_accounts(instruction, accounts.iter(), loader_key);
+            } = crate::compile_accounts::compile_accounts(
+                index,
+                instructions.iter(),
+                accounts.iter(),
+                loader_key,
+            );
 
             let this_result = self.process_instruction_inner(
                 index,
@@ -932,16 +944,23 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         checks: &[Check],
     ) -> InstructionResult {
+        const INDEX: usize = 0;
+
         let loader_key = self.get_loader_key(&instruction.program_id);
 
         let CompiledAccounts {
             program_id_index,
             instruction_accounts,
             transaction_accounts,
-        } = crate::compile_accounts::compile_accounts(instruction, accounts.iter(), loader_key);
+        } = crate::compile_accounts::compile_accounts(
+            INDEX,
+            std::iter::once(instruction),
+            accounts.iter(),
+            loader_key,
+        );
 
         let result = self.process_instruction_inner(
-            /* instruction_index */ 0,
+            INDEX,
             instruction,
             accounts,
             program_id_index,
@@ -998,7 +1017,12 @@ impl Mollusk {
                 program_id_index,
                 instruction_accounts,
                 transaction_accounts,
-            } = crate::compile_accounts::compile_accounts(instruction, accounts.iter(), loader_key);
+            } = crate::compile_accounts::compile_accounts(
+                index,
+                instructions.iter().map(|(ix, _)| *ix),
+                accounts.iter(),
+                loader_key,
+            );
 
             let this_result = self.process_instruction_inner(
                 index,
