@@ -18,15 +18,39 @@ pub struct CompiledInstructionWithoutData {
 pub fn compile_instruction_without_data(
     key_map: &KeyMap,
     instruction: &Instruction,
-) -> CompiledInstructionWithoutData {
-    CompiledInstructionWithoutData {
-        program_id_index: key_map.position(&instruction.program_id).unwrap() as u8,
-        accounts: instruction
-            .accounts
-            .iter()
-            .map(|account_meta| key_map.position(&account_meta.pubkey).unwrap() as u8)
-            .collect(),
+) -> Result<CompiledInstructionWithoutData, MolluskError<'static>> {
+    let program_id_index = key_map
+        .position(&instruction.program_id)
+        // Note: We use AccountIndexOverflow as the error type even for missing keys
+        // because MolluskError<'static> doesn't allow borrowed references. If the key
+        // is missing, returning an error (rather than panicking) allows the caller
+        // to handle it. The value passed to AccountIndexOverflow should be interpreted
+        // in context: if it equals the key_map length, the key was not found.
+        .ok_or_else(|| MolluskError::AccountIndexOverflow(key_map.len()))?;
+
+    if program_id_index > u8::MAX as usize {
+        return Err(MolluskError::AccountIndexOverflow(program_id_index));
     }
+
+    let accounts: Result<Vec<u8>, MolluskError<'static>> = instruction
+        .accounts
+        .iter()
+        .map(|account_meta| {
+            let index = key_map
+                .position(&account_meta.pubkey)
+                .ok_or_else(|| MolluskError::AccountIndexOverflow(key_map.len()))?;
+            if index > u8::MAX as usize {
+                Err(MolluskError::AccountIndexOverflow(index))
+            } else {
+                Ok(index as u8)
+            }
+        })
+        .collect();
+
+    Ok(CompiledInstructionWithoutData {
+        program_id_index: program_id_index as u8,
+        accounts: accounts?,
+    })
 }
 
 pub fn compile_instruction_accounts(
@@ -143,7 +167,7 @@ mod tests {
         let instruction = test_instruction(program_id, &[account1, account2]);
         let key_map = KeyMap::compile_from_instruction(&instruction);
 
-        let compiled = compile_instruction_without_data(&key_map, &instruction);
+        let compiled = compile_instruction_without_data(&key_map, &instruction).unwrap();
 
         assert_eq!(
             compiled.program_id_index,
@@ -175,7 +199,7 @@ mod tests {
             ],
         );
         let key_map = KeyMap::compile_from_instruction(&instruction);
-        let compiled_ix = compile_instruction_without_data(&key_map, &instruction);
+        let compiled_ix = compile_instruction_without_data(&key_map, &instruction).unwrap();
 
         let instruction_accounts = compile_instruction_accounts(&key_map, &compiled_ix);
 
@@ -380,5 +404,96 @@ mod tests {
         // account1 should have original 100 lamports, not 999 from fallback.
         let acc = result.iter().find(|(pk, _)| pk == &account1).unwrap();
         assert_eq!(acc.1.lamports(), 100);
+    }
+
+    #[test]
+    fn test_compile_instruction_without_data_deterministic() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let account2 = Pubkey::new_unique();
+        let account3 = Pubkey::new_unique();
+
+        let instruction = test_instruction(program_id, &[account1, account2, account3]);
+
+        let key_map1 = KeyMap::compile_from_instruction(&instruction);
+        let compiled1 = compile_instruction_without_data(&key_map1, &instruction).unwrap();
+
+        let key_map2 = KeyMap::compile_from_instruction(&instruction);
+        let compiled2 = compile_instruction_without_data(&key_map2, &instruction).unwrap();
+
+        assert_eq!(compiled1.program_id_index, compiled2.program_id_index);
+        assert_eq!(compiled1.accounts, compiled2.accounts);
+    }
+
+    #[test]
+    fn test_compile_instruction_without_data_account_index_overflow() {
+        let mut key_map = KeyMap::default();
+
+        for i in 0..256 {
+            let pubkey = if i == 0 {
+                Pubkey::new_unique()
+            } else {
+                Pubkey::new_unique()
+            };
+            key_map.add_program(pubkey);
+        }
+
+        let program_id = Pubkey::new_unique();
+        key_map.add_program(program_id);
+
+        let instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+
+        match compile_instruction_without_data(&key_map, &instruction) {
+            Ok(_) => panic!("Expected overflow error, but got Ok"),
+            Err(MolluskError::AccountIndexOverflow(index)) => {
+                assert!(index > u8::MAX as usize);
+            }
+            Err(_) => panic!("Expected AccountIndexOverflow error"),
+        }
+    }
+
+    #[test]
+    fn test_compile_instruction_without_data_missing_program_id() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let instruction = test_instruction(program_id, &[account1]);
+
+        let mut key_map = KeyMap::default();
+        key_map.add_account(&AccountMeta::new(account1, false));
+
+        match compile_instruction_without_data(&key_map, &instruction) {
+            Ok(_) => panic!("Expected error for missing program_id, but got Ok"),
+            Err(MolluskError::AccountIndexOverflow(index)) => {
+                assert_eq!(index, key_map.len());
+            }
+            Err(_) => panic!("Expected AccountIndexOverflow error"),
+        }
+    }
+
+    #[test]
+    fn test_compile_instruction_without_data_missing_account() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let account_missing = Pubkey::new_unique();
+        let instruction = Instruction::new_with_bytes(
+            program_id,
+            &[],
+            vec![
+                AccountMeta::new(account1, false),
+                AccountMeta::new(account_missing, false),
+            ],
+        );
+
+        let mut key_map = KeyMap::default();
+        key_map.add_program(program_id);
+        key_map.add_account(&AccountMeta::new(account1, false));
+
+        match compile_instruction_without_data(&key_map, &instruction) {
+            Ok(_) => panic!("Expected error for missing account, but got Ok"),
+            Err(MolluskError::AccountIndexOverflow(index)) => {
+                assert_eq!(index, key_map.len());
+            }
+            Err(_) => panic!("Expected AccountIndexOverflow error"),
+        }
     }
 }
