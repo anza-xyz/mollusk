@@ -15,40 +15,32 @@ pub struct CompiledInstructionWithoutData {
     pub accounts: Vec<u8>,
 }
 
-pub fn compile_instruction_without_data(
+pub fn compile_instruction_without_data<'a>(
     key_map: &KeyMap,
-    instruction: &Instruction,
-) -> Result<CompiledInstructionWithoutData, MolluskError<'static>> {
+    instruction: &'a Instruction,
+) -> Result<CompiledInstructionWithoutData, MolluskError<'a>> {
     let program_id_index = key_map
         .position(&instruction.program_id)
-        // Note: We use AccountIndexOverflow as the error type even for missing keys
-        // because MolluskError<'static> doesn't allow borrowed references. If the key
-        // is missing, returning an error (rather than panicking) allows the caller
-        // to handle it. The value passed to AccountIndexOverflow should be interpreted
-        // in context: if it equals the key_map length, the key was not found.
-        .ok_or_else(|| MolluskError::AccountIndexOverflow(key_map.len()))?;
+        .ok_or(MolluskError::ProgramIdNotMapped(&instruction.program_id))
+        .and_then(|index| {
+            u8::try_from(index).map_err(|_| MolluskError::AccountIndexOverflow(index))
+        })?;
 
-    if program_id_index > u8::MAX as usize {
-        return Err(MolluskError::AccountIndexOverflow(program_id_index));
-    }
-
-    let accounts: Result<Vec<u8>, MolluskError<'static>> = instruction
+    let accounts: Result<Vec<u8>, MolluskError<'a>> = instruction
         .accounts
         .iter()
         .map(|account_meta| {
-            let index = key_map
+            key_map
                 .position(&account_meta.pubkey)
-                .ok_or_else(|| MolluskError::AccountIndexOverflow(key_map.len()))?;
-            if index > u8::MAX as usize {
-                Err(MolluskError::AccountIndexOverflow(index))
-            } else {
-                Ok(index as u8)
-            }
+                .ok_or(MolluskError::AccountMissing(&account_meta.pubkey))
+                .and_then(|index| {
+                    u8::try_from(index).map_err(|_| MolluskError::AccountIndexOverflow(index))
+                })
         })
         .collect();
 
     Ok(CompiledInstructionWithoutData {
-        program_id_index: program_id_index as u8,
+        program_id_index,
         accounts: accounts?,
     })
 }
@@ -459,10 +451,10 @@ mod tests {
 
         match compile_instruction_without_data(&key_map, &instruction) {
             Ok(_) => panic!("Expected error for missing program_id, but got Ok"),
-            Err(MolluskError::AccountIndexOverflow(index)) => {
-                assert_eq!(index, key_map.len());
+            Err(MolluskError::ProgramIdNotMapped(pk)) => {
+                assert_eq!(pk, &program_id);
             }
-            Err(_) => panic!("Expected AccountIndexOverflow error"),
+            Err(e) => panic!("Expected ProgramIdNotMapped error, got: {}", e),
         }
     }
 
@@ -486,10 +478,10 @@ mod tests {
 
         match compile_instruction_without_data(&key_map, &instruction) {
             Ok(_) => panic!("Expected error for missing account, but got Ok"),
-            Err(MolluskError::AccountIndexOverflow(index)) => {
-                assert_eq!(index, key_map.len());
+            Err(MolluskError::AccountMissing(pk)) => {
+                assert_eq!(pk, &account_missing);
             }
-            Err(_) => panic!("Expected AccountIndexOverflow error"),
+            Err(e) => panic!("Expected AccountMissing error, got: {}", e),
         }
     }
 }

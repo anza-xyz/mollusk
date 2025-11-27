@@ -24,6 +24,9 @@ pub enum MolluskError<'a> {
     /// Program targeted by the instruction is missing from the cache.
     #[error("    [MOLLUSK]: Program targeted by the instruction is missing from the cache: {0}")]
     ProgramNotCached(&'a Pubkey),
+    /// Program ID required by the instruction is not mapped in the key map.
+    #[error("    [MOLLUSK]: Program ID required by the instruction is not mapped: {0}")]
+    ProgramIdNotMapped(&'a Pubkey),
     /// Account index exceeds maximum (255).
     #[error("    [MOLLUSK]: Account index exceeds maximum of 255: {0}")]
     AccountIndexOverflow(usize),
