@@ -429,12 +429,8 @@ mod tests {
     fn test_compile_instruction_without_data_account_index_overflow() {
         let mut key_map = KeyMap::default();
 
-        for i in 0..256 {
-            let pubkey = if i == 0 {
-                Pubkey::new_unique()
-            } else {
-                Pubkey::new_unique()
-            };
+        for _ in 0..256 {
+            let pubkey = Pubkey::new_unique();
             key_map.add_program(pubkey);
         }
 
