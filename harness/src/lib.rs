@@ -507,6 +507,9 @@ pub struct Mollusk {
     #[cfg(feature = "invocation-inspect-callback")]
     pub invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
 
+    #[cfg(feature = "register-tracing")]
+    pub enable_register_tracing: bool,
+
     /// This field stores the slot only to be able to convert to and from FD
     /// fixtures and a Mollusk instance, since FD fixtures have a
     /// "slot context". However, this field is functionally irrelevant for
@@ -527,11 +530,6 @@ pub trait InvocationInspectCallback {
     );
 
     fn after_invocation(&self, invoke_context: &InvokeContext);
-
-    // By default callbacks are not used for register tracing.
-    fn is_register_tracing_callback(&self) -> bool {
-        false
-    }
 }
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -592,7 +590,7 @@ impl Default for Mollusk {
 
             // Register tracing feature requires `invocation-inspect-callback`.
             // Use tracing callback when both are active.
-            #[cfg(all(feature = "invocation-inspect-callback", feature = "register-tracing",))]
+            #[cfg(all(feature = "invocation-inspect-callback", feature = "register-tracing"))]
             invocation_inspect_callback: Box::new(DefaultRegisterTracingCallback::default()),
             // Use empty callback when only `invocation-inspect-callback` is active.
             #[cfg(all(
@@ -600,6 +598,9 @@ impl Default for Mollusk {
                 not(feature = "register-tracing"),
             ))]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
+
+            #[cfg(feature = "register-tracing")]
+            enable_register_tracing: true,
 
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
@@ -707,9 +708,7 @@ impl Mollusk {
         mollusk.program_cache = ProgramCache::new(
             &mollusk.feature_set,
             &mollusk.compute_budget,
-            mollusk
-                .invocation_inspect_callback
-                .is_register_tracing_callback(),
+            mollusk.enable_register_tracing,
         );
         mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
         mollusk
@@ -796,9 +795,7 @@ impl Mollusk {
 
             let _enable_register_tracing = false;
             #[cfg(feature = "register-tracing")]
-            let _enable_register_tracing = self
-                .invocation_inspect_callback
-                .is_register_tracing_callback();
+            let _enable_register_tracing = self.enable_register_tracing;
 
             let program_runtime_environments: ProgramRuntimeEnvironments =
                 ProgramRuntimeEnvironments {

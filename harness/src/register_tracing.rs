@@ -93,11 +93,6 @@ impl InvocationInspectCallback for DefaultRegisterTracingCallback {
             },
         );
     }
-
-    // This callback is specifically implemented to handle register tracing.
-    fn is_register_tracing_callback(&self) -> bool {
-        true
-    }
 }
 
 pub(crate) fn as_bytes<T>(slice: &[T]) -> &[u8] {

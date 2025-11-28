@@ -80,10 +80,6 @@ fn test_custom_register_tracing_callback() {
                 },
             );
         }
-
-        fn is_register_tracing_callback(&self) -> bool {
-            true
-        }
     }
 
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
