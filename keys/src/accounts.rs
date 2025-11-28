@@ -15,34 +15,33 @@ pub struct CompiledInstructionWithoutData {
     pub accounts: Vec<u8>,
 }
 
-pub fn compile_instruction_without_data<'a>(
+pub fn compile_instruction_without_data(
     key_map: &KeyMap,
-    instruction: &'a Instruction,
-) -> Result<CompiledInstructionWithoutData, MolluskError<'a>> {
+    instruction: &Instruction,
+) -> CompiledInstructionWithoutData {
     let program_id_index = key_map
         .position(&instruction.program_id)
-        .ok_or(MolluskError::ProgramIdNotMapped(&instruction.program_id))
-        .and_then(|index| {
-            u8::try_from(index).map_err(|_| MolluskError::AccountIndexOverflow(index))
-        })?;
+        .or_panic_with(MolluskError::ProgramIdNotMapped(&instruction.program_id));
 
-    let accounts: Result<Vec<u8>, MolluskError<'a>> = instruction
+    let program_id_index = u8::try_from(program_id_index)
+        .or_panic_with(MolluskError::AccountIndexOverflow(program_id_index));
+
+    let accounts: Vec<u8> = instruction
         .accounts
         .iter()
         .map(|account_meta| {
-            key_map
+            let index = key_map
                 .position(&account_meta.pubkey)
-                .ok_or(MolluskError::AccountMissing(&account_meta.pubkey))
-                .and_then(|index| {
-                    u8::try_from(index).map_err(|_| MolluskError::AccountIndexOverflow(index))
-                })
+                .or_panic_with(MolluskError::AccountMissing(&account_meta.pubkey));
+
+            u8::try_from(index).or_panic_with(MolluskError::AccountIndexOverflow(index))
         })
         .collect();
 
-    Ok(CompiledInstructionWithoutData {
+    CompiledInstructionWithoutData {
         program_id_index,
-        accounts: accounts?,
-    })
+        accounts,
+    }
 }
 
 pub fn compile_instruction_accounts(
@@ -159,7 +158,7 @@ mod tests {
         let instruction = test_instruction(program_id, &[account1, account2]);
         let key_map = KeyMap::compile_from_instruction(&instruction);
 
-        let compiled = compile_instruction_without_data(&key_map, &instruction).unwrap();
+        let compiled = compile_instruction_without_data(&key_map, &instruction);
 
         assert_eq!(
             compiled.program_id_index,
@@ -191,7 +190,7 @@ mod tests {
             ],
         );
         let key_map = KeyMap::compile_from_instruction(&instruction);
-        let compiled_ix = compile_instruction_without_data(&key_map, &instruction).unwrap();
+        let compiled_ix = compile_instruction_without_data(&key_map, &instruction);
 
         let instruction_accounts = compile_instruction_accounts(&key_map, &compiled_ix);
 
@@ -408,16 +407,17 @@ mod tests {
         let instruction = test_instruction(program_id, &[account1, account2, account3]);
 
         let key_map1 = KeyMap::compile_from_instruction(&instruction);
-        let compiled1 = compile_instruction_without_data(&key_map1, &instruction).unwrap();
+        let compiled1 = compile_instruction_without_data(&key_map1, &instruction);
 
         let key_map2 = KeyMap::compile_from_instruction(&instruction);
-        let compiled2 = compile_instruction_without_data(&key_map2, &instruction).unwrap();
+        let compiled2 = compile_instruction_without_data(&key_map2, &instruction);
 
         assert_eq!(compiled1.program_id_index, compiled2.program_id_index);
         assert_eq!(compiled1.accounts, compiled2.accounts);
     }
 
     #[test]
+    #[should_panic(expected = "Account index exceeds maximum of 255")]
     fn test_compile_instruction_without_data_account_index_overflow() {
         let mut key_map = KeyMap::default();
 
@@ -431,16 +431,11 @@ mod tests {
 
         let instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
 
-        match compile_instruction_without_data(&key_map, &instruction) {
-            Ok(_) => panic!("Expected overflow error, but got Ok"),
-            Err(MolluskError::AccountIndexOverflow(index)) => {
-                assert!(index > u8::MAX as usize);
-            }
-            Err(_) => panic!("Expected AccountIndexOverflow error"),
-        }
+        let _ = compile_instruction_without_data(&key_map, &instruction);
     }
 
     #[test]
+    #[should_panic(expected = "Program ID required by the instruction is not mapped")]
     fn test_compile_instruction_without_data_missing_program_id() {
         let program_id = Pubkey::new_unique();
         let account1 = Pubkey::new_unique();
@@ -449,16 +444,11 @@ mod tests {
         let mut key_map = KeyMap::default();
         key_map.add_account(&AccountMeta::new(account1, false));
 
-        match compile_instruction_without_data(&key_map, &instruction) {
-            Ok(_) => panic!("Expected error for missing program_id, but got Ok"),
-            Err(MolluskError::ProgramIdNotMapped(pk)) => {
-                assert_eq!(pk, &program_id);
-            }
-            Err(e) => panic!("Expected ProgramIdNotMapped error, got: {}", e),
-        }
+        let _ = compile_instruction_without_data(&key_map, &instruction);
     }
 
     #[test]
+    #[should_panic(expected = "An account required by the instruction was not provided")]
     fn test_compile_instruction_without_data_missing_account() {
         let program_id = Pubkey::new_unique();
         let account1 = Pubkey::new_unique();
@@ -476,12 +466,6 @@ mod tests {
         key_map.add_program(program_id);
         key_map.add_account(&AccountMeta::new(account1, false));
 
-        match compile_instruction_without_data(&key_map, &instruction) {
-            Ok(_) => panic!("Expected error for missing account, but got Ok"),
-            Err(MolluskError::AccountMissing(pk)) => {
-                assert_eq!(pk, &account_missing);
-            }
-            Err(e) => panic!("Expected AccountMissing error, got: {}", e),
-        }
+        let _ = compile_instruction_without_data(&key_map, &instruction);
     }
 }

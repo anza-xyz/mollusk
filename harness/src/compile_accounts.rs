@@ -47,8 +47,7 @@ where
     };
 
     let key_map = KeyMap::compile_from_instruction(instruction);
-    let compiled_instruction = compile_instruction_without_data(&key_map, instruction)
-        .unwrap_or_else(|err| panic!("Failed to compile instruction: {}", err));
+    let compiled_instruction = compile_instruction_without_data(&key_map, instruction);
     let instruction_accounts = compile_instruction_accounts(&key_map, &compiled_instruction);
     let transaction_accounts = compile_transaction_accounts_for_instruction(
         &key_map,
