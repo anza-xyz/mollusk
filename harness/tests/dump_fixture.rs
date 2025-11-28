@@ -16,7 +16,7 @@ enum FileType {
 }
 
 impl FileType {
-    fn extension(&self) -> &'static str {
+    const fn extension(&self) -> &'static str {
         match self {
             Self::Blob => ".fix",
             Self::Json => ".json",

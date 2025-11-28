@@ -18,12 +18,12 @@ pub enum ProgramResult {
 
 impl ProgramResult {
     /// Returns `true` if the program succeeded.
-    pub fn is_ok(&self) -> bool {
+    pub const fn is_ok(&self) -> bool {
         matches!(self, ProgramResult::Success)
     }
 
     /// Returns `true` if the program returned an error.
-    pub fn is_err(&self) -> bool {
+    pub const fn is_err(&self) -> bool {
         !self.is_ok()
     }
 }

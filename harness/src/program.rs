@@ -51,7 +51,7 @@ pub mod precompile_keys {
 pub mod precompile_keys {
     use solana_pubkey::Pubkey;
 
-    pub(crate) fn is_precompile(_program_id: &Pubkey) -> bool {
+    pub(crate) const fn is_precompile(_program_id: &Pubkey) -> bool {
         false
     }
 }

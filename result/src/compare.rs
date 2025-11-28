@@ -84,7 +84,7 @@ impl Compare {
     ///
     /// Note: To omit certain checks, use the variant directly, ie.
     /// `Compare::AllResultingAccounts { data: false, .. }`.
-    pub fn all_resulting_accounts() -> Self {
+    pub const fn all_resulting_accounts() -> Self {
         Self::AllResultingAccounts {
             data: true,
             executable: true,

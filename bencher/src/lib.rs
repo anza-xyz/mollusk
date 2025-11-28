@@ -101,7 +101,7 @@ impl<'a> MolluskComputeUnitBencher<'a> {
     }
 
     /// Set whether the bencher should panic if a program execution fails.
-    pub fn must_pass(mut self, must_pass: bool) -> Self {
+    pub const fn must_pass(mut self, must_pass: bool) -> Self {
         self.must_pass = must_pass;
         self
     }

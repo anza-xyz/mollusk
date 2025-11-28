@@ -31,52 +31,52 @@ pub struct Check<'a> {
 }
 
 impl<'a> Check<'a> {
-    fn new(check: CheckType<'a>) -> Self {
+    const fn new(check: CheckType<'a>) -> Self {
         Self { check }
     }
 
     /// Check the number of compute units consumed by the instruction.
-    pub fn compute_units(units: u64) -> Self {
+    pub const fn compute_units(units: u64) -> Self {
         Check::new(CheckType::ComputeUnitsConsumed(units))
     }
 
     /// Check the time taken to execute the instruction.
-    pub fn time(time: u64) -> Self {
+    pub const fn time(time: u64) -> Self {
         Check::new(CheckType::ExecutionTime(time))
     }
 
     /// Assert that the program executed successfully.
-    pub fn success() -> Self {
+    pub const fn success() -> Self {
         Check::new(CheckType::ProgramResult(ProgramResult::Success))
     }
 
     /// Assert that the program returned an error.
-    pub fn err(error: ProgramError) -> Self {
+    pub const fn err(error: ProgramError) -> Self {
         Check::new(CheckType::ProgramResult(ProgramResult::Failure(error)))
     }
 
     /// Assert that the instruction returned an error.
-    pub fn instruction_err(error: InstructionError) -> Self {
+    pub const fn instruction_err(error: InstructionError) -> Self {
         Check::new(CheckType::ProgramResult(ProgramResult::UnknownError(error)))
     }
 
     /// Assert that the instruction returned the provided result.
-    pub fn program_result(result: ProgramResult) -> Self {
+    pub const fn program_result(result: ProgramResult) -> Self {
         Check::new(CheckType::ProgramResult(result))
     }
 
     /// Check the return data produced by executing the instruction.
-    pub fn return_data(return_data: &'a [u8]) -> Self {
+    pub const fn return_data(return_data: &'a [u8]) -> Self {
         Check::new(CheckType::ReturnData(return_data))
     }
 
     /// Check a resulting account after executing the instruction.
-    pub fn account(pubkey: &Pubkey) -> AccountCheckBuilder<'_> {
+    pub const fn account(pubkey: &Pubkey) -> AccountCheckBuilder<'_> {
         AccountCheckBuilder::new(pubkey)
     }
 
     /// Check that all resulting accounts are rent exempt
-    pub fn all_rent_exempt() -> Self {
+    pub const fn all_rent_exempt() -> Self {
         Check::new(CheckType::AllRentExempt)
     }
 }
@@ -98,7 +98,7 @@ struct AccountCheck<'a> {
 }
 
 impl AccountCheck<'_> {
-    fn new(pubkey: &Pubkey) -> Self {
+    const fn new(pubkey: &Pubkey) -> Self {
         Self {
             pubkey: *pubkey,
             check_data: None,
@@ -117,53 +117,53 @@ pub struct AccountCheckBuilder<'a> {
 }
 
 impl<'a> AccountCheckBuilder<'a> {
-    fn new(pubkey: &Pubkey) -> Self {
+    const fn new(pubkey: &Pubkey) -> Self {
         Self {
             check: AccountCheck::new(pubkey),
         }
     }
 
-    pub fn closed(mut self) -> Self {
+    pub const fn closed(mut self) -> Self {
         self.check.check_state = Some(AccountStateCheck::Closed);
         self
     }
 
-    pub fn data(mut self, data: &'a [u8]) -> Self {
+    pub const fn data(mut self, data: &'a [u8]) -> Self {
         self.check.check_data = Some(data);
         self
     }
 
-    pub fn executable(mut self, executable: bool) -> Self {
+    pub const fn executable(mut self, executable: bool) -> Self {
         self.check.check_executable = Some(executable);
         self
     }
 
-    pub fn lamports(mut self, lamports: u64) -> Self {
+    pub const fn lamports(mut self, lamports: u64) -> Self {
         self.check.check_lamports = Some(lamports);
         self
     }
 
-    pub fn owner(mut self, owner: &'a Pubkey) -> Self {
+    pub const fn owner(mut self, owner: &'a Pubkey) -> Self {
         self.check.check_owner = Some(owner);
         self
     }
 
-    pub fn rent_exempt(mut self) -> Self {
+    pub const fn rent_exempt(mut self) -> Self {
         self.check.check_state = Some(AccountStateCheck::RentExempt);
         self
     }
 
-    pub fn space(mut self, space: usize) -> Self {
+    pub const fn space(mut self, space: usize) -> Self {
         self.check.check_space = Some(space);
         self
     }
 
-    pub fn data_slice(mut self, offset: usize, data: &'a [u8]) -> Self {
+    pub const fn data_slice(mut self, offset: usize, data: &'a [u8]) -> Self {
         self.check.check_data_slice = Some((offset, data));
         self
     }
 
-    pub fn build(self) -> Check<'a> {
+    pub const fn build(self) -> Check<'a> {
         Check::new(CheckType::ResultingAccount(self.check))
     }
 }

@@ -47,7 +47,7 @@ pub struct Runner {
 }
 
 impl Runner {
-    pub fn new(
+    pub const fn new(
         checks: Vec<Compare>,
         cus_report: Option<CusReport>,
         inputs_only: bool,
