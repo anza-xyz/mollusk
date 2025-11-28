@@ -67,7 +67,7 @@ fn test_write_data() {
         &[(key, account.clone())],
         &[
             Check::success(),
-            Check::compute_units(387),
+            Check::compute_units(384),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
@@ -152,7 +152,7 @@ fn test_transfer() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2527),
+            Check::compute_units(2480),
             Check::account(&payer)
                 .lamports(payer_lamports - transfer_amount)
                 .build(),
@@ -256,7 +256,7 @@ fn test_close_account() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2604),
+            Check::compute_units(2555),
             Check::account(&key)
                 .closed() // The rest is unnecessary, just testing.
                 .data(&[])
@@ -376,7 +376,7 @@ fn test_cpi() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2348),
+            Check::compute_units(2317),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
