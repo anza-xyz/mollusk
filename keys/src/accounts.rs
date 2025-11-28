@@ -19,13 +19,28 @@ pub fn compile_instruction_without_data(
     key_map: &KeyMap,
     instruction: &Instruction,
 ) -> CompiledInstructionWithoutData {
+    let program_id_index = key_map
+        .position(&instruction.program_id)
+        .or_panic_with(MolluskError::ProgramIdNotMapped(&instruction.program_id));
+
+    let program_id_index = u8::try_from(program_id_index)
+        .or_panic_with(MolluskError::AccountIndexOverflow(program_id_index));
+
+    let accounts: Vec<u8> = instruction
+        .accounts
+        .iter()
+        .map(|account_meta| {
+            let index = key_map
+                .position(&account_meta.pubkey)
+                .or_panic_with(MolluskError::AccountMissing(&account_meta.pubkey));
+
+            u8::try_from(index).or_panic_with(MolluskError::AccountIndexOverflow(index))
+        })
+        .collect();
+
     CompiledInstructionWithoutData {
-        program_id_index: key_map.position(&instruction.program_id).unwrap() as u8,
-        accounts: instruction
-            .accounts
-            .iter()
-            .map(|account_meta| key_map.position(&account_meta.pubkey).unwrap() as u8)
-            .collect(),
+        program_id_index,
+        accounts,
     }
 }
 
@@ -380,5 +395,77 @@ mod tests {
         // account1 should have original 100 lamports, not 999 from fallback.
         let acc = result.iter().find(|(pk, _)| pk == &account1).unwrap();
         assert_eq!(acc.1.lamports(), 100);
+    }
+
+    #[test]
+    fn test_compile_instruction_without_data_deterministic() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let account2 = Pubkey::new_unique();
+        let account3 = Pubkey::new_unique();
+
+        let instruction = test_instruction(program_id, &[account1, account2, account3]);
+
+        let key_map1 = KeyMap::compile_from_instruction(&instruction);
+        let compiled1 = compile_instruction_without_data(&key_map1, &instruction);
+
+        let key_map2 = KeyMap::compile_from_instruction(&instruction);
+        let compiled2 = compile_instruction_without_data(&key_map2, &instruction);
+
+        assert_eq!(compiled1.program_id_index, compiled2.program_id_index);
+        assert_eq!(compiled1.accounts, compiled2.accounts);
+    }
+
+    #[test]
+    #[should_panic(expected = "Account index exceeds maximum of 255")]
+    fn test_compile_instruction_without_data_account_index_overflow() {
+        let mut key_map = KeyMap::default();
+
+        for _ in 0..256 {
+            let pubkey = Pubkey::new_unique();
+            key_map.add_program(pubkey);
+        }
+
+        let program_id = Pubkey::new_unique();
+        key_map.add_program(program_id);
+
+        let instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+
+        let _ = compile_instruction_without_data(&key_map, &instruction);
+    }
+
+    #[test]
+    #[should_panic(expected = "Program ID required by the instruction is not mapped")]
+    fn test_compile_instruction_without_data_missing_program_id() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let instruction = test_instruction(program_id, &[account1]);
+
+        let mut key_map = KeyMap::default();
+        key_map.add_account(&AccountMeta::new(account1, false));
+
+        let _ = compile_instruction_without_data(&key_map, &instruction);
+    }
+
+    #[test]
+    #[should_panic(expected = "An account required by the instruction was not provided")]
+    fn test_compile_instruction_without_data_missing_account() {
+        let program_id = Pubkey::new_unique();
+        let account1 = Pubkey::new_unique();
+        let account_missing = Pubkey::new_unique();
+        let instruction = Instruction::new_with_bytes(
+            program_id,
+            &[],
+            vec![
+                AccountMeta::new(account1, false),
+                AccountMeta::new(account_missing, false),
+            ],
+        );
+
+        let mut key_map = KeyMap::default();
+        key_map.add_program(program_id);
+        key_map.add_account(&AccountMeta::new(account1, false));
+
+        let _ = compile_instruction_without_data(&key_map, &instruction);
     }
 }

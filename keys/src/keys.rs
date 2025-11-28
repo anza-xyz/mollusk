@@ -23,19 +23,20 @@
 use {
     solana_instruction::{AccountMeta, Instruction},
     solana_pubkey::Pubkey,
-    std::collections::{HashMap, HashSet},
+    std::collections::{BTreeMap, HashSet},
 };
 
-/// Wrapper around a hashmap of account keys and their corresponding roles
+/// Wrapper around a btree map of account keys and their corresponding roles
 /// (`is_signer`, `is_writable`).
 ///
 /// On compilation, keys are awarded the highest role they are assigned in the
-/// transaction, and the hash map provides deduplication.
+/// transaction, and the btree map provides deduplication and deterministic
+/// ordering.
 ///
 /// The map can be queried by key for `is_signer` and `is_writable` roles.
 #[derive(Debug, Default)]
 pub struct KeyMap {
-    map: HashMap<Pubkey, (bool, bool)>,
+    map: BTreeMap<Pubkey, (bool, bool)>,
     program_ids: HashSet<Pubkey>,
 }
 
