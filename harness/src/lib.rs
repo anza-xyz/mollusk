@@ -447,8 +447,12 @@ pub mod file;
 pub mod fuzz;
 pub mod instructions_sysvar;
 pub mod program;
+#[cfg(feature = "register-tracing")]
+pub mod register_tracing;
 pub mod sysvar;
 
+#[cfg(feature = "register-tracing")]
+use crate::register_tracing::DefaultRegisterTracingCallback;
 // Re-export result module from mollusk-svm-result crate
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
@@ -502,6 +506,9 @@ pub struct Mollusk {
     /// context, detailed timings, etc.
     #[cfg(feature = "invocation-inspect-callback")]
     pub invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
+
+    #[cfg(feature = "register-tracing")]
+    pub enable_register_tracing: bool,
 
     /// This field stores the slot only to be able to convert to and from FD
     /// fixtures and a Mollusk instance, since FD fixtures have a
@@ -558,7 +565,20 @@ impl Default for Mollusk {
         };
         #[cfg(not(feature = "fuzz"))]
         let feature_set = FeatureSet::all_enabled();
-        let program_cache = ProgramCache::new(&feature_set, &compute_budget);
+
+        let program_cache = ProgramCache::new(
+            &feature_set,
+            &compute_budget,
+            #[cfg(feature = "register-tracing")]
+            {
+                true
+            },
+            #[cfg(not(feature = "register-tracing"))]
+            {
+                false
+            },
+        );
+
         Self {
             config: Config::default(),
             compute_budget,
@@ -568,8 +588,19 @@ impl Default for Mollusk {
             program_cache,
             sysvars: Sysvars::default(),
 
-            #[cfg(feature = "invocation-inspect-callback")]
+            // Register tracing feature requires `invocation-inspect-callback`.
+            // Use tracing callback when both are active.
+            #[cfg(all(feature = "invocation-inspect-callback", feature = "register-tracing"))]
+            invocation_inspect_callback: Box::new(DefaultRegisterTracingCallback::default()),
+            // Use empty callback when only `invocation-inspect-callback` is active.
+            #[cfg(all(
+                feature = "invocation-inspect-callback",
+                not(feature = "register-tracing"),
+            ))]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
+
+            #[cfg(feature = "register-tracing")]
+            enable_register_tracing: true,
 
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
@@ -726,21 +757,26 @@ impl Mollusk {
             let runtime_features = self.feature_set.runtime_features();
             let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
-            let program_runtime_environments = ProgramRuntimeEnvironments {
-                program_runtime_v1: Arc::new(
-                    create_program_runtime_environment_v1(
-                        &runtime_features,
+            let _enable_register_tracing = false;
+            #[cfg(feature = "register-tracing")]
+            let _enable_register_tracing = self.enable_register_tracing;
+
+            let program_runtime_environments: ProgramRuntimeEnvironments =
+                ProgramRuntimeEnvironments {
+                    program_runtime_v1: Arc::new(
+                        create_program_runtime_environment_v1(
+                            &runtime_features,
+                            &execution_budget,
+                            /* reject_deployment_of_broken_elfs */ false,
+                            /* debugging_features */ _enable_register_tracing,
+                        )
+                        .unwrap(),
+                    ),
+                    program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
                         &execution_budget,
-                        /* reject_deployment_of_broken_elfs */ false,
-                        /* debugging_features */ false,
-                    )
-                    .unwrap(),
-                ),
-                program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
-                    &execution_budget,
-                    /* debugging_features */ false,
-                )),
-            };
+                        /* debugging_features */ _enable_register_tracing,
+                    )),
+                };
 
             let mut invoke_context = InvokeContext::new(
                 &mut transaction_context,

@@ -74,7 +74,11 @@ pub struct ProgramCache {
 }
 
 impl ProgramCache {
-    pub fn new(feature_set: &FeatureSet, compute_budget: &ComputeBudget) -> Self {
+    pub fn new(
+        feature_set: &FeatureSet,
+        compute_budget: &ComputeBudget,
+        enable_register_tracing: bool,
+    ) -> Self {
         let me = Self {
             cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::default())),
             entries_cache: Rc::new(RefCell::new(HashMap::new())),
@@ -82,7 +86,7 @@ impl ProgramCache {
                 &feature_set.runtime_features(),
                 &compute_budget.to_budget(),
                 /* reject_deployment_of_broken_elfs */ false,
-                /* debugging_features */ false,
+                /* debugging_features */ enable_register_tracing,
             )
             .unwrap(),
         };

@@ -27,6 +27,11 @@ fuzz-fd = [
 ]
 invocation-inspect-callback = []
 precompiles = ["dep:agave-precompiles"]
+register-tracing = [
+    "invocation-inspect-callback",
+    "dep:hex",
+    "dep:sha2"
+]
 serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
@@ -37,6 +42,7 @@ agave-feature-set = { workspace = true, features = ["agave-unstable-api"] }
 agave-precompiles = { workspace = true, features = ["agave-unstable-api"], optional = true }
 agave-syscalls = { workspace = true }
 bincode = { workspace = true }
+hex = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 mollusk-svm-error = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true, optional = true }
@@ -44,6 +50,7 @@ mollusk-svm-fuzz-fixture-firedancer = { workspace = true, optional = true }
 mollusk-svm-fuzz-fs = { workspace = true, optional = true }
 mollusk-svm-keys = { workspace = true }
 mollusk-svm-result = { workspace = true }
+sha2 = { workspace = true, optional = true }
 solana-account = { workspace = true }
 solana-bpf-loader-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-clock = { workspace = true }
