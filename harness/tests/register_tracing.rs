@@ -2,7 +2,7 @@
 #[test]
 fn test_custom_register_tracing_callback() {
     use {
-        mollusk_svm::{EmptyInvocationInspectCallback, InvocationInspectCallback, Mollusk},
+        mollusk_svm::{InvocationInspectCallback, Mollusk},
         solana_account::Account,
         solana_instruction::{AccountMeta, Instruction},
         solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
@@ -86,8 +86,7 @@ fn test_custom_register_tracing_callback() {
 
     let program_id = Pubkey::new_unique();
     let payer_pk = Pubkey::new_unique();
-    let mut mollusk =
-        Mollusk::with_register_tracing(&program_id, "test_program_primary", "sbf_trace_dir");
+    let mut mollusk = Mollusk::new(&program_id, "test_program_primary");
 
     // Phase 1 - basic register tracing test.
 
@@ -137,7 +136,7 @@ fn test_custom_register_tracing_callback() {
             collected_data.executed_jump_instructions_count;
     }
 
-    // Phase 2 - check we can silence the callback for this instance of Mollusk.
+    // Phase 2 - check we can stop register tracing for this instance of Mollusk.
     {
         // Clear the tracing data collected so far.
         {
@@ -145,8 +144,7 @@ fn test_custom_register_tracing_callback() {
             td.clear();
         }
 
-        // Silence the callback with an empty one.
-        mollusk.invocation_inspect_callback = Box::new(EmptyInvocationInspectCallback {});
+        mollusk.enable_register_tracing = false;
 
         // Execute the same instruction again.
         let _ = mollusk.process_instruction(&instruction, &accounts);
@@ -159,10 +157,7 @@ fn test_custom_register_tracing_callback() {
     // Phase 3 - check we can have register tracing back for this instance of
     // Mollusk.
     {
-        // Have our custom register tracing callback again.
-        mollusk.invocation_inspect_callback = Box::new(CustomRegisterTracingCallback {
-            tracing_data: Rc::clone(&tracing_data),
-        });
+        mollusk.enable_register_tracing = true;
 
         // Execute the same instruction again.
         let _ = mollusk.process_instruction(&instruction, &accounts);

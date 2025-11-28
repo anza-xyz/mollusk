@@ -451,9 +451,9 @@ pub mod program;
 pub mod register_tracing;
 pub mod sysvar;
 
-// Re-export result module from mollusk-svm-result crate
 #[cfg(feature = "register-tracing")]
 use crate::register_tracing::DefaultRegisterTracingCallback;
+// Re-export result module from mollusk-svm-result crate
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
@@ -687,30 +687,6 @@ impl Mollusk {
     pub fn new(program_id: &Pubkey, program_name: &str) -> Self {
         let mut mollusk = Self::default();
         mollusk.add_program(program_id, program_name);
-        mollusk
-    }
-
-    /// Create a new Mollusk instance just like the `new` method but
-    /// with register tracing enabled using a default callback.
-    ///
-    /// If `SBF_TRACE_DIR` is set it will override the passed `sbf_trace_dir`.
-    #[cfg(feature = "register-tracing")]
-    pub fn with_register_tracing(
-        program_id: &Pubkey,
-        program_name: &str,
-        sbf_trace_dir: &str,
-    ) -> Self {
-        let mut mollusk = Mollusk::default();
-        mollusk.invocation_inspect_callback =
-            Box::new(register_tracing::DefaultRegisterTracingCallback {
-                sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap_or(sbf_trace_dir.into()),
-            });
-        mollusk.program_cache = ProgramCache::new(
-            &mollusk.feature_set,
-            &mollusk.compute_budget,
-            mollusk.enable_register_tracing,
-        );
-        mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
         mollusk
     }
 
