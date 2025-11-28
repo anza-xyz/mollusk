@@ -10,8 +10,19 @@ use {
     std::{fs::File, io::Write, path::PathBuf},
 };
 
+const DEFAULT_PATH: &str = "target/sbf/trace";
+
 pub struct DefaultRegisterTracingCallback {
     pub sbf_trace_dir: String,
+}
+
+impl Default for DefaultRegisterTracingCallback {
+    fn default() -> Self {
+        Self {
+            // User can override default path with `SBF_TRACE_DIR` environment variable.
+            sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap_or(DEFAULT_PATH.to_string()),
+        }
+    }
 }
 
 impl DefaultRegisterTracingCallback {
