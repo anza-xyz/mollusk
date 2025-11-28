@@ -452,6 +452,8 @@ pub mod register_tracing;
 pub mod sysvar;
 
 // Re-export result module from mollusk-svm-result crate
+#[cfg(feature = "register-tracing")]
+use crate::register_tracing::DefaultRegisterTracingCallback;
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
@@ -566,18 +568,20 @@ impl Default for Mollusk {
         #[cfg(not(feature = "fuzz"))]
         let feature_set = FeatureSet::all_enabled();
 
-        let enable_register_tracing = if cfg!(feature = "register-tracing") {
-            // If `SBF_TRACE_DIR` is set enable register tracing.
-            std::env::var("SBF_TRACE_DIR").is_ok()
-        } else {
-            false
-        };
+        let program_cache = ProgramCache::new(
+            &feature_set,
+            &compute_budget,
+            #[cfg(feature = "register-tracing")]
+            {
+                true
+            },
+            #[cfg(not(feature = "register-tracing"))]
+            {
+                false
+            },
+        );
 
-        let program_cache =
-            ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
-
-        #[allow(unused_mut)]
-        let mut svm = Self {
+        Self {
             config: Config::default(),
             compute_budget,
             epoch_stake: EpochStake::default(),
@@ -586,25 +590,20 @@ impl Default for Mollusk {
             program_cache,
             sysvars: Sysvars::default(),
 
-            #[cfg(feature = "invocation-inspect-callback")]
+            // Register tracing feature requires `invocation-inspect-callback`.
+            // Use tracing callback when both are active.
+            #[cfg(all(feature = "invocation-inspect-callback", feature = "register-tracing",))]
+            invocation_inspect_callback: Box::new(DefaultRegisterTracingCallback::default()),
+            // Use empty callback when only `invocation-inspect-callback` is active.
+            #[cfg(all(
+                feature = "invocation-inspect-callback",
+                not(feature = "register-tracing"),
+            ))]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
 
             #[cfg(feature = "fuzz-fd")]
             slot: 0,
-        };
-
-        #[cfg(feature = "register-tracing")]
-        if enable_register_tracing {
-            // Have a default register tracing callback if register tracing is
-            // enabled.
-            svm.invocation_inspect_callback =
-                Box::new(register_tracing::DefaultRegisterTracingCallback {
-                    // SAFETY: We checked upper it isn't None.
-                    sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap(),
-                });
         }
-
-        svm
     }
 }
 
