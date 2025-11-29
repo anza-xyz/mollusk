@@ -655,23 +655,35 @@ impl Mollusk {
     /// - The current working directory
     pub fn new(program_id: &Pubkey, program_name: &str) -> Self {
         let mut mollusk = Self::default();
-        mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
+        mollusk.add_program(program_id, program_name);
         mollusk
     }
 
     /// Add a program to the test environment.
     ///
     /// If you intend to CPI to a program, this is likely what you want to use.
-    pub fn add_program(&mut self, program_id: &Pubkey, program_name: &str, loader_key: &Pubkey) {
+    pub fn add_program(&mut self, program_id: &Pubkey, program_name: &str) {
+        self.add_program_with_loader(program_id, program_name, &DEFAULT_LOADER_KEY);
+    }
+
+    /// Add a program to the test environment under the specified loader.
+    ///
+    /// If you intend to CPI to a program, this is likely what you want to use.
+    pub fn add_program_with_loader(
+        &mut self,
+        program_id: &Pubkey,
+        program_name: &str,
+        loader_key: &Pubkey,
+    ) {
         let elf = file::load_program_elf(program_name);
-        self.add_program_with_elf_and_loader(program_id, &elf, loader_key);
+        self.add_program_with_loader_and_elf(program_id, &elf, loader_key);
     }
 
     /// Add a program to the test environment using a provided ELF under a
     /// specific loader.
     ///
     /// If you intend to CPI to a program, this is likely what you want to use.
-    pub fn add_program_with_elf_and_loader(
+    pub fn add_program_with_loader_and_elf(
         &mut self,
         program_id: &Pubkey,
         elf: &[u8],
