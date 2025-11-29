@@ -317,7 +317,7 @@ fn test_cpi() {
         );
     }
 
-    mollusk.add_program(
+    mollusk.add_program_with_loader(
         &cpi_target_program_id,
         "test_program_cpi_target",
         &mollusk_svm::program::loader_keys::LOADER_V3,

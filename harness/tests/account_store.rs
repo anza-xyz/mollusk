@@ -151,7 +151,7 @@ fn test_account_store_sysvars_and_programs() {
 
     // Add another test program to the test environment.
     let other_program_id = Pubkey::new_unique();
-    context.mollusk.add_program(
+    context.mollusk.add_program_with_loader(
         &other_program_id,
         "test_program_cpi_target",
         &mollusk_svm::program::loader_keys::LOADER_V3,

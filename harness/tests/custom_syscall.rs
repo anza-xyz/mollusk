@@ -42,7 +42,7 @@ fn test_custom_syscall() {
             .program_runtime_environment
             .register_function("sol_burn_cus", SyscallBurnCus::vm)
             .unwrap();
-        mollusk.add_program(
+        mollusk.add_program_with_loader(
             &program_id,
             "test_program_custom_syscall",
             &mollusk_svm::program::loader_keys::LOADER_V3,
