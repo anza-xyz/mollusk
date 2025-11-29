@@ -138,7 +138,7 @@ fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std:
 
 fn add_elf_to_mollusk(mollusk: &mut Mollusk, elf_path: &str, program_id: &Pubkey) {
     let elf = mollusk_svm::file::read_file(elf_path);
-    mollusk.add_program_with_elf_and_loader(
+    mollusk.add_program_with_loader_and_elf(
         program_id,
         &elf,
         &solana_sdk_ids::bpf_loader_upgradeable::id(),
