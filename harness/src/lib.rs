@@ -676,7 +676,7 @@ impl Mollusk {
         loader_key: &Pubkey,
     ) {
         let elf = file::load_program_elf(program_name);
-        self.add_program_with_loader_and_elf(program_id, &elf, loader_key);
+        self.add_program_with_loader_and_elf(program_id, loader_key, &elf);
     }
 
     /// Add a program to the test environment using a provided ELF under a
@@ -686,8 +686,8 @@ impl Mollusk {
     pub fn add_program_with_loader_and_elf(
         &mut self,
         program_id: &Pubkey,
-        elf: &[u8],
         loader_key: &Pubkey,
+        elf: &[u8],
     ) {
         self.program_cache.add_program(program_id, loader_key, elf);
     }
