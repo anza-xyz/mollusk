@@ -69,16 +69,21 @@ fn test_custom_register_tracing_callback() {
         ) {
         }
 
-        fn after_invocation(&self, invoke_context: &InvokeContext) {
-            invoke_context.iterate_vm_traces(
-                &|instruction_context: InstructionContext,
-                  executable: &Executable,
-                  register_trace: RegisterTrace| {
-                    if let Err(e) = self.handler(instruction_context, executable, register_trace) {
-                        eprintln!("Error collecting the register tracing: {}", e);
-                    }
-                },
-            );
+        fn after_invocation(&self, invoke_context: &InvokeContext, register_tracing_enabled: bool) {
+            // Only process traces if register tracing was enabled.
+            if register_tracing_enabled {
+                invoke_context.iterate_vm_traces(
+                    &|instruction_context: InstructionContext,
+                      executable: &Executable,
+                      register_trace: RegisterTrace| {
+                        if let Err(e) =
+                            self.handler(instruction_context, executable, register_trace)
+                        {
+                            eprintln!("Error collecting the register tracing: {}", e);
+                        }
+                    },
+                );
+            }
         }
     }
 
@@ -86,7 +91,12 @@ fn test_custom_register_tracing_callback() {
 
     let program_id = Pubkey::new_unique();
     let payer_pk = Pubkey::new_unique();
-    let mut mollusk = Mollusk::new(&program_id, "test_program_primary");
+    // Use new_debuggable with register tracing enabled.
+    let mut mollusk = Mollusk::new_debuggable(
+        &program_id,
+        "test_program_primary",
+        /* enable_register_tracing */ true,
+    );
 
     // Phase 1 - basic register tracing test.
 
@@ -136,7 +146,8 @@ fn test_custom_register_tracing_callback() {
             collected_data.executed_jump_instructions_count;
     }
 
-    // Phase 2 - check we can stop register tracing for this instance of Mollusk.
+    // Phase 2 - check that register tracing is disabled when constructing
+    // Mollusk with enable_register_tracing=false.
     {
         // Clear the tracing data collected so far.
         {
@@ -144,23 +155,40 @@ fn test_custom_register_tracing_callback() {
             td.clear();
         }
 
-        mollusk.enable_register_tracing = false;
+        // Create a new Mollusk instance with register tracing disabled.
+        let mut mollusk_no_tracing = Mollusk::new_debuggable(
+            &program_id,
+            "test_program_primary",
+            /* enable_register_tracing */ false,
+        );
+        mollusk_no_tracing.invocation_inspect_callback = Box::new(CustomRegisterTracingCallback {
+            tracing_data: Rc::clone(&tracing_data),
+        });
 
         // Execute the same instruction again.
-        let _ = mollusk.process_instruction(&instruction, &accounts);
+        let _ = mollusk_no_tracing.process_instruction(&instruction, &accounts);
 
         let td = tracing_data.borrow();
-        // We expect it to be empty!
+        // We expect it to be empty since tracing was disabled!
         assert!(td.is_empty());
     }
 
-    // Phase 3 - check we can have register tracing back for this instance of
+    // Phase 3 - check we can have register tracing enabled for a new instance of
     // Mollusk.
     {
-        mollusk.enable_register_tracing = true;
+        // Create a new Mollusk instance with register tracing enabled.
+        let mut mollusk_with_tracing = Mollusk::new_debuggable(
+            &program_id,
+            "test_program_primary",
+            /* enable_register_tracing */ true,
+        );
+        mollusk_with_tracing.invocation_inspect_callback =
+            Box::new(CustomRegisterTracingCallback {
+                tracing_data: Rc::clone(&tracing_data),
+            });
 
         // Execute the same instruction again.
-        let _ = mollusk.process_instruction(&instruction, &accounts);
+        let _ = mollusk_with_tracing.process_instruction(&instruction, &accounts);
 
         let td = tracing_data.borrow();
         let collected_data = td.get(&program_id).unwrap();
