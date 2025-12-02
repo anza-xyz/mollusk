@@ -82,16 +82,19 @@ impl InvocationInspectCallback for DefaultRegisterTracingCallback {
     fn before_invocation(&self, _: &Pubkey, _: &[u8], _: &[InstructionAccount], _: &InvokeContext) {
     }
 
-    fn after_invocation(&self, invoke_context: &InvokeContext) {
-        invoke_context.iterate_vm_traces(
-            &|instruction_context: InstructionContext,
-              executable: &Executable,
-              register_trace: RegisterTrace| {
-                if let Err(e) = self.handler(instruction_context, executable, register_trace) {
-                    eprintln!("Error collecting the register tracing: {}", e);
-                }
-            },
-        );
+    fn after_invocation(&self, invoke_context: &InvokeContext, register_tracing_enabled: bool) {
+        if register_tracing_enabled {
+            // Only read the register traces if they were actually enabled.
+            invoke_context.iterate_vm_traces(
+                &|instruction_context: InstructionContext,
+                  executable: &Executable,
+                  register_trace: RegisterTrace| {
+                    if let Err(e) = self.handler(instruction_context, executable, register_trace) {
+                        eprintln!("Error collecting the register tracing: {}", e);
+                    }
+                },
+            );
+        }
     }
 }
 

@@ -62,12 +62,10 @@ fn test_load_firedancer_fixtures() {
                         },
                         result,
                     ) = load_firedancer_fixture(&loaded_fixture);
-                    let mollusk = Mollusk {
-                        compute_budget,
-                        feature_set,
-                        slot,
-                        ..Default::default()
-                    };
+                    let mut mollusk = Mollusk::default();
+                    mollusk.compute_budget = compute_budget;
+                    mollusk.feature_set = feature_set;
+                    mollusk.slot = slot;
                     let generated_fixture =
                         build_fixture_from_mollusk_test(&mollusk, &instruction, &accounts, &result);
 
