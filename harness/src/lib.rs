@@ -1368,7 +1368,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
                 .accounts
                 .iter()
                 .for_each(|AccountMeta { pubkey, .. }| {
-                    if seen.insert(*pubkey) && != &solana_instructions_sysvar::id() {
+                    if seen.insert(*pubkey) && pubkey != &solana_instructions_sysvar::id() {
                         // First try to load theirs, then see if it's a sysvar,
                         // then see if it's a cached program, then apply the
                         // default.
