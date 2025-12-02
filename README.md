@@ -23,13 +23,15 @@ budget, feature set, or sysvars. These configurations are stored directly
 on the test harness (the `Mollusk` struct), but can be manipulated through
 a handful of helpers.
 
-* [Single Instructions](#single-instructions)
-* [Instruction Chains](#instruction-chains)
-* [Stateful Testing with MolluskContext](#stateful-testing-with-molluskcontext)
-* [Benchmarking Compute Units](#benchmarking-compute-units)
-* [Fixtures](#fixtures)
-  * [Generating Fixtures from Mollusk Tests](#generating-fixtures-from-mollusk-tests)
-  * [Loading and Executing Fixtures](#loading-and-executing-fixtures)
+- [Mollusk](#mollusk)
+  - [Single Instructions](#single-instructions)
+  - [Instruction Chains](#instruction-chains)
+  - [Stateful Testing with MolluskContext](#stateful-testing-with-molluskcontext)
+  - [Benchmarking Compute Units](#benchmarking-compute-units)
+  - [Fixtures](#fixtures)
+    - [Generating Fixtures from Mollusk Tests](#generating-fixtures-from-mollusk-tests)
+    - [Loading and Executing Fixtures](#loading-and-executing-fixtures)
+  - [Register tracing](#register-tracing)
 
 ## Single Instructions
 
@@ -497,3 +499,54 @@ for file in fs::read_dir(Path::new("fixtures-dir"))? {
 
 Fixtures can be loaded from files or decoded from raw blobs. These
 capabilities are provided by the respective fixture crates.
+
+## Register tracing
+
+Mollusk can be instantiated with the capability to provide register tracing
+data from processed instructions. This functionality is gated behind the
+`register-tracing` feature flag, which in turn relies on the
+`invocation-inspect-callback` flag. To enable it, users can either
+construct Mollusk with the `Mollusk::new_debuggable` initializer - allowing
+register tracing to be configured directly - or simply set the `SBF_TRACE_DIR`
+environment variable, which Mollusk interprets as a signal to turn tracing on
+upon instantiation. The latter allows users to take advantage of the
+functionality without actually doing any changes to their code.
+
+A default post-instruction callback is provided for storing the
+register tracing data in files. It persists the register sets,
+the SBPF instructions, and a SHA-256 hash identifying the executable that
+was used to generate the tracing data. The motivation behind providing the
+SHA-256 identifier is that files may grow in number, and consumers need a
+deterministic way to evaluate which shared object should be used when
+analyzing the tracing data.
+
+Once enabled register tracing can't be changed afterwards because in nature
+it's baked into the program executables at load time. Yet a user may want a
+more fine-grained control over when register tracing data should be
+collected - for example, only for a specific instruction. Such control could
+be achieved by resetting the invocation callback to
+`EmptyInvocationInspectCallback` and later by restoring it to
+`DefaultRegisterTracingCallback`.
+
+```rust
+use mollusk_svm::{register_tracing, EmptyInvocationInspectCallback, Mollusk};
+
+assert!(std::env::var("SBF_TRACE_DIR").is_ok() == true);
+
+/* Mollusk setup .. */
+/* Load programs .. */
+
+/* .. */
+/* Have tracing here. */
+/* .. */
+
+/* Skip tracing from here. */
+mollusk.invocation_inspect_callback = Box::new(EmptyInvocationInspectCallback {});
+/* .. */
+
+/* Have tracing back. */
+mollusk.invocation_inspect_callback =
+    Box::new(register_tracing::DefaultRegisterTracingCallback {
+        sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap(),
+    });
+```

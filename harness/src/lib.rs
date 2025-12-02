@@ -548,7 +548,14 @@ impl InvocationInspectCallback for EmptyInvocationInspectCallback {
 
 impl Default for Mollusk {
     fn default() -> Self {
-        Self::new_inner(/* enable_register_tracing */ false)
+        let _enable_register_tracing = false;
+
+        // Allow users to virtually get register tracing data without
+        // doing any changes to their code provided `SBF_TRACE_DIR` is set.
+        #[cfg(feature = "register-tracing")]
+        let _enable_register_tracing = std::env::var("SBF_TRACE_DIR").is_ok();
+
+        Self::new_inner(_enable_register_tracing)
     }
 }
 
@@ -696,7 +703,7 @@ impl Mollusk {
     /// load time and cannot be changed afterwards.
     ///
     /// When `enable_register_tracing` is `true`:
-    /// - Programs are compiled with register tracing support
+    /// - Programs are loaded with register tracing support
     /// - A default [`DefaultRegisterTracingCallback`] is installed
     /// - Trace data is written to `SBF_TRACE_DIR` (or `target/sbf/trace` by
     ///   default)
