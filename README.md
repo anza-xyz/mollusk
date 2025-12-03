@@ -530,7 +530,7 @@ be achieved by resetting the invocation callback to
 ```rust
 use mollusk_svm::{register_tracing, EmptyInvocationInspectCallback, Mollusk};
 
-assert!(std::env::var("SBF_TRACE_DIR").is_ok() == true);
+assert!(std::env::var("SBF_TRACE_DIR").is_ok());
 
 /* Mollusk setup .. */
 /* Load programs .. */
@@ -539,11 +539,11 @@ assert!(std::env::var("SBF_TRACE_DIR").is_ok() == true);
 /* Have tracing here. */
 /* .. */
 
-/* Skip tracing from here. */
+/* Disable trace collection here. */
 mollusk.invocation_inspect_callback = Box::new(EmptyInvocationInspectCallback {});
 /* .. */
 
-/* Have tracing back. */
+/* Re-enable trace collection. */
 mollusk.invocation_inspect_callback =
     Box::new(register_tracing::DefaultRegisterTracingCallback {
         sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap(),
