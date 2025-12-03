@@ -23,15 +23,14 @@ budget, feature set, or sysvars. These configurations are stored directly
 on the test harness (the `Mollusk` struct), but can be manipulated through
 a handful of helpers.
 
-- [Mollusk](#mollusk)
-  - [Single Instructions](#single-instructions)
-  - [Instruction Chains](#instruction-chains)
-  - [Stateful Testing with MolluskContext](#stateful-testing-with-molluskcontext)
-  - [Benchmarking Compute Units](#benchmarking-compute-units)
-  - [Fixtures](#fixtures)
-    - [Generating Fixtures from Mollusk Tests](#generating-fixtures-from-mollusk-tests)
-    - [Loading and Executing Fixtures](#loading-and-executing-fixtures)
-  - [Register tracing](#register-tracing)
+* [Single Instructions](#single-instructions)
+* [Instruction Chains](#instruction-chains)
+* [Stateful Testing with MolluskContext](#stateful-testing-with-molluskcontext)
+* [Benchmarking Compute Units](#benchmarking-compute-units)
+* [Fixtures](#fixtures)
+  * [Generating Fixtures from Mollusk Tests](#generating-fixtures-from-mollusk-tests)
+  * [Loading and Executing Fixtures](#loading-and-executing-fixtures)
+* [Register tracing](#register-tracing)
 
 ## Single Instructions
 
