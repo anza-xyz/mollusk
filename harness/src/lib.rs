@@ -714,7 +714,7 @@ impl Mollusk {
         enable_register_tracing: bool,
     ) -> Self {
         let mut mollusk = Self::new_inner(enable_register_tracing);
-        mollusk.add_program(program_id, program_name, &DEFAULT_LOADER_KEY);
+        mollusk.add_program(program_id, program_name);
         mollusk
     }
 
