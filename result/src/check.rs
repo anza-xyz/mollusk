@@ -24,6 +24,9 @@ enum CheckType<'a> {
     ResultingAccount(AccountCheck<'a>),
     /// Check that all accounts are rent exempt
     AllRentExempt,
+    /// Check the number of inner instructions (CPIs) invoked.
+    #[cfg(feature = "inner-instructions")]
+    InnerInstructionCount(usize),
 }
 
 pub struct Check<'a> {
@@ -78,6 +81,12 @@ impl<'a> Check<'a> {
     /// Check that all resulting accounts are rent exempt
     pub const fn all_rent_exempt() -> Self {
         Check::new(CheckType::AllRentExempt)
+    }
+
+    /// Check the number of inner instructions (CPIs) invoked during execution.
+    #[cfg(feature = "inner-instructions")]
+    pub const fn inner_instruction_count(count: usize) -> Self {
+        Check::new(CheckType::InnerInstructionCount(count))
     }
 }
 
@@ -297,6 +306,12 @@ impl InstructionResult {
                             );
                         }
                     }
+                }
+                #[cfg(feature = "inner-instructions")]
+                CheckType::InnerInstructionCount(count) => {
+                    let check_count = *count;
+                    let actual_count = self.inner_instructions.len();
+                    pass &= compare!(c, "inner_instruction_count", check_count, actual_count);
                 }
             }
         }

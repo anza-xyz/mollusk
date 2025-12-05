@@ -17,8 +17,10 @@ solana-instruction = { workspace = true }
 solana-program-error = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
+solana-transaction-status-client-types = { workspace = true, optional = true }
 
 [features]
 default = []
 fuzz = ["dep:mollusk-svm-fuzz-fixture"]
+inner-instructions = ["dep:solana-transaction-status-client-types"]
 serde = ["dep:serde", "solana-pubkey/serde"]

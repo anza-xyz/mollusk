@@ -485,6 +485,11 @@ use {
     solana_transaction_context::{InstructionAccount, TransactionContext},
     std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc, sync::Arc},
 };
+#[cfg(feature = "inner-instructions")]
+use {
+    solana_message::compiled_instruction::CompiledInstruction,
+    solana_transaction_status_client_types::InnerInstruction,
+};
 
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
 
@@ -767,6 +772,38 @@ impl Mollusk {
         }
     }
 
+    #[cfg(feature = "inner-instructions")]
+    fn deconstruct_transaction(
+        transaction_context: &mut TransactionContext,
+    ) -> Vec<InnerInstruction> {
+        const TRANSACTION_LEVEL_STACK_HEIGHT: usize = 1;
+
+        let ix_trace = transaction_context.take_instruction_trace();
+        ix_trace
+            .into_iter()
+            .filter_map(|ix_in_trace| {
+                let stack_height = ix_in_trace.nesting_level.saturating_add(1);
+                if stack_height > TRANSACTION_LEVEL_STACK_HEIGHT {
+                    let stack_height = u32::try_from(stack_height).ok();
+                    Some(InnerInstruction {
+                        instruction: CompiledInstruction::new_from_raw_parts(
+                            ix_in_trace.program_account_index_in_tx as u8,
+                            ix_in_trace.instruction_data.to_vec(),
+                            ix_in_trace
+                                .instruction_accounts
+                                .iter()
+                                .map(|acc| acc.index_in_transaction as u8)
+                                .collect(),
+                        ),
+                        stack_height,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     fn process_instruction_inner(
         &self,
         instruction_index: usize,
@@ -872,6 +909,9 @@ impl Mollusk {
 
         let return_data = transaction_context.get_return_data().1.to_vec();
 
+        #[cfg(feature = "inner-instructions")]
+        let inner_instructions = Self::deconstruct_transaction(&mut transaction_context);
+
         let resulting_accounts: Vec<(Pubkey, Account)> = if invoke_result.is_ok() {
             accounts
                 .iter()
@@ -904,6 +944,8 @@ impl Mollusk {
             raw_result: invoke_result,
             return_data,
             resulting_accounts,
+            #[cfg(feature = "inner-instructions")]
+            inner_instructions,
         }
     }
 

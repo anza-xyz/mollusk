@@ -1,5 +1,7 @@
 //! Core result types for SVM program execution.
 
+#[cfg(feature = "inner-instructions")]
+use solana_transaction_status_client_types::InnerInstruction;
 use {
     solana_account::Account, solana_instruction::error::InstructionError,
     solana_program_error::ProgramError, solana_pubkey::Pubkey,
@@ -62,6 +64,13 @@ pub struct InstructionResult {
     /// they were provided. Any accounts that were modified will maintain
     /// their original position in this list, but with updated state.
     pub resulting_accounts: Vec<(Pubkey, Account)>,
+    /// Inner instructions (CPIs) invoked during the instruction execution.
+    ///
+    /// Each entry represents a cross-program invocation made by the program,
+    /// including the invoked instruction and the stack height at which it
+    /// was called.
+    #[cfg(feature = "inner-instructions")]
+    pub inner_instructions: Vec<InnerInstruction>,
 }
 
 impl Default for InstructionResult {
@@ -73,6 +82,8 @@ impl Default for InstructionResult {
             raw_result: Ok(()),
             return_data: vec![],
             resulting_accounts: vec![],
+            #[cfg(feature = "inner-instructions")]
+            inner_instructions: vec![],
         }
     }
 }
@@ -93,5 +104,9 @@ impl InstructionResult {
         self.raw_result = other.raw_result;
         self.return_data = other.return_data;
         self.resulting_accounts = other.resulting_accounts;
+        #[cfg(feature = "inner-instructions")]
+        {
+            self.inner_instructions = other.inner_instructions;
+        }
     }
 }

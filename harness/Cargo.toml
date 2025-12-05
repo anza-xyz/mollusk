@@ -25,6 +25,11 @@ fuzz-fd = [
     "dep:mollusk-svm-fuzz-fixture-firedancer",
     "dep:mollusk-svm-fuzz-fs",
 ]
+inner-instructions = [
+    "mollusk-svm-result/inner-instructions",
+    "dep:solana-message",
+    "dep:solana-transaction-status-client-types",
+]
 invocation-inspect-callback = []
 precompiles = ["dep:agave-precompiles"]
 register-tracing = [
@@ -65,6 +70,7 @@ solana-loader-v3-interface = { workspace = true, features = ["serde"] }
 solana-loader-v4-interface = { workspace = true }
 solana-loader-v4-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-logger = { workspace = true }
+solana-message = { workspace = true, optional = true }
 solana-precompile-error = { workspace = true }
 solana-program-error = { workspace = true }
 solana-program-runtime = { workspace = true }
@@ -80,6 +86,7 @@ solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }
 solana-transaction-context = { workspace = true, features = ["dev-context-only-utils"] }
+solana-transaction-status-client-types = { workspace = true, optional = true }
 solana-vote-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-zk-elgamal-proof-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 
