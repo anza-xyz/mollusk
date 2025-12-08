@@ -67,7 +67,6 @@ fn test_write_data() {
         &[(key, account.clone())],
         &[
             Check::success(),
-            #[cfg(not(feature = "inner-instructions"))]
             Check::compute_units(384),
             Check::account(&key)
                 .data(data)
@@ -153,7 +152,6 @@ fn test_transfer() {
         ],
         &[
             Check::success(),
-            #[cfg(not(feature = "inner-instructions"))]
             Check::compute_units(2480),
             Check::account(&payer)
                 .lamports(payer_lamports - transfer_amount)
@@ -258,7 +256,6 @@ fn test_close_account() {
         ],
         &[
             Check::success(),
-            #[cfg(not(feature = "inner-instructions"))]
             Check::compute_units(2555),
             Check::account(&key)
                 .closed() // The rest is unnecessary, just testing.
@@ -379,7 +376,6 @@ fn test_cpi() {
         ],
         &[
             Check::success(),
-            #[cfg(not(feature = "inner-instructions"))]
             Check::compute_units(2317),
             Check::account(&key)
                 .data(data)
@@ -393,7 +389,7 @@ fn test_cpi() {
 
 #[test]
 #[cfg(feature = "inner-instructions")]
-fn test_inner_instructions() {
+fn test_inner_instructions_cpi() {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
 
     let program_id = Pubkey::new_unique();
@@ -428,7 +424,7 @@ fn test_inner_instructions() {
         )
     };
 
-    mollusk.process_and_validate_instruction(
+    let result = mollusk.process_and_validate_instruction(
         &instruction,
         &[
             (key, account.clone()),
@@ -448,6 +444,36 @@ fn test_inner_instructions() {
                 .build(),
         ],
     );
+
+    let inner_ix = &result.inner_instructions[0];
+    assert_eq!(inner_ix.stack_height, Some(2));
+    assert_eq!(
+        inner_ix.instruction.program_id_index as usize, 1,
+        "Inner instruction program_id_index should point to the CPI target"
+    );
+    assert_eq!(
+        &inner_ix.instruction.data[0], &1u8,
+        "Inner instruction should be WriteData (1)"
+    );
+    assert_eq!(
+        &inner_ix.instruction.data[1..],
+        &data[1..],
+        "Inner instruction data should match the CPI call"
+    );
+    assert_eq!(
+        inner_ix.instruction.accounts,
+        vec![2],
+        "Inner instruction accounts should reference the key account"
+    );
+}
+
+#[test]
+#[cfg(feature = "inner-instructions")]
+fn test_inner_instructions_transfer() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+
+    let program_id = Pubkey::new_unique();
+    let mollusk = Mollusk::new(&program_id, "test_program_primary");
 
     let payer = Pubkey::new_unique();
     let payer_lamports = 100_000_000;
@@ -474,7 +500,7 @@ fn test_inner_instructions() {
         )
     };
 
-    mollusk.process_and_validate_instruction(
+    let result = mollusk.process_and_validate_instruction(
         &transfer_instruction,
         &[
             (payer, payer_account.clone()),
@@ -491,6 +517,18 @@ fn test_inner_instructions() {
                 .lamports(recipient_lamports + transfer_amount)
                 .build(),
         ],
+    );
+
+    let inner_ix = &result.inner_instructions[0];
+    assert_eq!(inner_ix.stack_height, Some(2));
+    assert_eq!(
+        inner_ix.instruction.program_id_index as usize, 0,
+        "Inner instruction should invoke the system program"
+    );
+    assert_eq!(
+        inner_ix.instruction.accounts,
+        vec![2, 3],
+        "Inner instruction accounts should reference payer and recipient"
     );
 }
 

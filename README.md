@@ -556,10 +556,7 @@ This feature is particularly useful for:
 - Testing programs that make CPIs to verify correct invocation behavior
 - Debugging complex program interactions
 - Validating that the expected number of CPIs occur during execution
-
-Note: Inner instructions tracking adds a small overhead to program execution
-as it records each CPI. For performance-critical benchmarking where CPI
-tracking is not needed, you may want to disable this feature.
+- Inspecting the exact parameters passed to cross-program invocations
 
 ## Register tracing
 
