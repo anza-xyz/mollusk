@@ -86,7 +86,7 @@ solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }
 solana-transaction-context = { workspace = true, features = ["dev-context-only-utils"] }
-solana-transaction-status-client-types = { workspace = true, optional = true }
+solana-transaction-status-client-types = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-vote-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-zk-elgamal-proof-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 

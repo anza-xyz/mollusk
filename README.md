@@ -30,6 +30,7 @@ a handful of helpers.
 * [Fixtures](#fixtures)
   * [Generating Fixtures from Mollusk Tests](#generating-fixtures-from-mollusk-tests)
   * [Loading and Executing Fixtures](#loading-and-executing-fixtures)
+* [Inner Instructions Tracking](#inner-instructions-tracking)
 * [Register tracing](#register-tracing)
 
 ## Single Instructions
@@ -498,6 +499,67 @@ for file in fs::read_dir(Path::new("fixtures-dir"))? {
 
 Fixtures can be loaded from files or decoded from raw blobs. These
 capabilities are provided by the respective fixture crates.
+
+## Inner Instructions Tracking
+
+Mollusk can track inner instructions (cross-program invocations) executed
+during program execution when the `inner-instructions` feature is enabled.
+This feature captures all CPIs made by a program, including the invoked
+instruction details and the stack height at which each CPI was called.
+
+To enable inner instructions tracking, add the feature flag to your `Cargo.toml`:
+
+```toml
+[dependencies]
+mollusk-svm = { version = "0.8.0", features = ["inner-instructions"] }
+```
+
+Once enabled, every `InstructionResult` will include an `inner_instructions`
+field containing a vector of all CPIs that occurred during execution. You can
+validate the number of CPIs using the `Check::inner_instruction_count` check:
+
+```rust
+use {
+    mollusk_svm::{Mollusk, result::Check},
+    solana_sdk::{
+        account::Account,
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+    },
+};
+
+let program_id = Pubkey::new_unique();
+let cpi_target_id = Pubkey::new_unique();
+
+let mut mollusk = Mollusk::new(&program_id, "my_program");
+mollusk.add_program(&cpi_target_id, "cpi_target_program");
+
+/* Setup instruction that performs a CPI ... */
+
+mollusk.process_and_validate_instruction(
+    &instruction,
+    &accounts,
+    &[
+        Check::success(),
+        Check::inner_instruction_count(1), // Verify exactly 1 CPI occurred
+    ],
+);
+```
+
+The tracked inner instructions include:
+- The program ID being invoked
+- The instruction data passed to the CPI
+- The accounts passed to the CPI
+- The stack height (nesting level) of the invocation
+
+This feature is particularly useful for:
+- Testing programs that make CPIs to verify correct invocation behavior
+- Debugging complex program interactions
+- Validating that the expected number of CPIs occur during execution
+
+Note: Inner instructions tracking adds a small overhead to program execution
+as it records each CPI. For performance-critical benchmarking where CPI
+tracking is not needed, you may want to disable this feature.
 
 ## Register tracing
 
