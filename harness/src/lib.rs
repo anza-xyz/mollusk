@@ -779,20 +779,21 @@ impl Mollusk {
     }
 
     // Determine the accounts to fallback to during account compilation.
-    fn get_account_fallbacks<'a, 'b>(
+    fn get_account_fallbacks<'a>(
         &self,
         all_program_ids: impl Iterator<Item = &'a Pubkey>,
         all_instructions: impl Iterator<Item = &'a Instruction>,
         accounts: &[(Pubkey, Account)],
     ) -> HashMap<Pubkey, Account> {
+        // Use a HashSet for fast lookups.
+        let account_keys: HashSet<&Pubkey> = accounts.iter().map(|(key, _)| key).collect();
+
         let mut fallbacks = HashMap::new();
 
         // Top-level target programs.
-
-        // First check to see if each program was provided as an account.
-        for program_id in all_program_ids {
-            if !accounts.iter().any(|(key, _)| key == program_id) {
-                // If it was not provided, create the fallback.
+        all_program_ids.for_each(|program_id| {
+            if !account_keys.contains(program_id) {
+                // Fallback to a stub.
                 fallbacks.insert(
                     *program_id,
                     Account {
@@ -802,16 +803,11 @@ impl Mollusk {
                     },
                 );
             }
-        }
+        });
 
         // Instructions sysvar.
-
-        // First check to see if the instructions sysvar was provided as an account.
-        if !accounts
-            .iter()
-            .any(|(key, _)| key == &solana_instructions_sysvar::ID)
-        {
-            // If it was not provided, create the fallback.
+        if !account_keys.contains(&solana_instructions_sysvar::ID) {
+            // Fallback to the actual implementation of the sysvar.
             let (ix_sysvar_id, ix_sysvar_acct) =
                 crate::instructions_sysvar::keyed_account(all_instructions);
             fallbacks.insert(ix_sysvar_id, ix_sysvar_acct);
