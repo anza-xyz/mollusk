@@ -1052,13 +1052,13 @@ impl Mollusk {
             ..Default::default()
         };
 
-        for (index, instruction) in instructions.iter().enumerate() {
-            let fallback_accounts = self.get_account_fallbacks(
-                instructions.iter().map(|ix| &ix.program_id),
-                instructions.iter(),
-                accounts,
-            );
+        let fallback_accounts = self.get_account_fallbacks(
+            instructions.iter().map(|ix| &ix.program_id),
+            instructions.iter(),
+            accounts,
+        );
 
+        for (index, instruction) in instructions.iter().enumerate() {
             let CompiledAccounts {
                 program_id_index,
                 instruction_accounts,
@@ -1184,14 +1184,14 @@ impl Mollusk {
             ..Default::default()
         };
 
+        let fallback_accounts = self.get_account_fallbacks(
+            instructions.iter().map(|(ix, _)| &ix.program_id),
+            instructions.iter().map(|(ix, _)| *ix),
+            accounts,
+        );
+
         for (index, (instruction, checks)) in instructions.iter().enumerate() {
             let accounts = &composite_result.resulting_accounts;
-
-            let fallback_accounts = self.get_account_fallbacks(
-                instructions.iter().map(|(ix, _)| &ix.program_id),
-                instructions.iter().map(|(ix, _)| *ix),
-                accounts,
-            );
 
             let CompiledAccounts {
                 program_id_index,
