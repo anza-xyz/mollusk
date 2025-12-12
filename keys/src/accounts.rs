@@ -7,6 +7,7 @@ use {
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
     solana_transaction_context::{IndexOfAccount, InstructionAccount},
+    std::collections::HashMap,
 };
 
 // Helper struct to avoid cloning instruction data.
@@ -62,72 +63,20 @@ pub fn compile_instruction_accounts(
         .collect()
 }
 
-pub fn compile_transaction_accounts_for_instruction<'a, S, F>(
+pub fn compile_transaction_accounts<'a>(
     key_map: &KeyMap,
-    instruction: &Instruction,
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    stub_out_program_account: Option<S>,
-    fallback_account: Option<F>,
-) -> Vec<(Pubkey, AccountSharedData)>
-where
-    S: Fn() -> Account,
-    F: Fn(&Pubkey) -> Option<Account>,
-{
+    fallback_accounts: &HashMap<Pubkey, Account>,
+) -> Vec<(Pubkey, AccountSharedData)> {
     let accounts: Vec<_> = accounts.collect();
     key_map
         .keys()
         .map(|key| {
-            if let Some(stub_out_program_account) = &stub_out_program_account {
-                if instruction.program_id == *key {
-                    return (*key, stub_out_program_account().into());
-                }
-            }
             let account = accounts
                 .iter()
                 .find(|(k, _)| k == key)
                 .map(|(_, a)| AccountSharedData::from(a.clone()))
-                .or_else(|| {
-                    fallback_account
-                        .as_ref()
-                        .and_then(|f| f(key))
-                        .map(Into::into)
-                })
-                .or_panic_with(MolluskError::AccountMissing(key));
-            (*key, account)
-        })
-        .collect()
-}
-
-pub fn compile_transaction_accounts<'a, S, F>(
-    key_map: &KeyMap,
-    instructions: &[Instruction],
-    accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    stub_out_program_account: Option<S>,
-    fallback_account: Option<F>,
-) -> Vec<(Pubkey, AccountSharedData)>
-where
-    S: Fn() -> Account,
-    F: Fn(&Pubkey) -> Option<Account>,
-{
-    let accounts: Vec<_> = accounts.collect();
-    key_map
-        .keys()
-        .map(|key| {
-            if let Some(stub_out_program_account) = &stub_out_program_account {
-                if instructions.iter().any(|ix| ix.program_id == *key) {
-                    return (*key, stub_out_program_account().into());
-                }
-            }
-            let account = accounts
-                .iter()
-                .find(|(k, _)| k == key)
-                .map(|(_, a)| AccountSharedData::from(a.clone()))
-                .or_else(|| {
-                    fallback_account
-                        .as_ref()
-                        .and_then(|f| f(key))
-                        .map(Into::into)
-                })
+                .or_else(|| fallback_accounts.get(key).cloned().map(Into::into))
                 .or_panic_with(MolluskError::AccountMissing(key));
             (*key, account)
         })
@@ -216,16 +165,9 @@ mod tests {
             (account2, Account::new(200, 20, &Pubkey::default())),
         ];
 
-        let stub: Option<fn() -> Account> = None;
-        let fallback: Option<fn(&Pubkey) -> Option<Account>> = None;
+        let fallbacks = HashMap::new();
 
-        let result = compile_transaction_accounts_for_instruction(
-            &key_map,
-            &instruction,
-            accounts.iter(),
-            stub,
-            fallback,
-        );
+        let result = compile_transaction_accounts(&key_map, accounts.iter(), &fallbacks);
 
         assert_eq!(result.len(), 3);
         // Verify accounts are present (order depends on KeyMap).
@@ -245,16 +187,11 @@ mod tests {
         // Only provide account1, not program_id.
         let accounts = [(account1, Account::new(100, 10, &Pubkey::default()))];
 
-        let stub = || Account::new(999, 0, &Pubkey::default());
-        let fallback: Option<fn(&Pubkey) -> Option<Account>> = None;
+        let fallbacks = [(program_id, Account::new(999, 0, &Pubkey::default()))]
+            .into_iter()
+            .collect();
 
-        let result = compile_transaction_accounts_for_instruction(
-            &key_map,
-            &instruction,
-            accounts.iter(),
-            Some(stub),
-            fallback,
-        );
+        let result = compile_transaction_accounts(&key_map, accounts.iter(), &fallbacks);
 
         assert_eq!(result.len(), 2);
         // Program account should have 999 lamports from stub.
@@ -277,22 +214,11 @@ mod tests {
             (account1, Account::new(100, 10, &Pubkey::default())),
         ];
 
-        let stub: Option<fn() -> Account> = None;
-        let fallback = move |pk: &Pubkey| -> Option<Account> {
-            if pk == &fallback_key {
-                Some(Account::new(555, 5, &Pubkey::default()))
-            } else {
-                None
-            }
-        };
+        let fallbacks = [(fallback_key, Account::new(555, 5, &Pubkey::default()))]
+            .into_iter()
+            .collect();
 
-        let result = compile_transaction_accounts_for_instruction(
-            &key_map,
-            &instruction,
-            accounts.iter(),
-            stub,
-            Some(fallback),
-        );
+        let result = compile_transaction_accounts(&key_map, accounts.iter(), &fallbacks);
 
         assert_eq!(result.len(), 3);
         // Fallback account should have 555 lamports.
@@ -313,11 +239,9 @@ mod tests {
             (account1, Account::new(100, 10, &Pubkey::default())),
         ];
 
-        let stub: Option<fn() -> Account> = None;
-        let fallback: Option<fn(&Pubkey) -> Option<Account>> = None;
+        let fallbacks = HashMap::new();
 
-        let result =
-            compile_transaction_accounts(&key_map, &instructions, accounts.iter(), stub, fallback);
+        let result = compile_transaction_accounts(&key_map, accounts.iter(), &fallbacks);
 
         assert_eq!(result.len(), 2);
         assert!(result.iter().any(|(pk, _)| pk == &program_id));
@@ -339,22 +263,11 @@ mod tests {
             (account1, Account::new(100, 10, &Pubkey::default())),
         ];
 
-        let stub: Option<fn() -> Account> = None;
-        let fallback = move |pk: &Pubkey| -> Option<Account> {
-            if pk == &fallback_key {
-                Some(Account::new(777, 7, &Pubkey::default()))
-            } else {
-                None
-            }
-        };
+        let fallbacks = [(fallback_key, Account::new(777, 7, &Pubkey::default()))]
+            .into_iter()
+            .collect();
 
-        let result = compile_transaction_accounts(
-            &key_map,
-            &instructions,
-            accounts.iter(),
-            stub,
-            Some(fallback),
-        );
+        let result = compile_transaction_accounts(&key_map, accounts.iter(), &fallbacks);
 
         assert_eq!(result.len(), 3);
         let fb_account = result.iter().find(|(pk, _)| pk == &fallback_key).unwrap();
@@ -374,23 +287,11 @@ mod tests {
             (account1, Account::new(100, 10, &Pubkey::default())),
         ];
 
-        let stub: Option<fn() -> Account> = None;
-        // Fallback would return different lamports, but shouldn't be called.
-        let fallback = move |pk: &Pubkey| -> Option<Account> {
-            if pk == &account1 {
-                Some(Account::new(999, 99, &Pubkey::default()))
-            } else {
-                None
-            }
-        };
+        let fallbacks = [(account1, Account::new(999, 99, &Pubkey::default()))]
+            .into_iter()
+            .collect();
 
-        let result = compile_transaction_accounts_for_instruction(
-            &key_map,
-            &instruction,
-            accounts.iter(),
-            stub,
-            Some(fallback),
-        );
+        let result = compile_transaction_accounts(&key_map, accounts.iter(), &fallbacks);
 
         // account1 should have original 100 lamports, not 999 from fallback.
         let acc = result.iter().find(|(pk, _)| pk == &account1).unwrap();

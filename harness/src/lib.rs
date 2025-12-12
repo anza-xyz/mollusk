@@ -1006,9 +1006,7 @@ impl Mollusk {
     ) -> InstructionResult {
         const INDEX: usize = 0;
 
-        let loader_key = self.get_loader_key(&instruction.program_id);
-
-        let _fallback_accounts = self.get_account_fallbacks(
+        let fallback_accounts = self.get_account_fallbacks(
             std::iter::once(&instruction.program_id),
             std::iter::once(instruction),
             accounts,
@@ -1019,10 +1017,9 @@ impl Mollusk {
             instruction_accounts,
             transaction_accounts,
         } = crate::compile_accounts::compile_accounts(
-            INDEX,
-            std::iter::once(instruction),
+            instruction,
             accounts.iter(),
-            loader_key,
+            &fallback_accounts,
         );
 
         self.process_instruction_inner(
@@ -1056,9 +1053,7 @@ impl Mollusk {
         };
 
         for (index, instruction) in instructions.iter().enumerate() {
-            let loader_key = self.get_loader_key(&instruction.program_id);
-
-            let _fallback_accounts = self.get_account_fallbacks(
+            let fallback_accounts = self.get_account_fallbacks(
                 instructions.iter().map(|ix| &ix.program_id),
                 instructions.iter(),
                 accounts,
@@ -1069,10 +1064,9 @@ impl Mollusk {
                 instruction_accounts,
                 transaction_accounts,
             } = crate::compile_accounts::compile_accounts(
-                index,
-                instructions.iter(),
+                instruction,
                 accounts.iter(),
-                loader_key,
+                &fallback_accounts,
             );
 
             let this_result = self.process_instruction_inner(
@@ -1124,9 +1118,7 @@ impl Mollusk {
     ) -> InstructionResult {
         const INDEX: usize = 0;
 
-        let loader_key = self.get_loader_key(&instruction.program_id);
-
-        let _fallback_accounts = self.get_account_fallbacks(
+        let fallback_accounts = self.get_account_fallbacks(
             std::iter::once(&instruction.program_id),
             std::iter::once(instruction),
             accounts,
@@ -1137,10 +1129,9 @@ impl Mollusk {
             instruction_accounts,
             transaction_accounts,
         } = crate::compile_accounts::compile_accounts(
-            INDEX,
-            std::iter::once(instruction),
+            instruction,
             accounts.iter(),
-            loader_key,
+            &fallback_accounts,
         );
 
         let result = self.process_instruction_inner(
@@ -1194,10 +1185,9 @@ impl Mollusk {
         };
 
         for (index, (instruction, checks)) in instructions.iter().enumerate() {
-            let loader_key = self.get_loader_key(&instruction.program_id);
             let accounts = &composite_result.resulting_accounts;
 
-            let _fallback_accounts = self.get_account_fallbacks(
+            let fallback_accounts = self.get_account_fallbacks(
                 instructions.iter().map(|(ix, _)| &ix.program_id),
                 instructions.iter().map(|(ix, _)| *ix),
                 accounts,
@@ -1208,10 +1198,9 @@ impl Mollusk {
                 instruction_accounts,
                 transaction_accounts,
             } = crate::compile_accounts::compile_accounts(
-                index,
-                instructions.iter().map(|(ix, _)| *ix),
+                instruction,
                 accounts.iter(),
-                loader_key,
+                &fallback_accounts,
             );
 
             let this_result = self.process_instruction_inner(

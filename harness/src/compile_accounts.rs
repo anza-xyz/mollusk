@@ -5,14 +5,15 @@ use {
     mollusk_svm_keys::{
         accounts::{
             compile_instruction_accounts, compile_instruction_without_data,
-            compile_transaction_accounts_for_instruction,
+            compile_transaction_accounts,
         },
         keys::KeyMap,
     },
-    solana_account::{Account, AccountSharedData, WritableAccount},
+    solana_account::{Account, AccountSharedData},
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
     solana_transaction_context::InstructionAccount,
+    std::collections::HashMap,
 };
 
 pub struct CompiledAccounts {
@@ -21,41 +22,15 @@ pub struct CompiledAccounts {
     pub transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
 }
 
-pub fn compile_accounts<'a, 'b, I>(
-    instruction_index: usize,
-    all_instructions: I,
+pub fn compile_accounts<'a>(
+    instruction: &Instruction,
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    loader_key: Pubkey,
-) -> CompiledAccounts
-where
-    I: IntoIterator<Item = &'b Instruction>,
-{
-    // Collect instruction references for the instructions sysvar.
-    let instruction_refs: Vec<&Instruction> = all_instructions.into_iter().collect();
-    let instruction = instruction_refs[instruction_index];
-
-    let stub_out_program_account = move || {
-        let mut program_account = Account::default();
-        program_account.set_owner(loader_key);
-        program_account.set_executable(true);
-        program_account
-    };
-
-    let fallback_to_instructions_sysvar = |pubkey: &Pubkey| -> Option<Account> {
-        (pubkey == &solana_instructions_sysvar::ID)
-            .then(|| crate::instructions_sysvar::keyed_account(instruction_refs.iter().copied()).1)
-    };
-
+    fallback_accounts: &HashMap<Pubkey, Account>,
+) -> CompiledAccounts {
     let key_map = KeyMap::compile_from_instruction(instruction);
     let compiled_instruction = compile_instruction_without_data(&key_map, instruction);
     let instruction_accounts = compile_instruction_accounts(&key_map, &compiled_instruction);
-    let transaction_accounts = compile_transaction_accounts_for_instruction(
-        &key_map,
-        instruction,
-        accounts,
-        Some(stub_out_program_account),
-        Some(fallback_to_instructions_sysvar),
-    );
+    let transaction_accounts = compile_transaction_accounts(&key_map, accounts, fallback_accounts);
 
     CompiledAccounts {
         program_id_index: compiled_instruction.program_id_index as u16,

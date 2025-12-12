@@ -63,24 +63,28 @@ fn build_fixture_context(
     instruction: &Instruction,
     slot: u64,
 ) -> FuzzContext {
-    const INDEX: usize = 0;
-
     let loader_key = if BUILTIN_PROGRAM_IDS.contains(&instruction.program_id) {
         solana_sdk_ids::native_loader::id()
     } else {
         DEFAULT_LOADER_KEY
     };
 
+    let fallbacks = [(
+        instruction.program_id,
+        Account {
+            owner: loader_key,
+            executable: true,
+            ..Default::default()
+        },
+    )]
+    .into_iter()
+    .collect();
+
     let CompiledAccounts {
         instruction_accounts,
         transaction_accounts,
         ..
-    } = compile_accounts(
-        INDEX,
-        std::iter::once(instruction),
-        accounts.iter(),
-        loader_key,
-    );
+    } = compile_accounts(instruction, accounts.iter(), &fallbacks);
 
     let accounts = transaction_accounts
         .into_iter()
