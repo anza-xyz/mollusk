@@ -778,6 +778,48 @@ impl Mollusk {
         }
     }
 
+    // Determine the accounts to fallback to during account compilation.
+    fn get_account_fallbacks<'a, 'b>(
+        &self,
+        all_program_ids: impl Iterator<Item = &'a Pubkey>,
+        all_instructions: impl Iterator<Item = &'a Instruction>,
+        accounts: &[(Pubkey, Account)],
+    ) -> HashMap<Pubkey, Account> {
+        let mut fallbacks = HashMap::new();
+
+        // Top-level target programs.
+
+        // First check to see if each program was provided as an account.
+        for program_id in all_program_ids {
+            if !accounts.iter().any(|(key, _)| key == program_id) {
+                // If it was not provided, create the fallback.
+                fallbacks.insert(
+                    *program_id,
+                    Account {
+                        owner: self.get_loader_key(program_id),
+                        executable: true,
+                        ..Default::default()
+                    },
+                );
+            }
+        }
+
+        // Instructions sysvar.
+
+        // First check to see if the instructions sysvar was provided as an account.
+        if !accounts
+            .iter()
+            .any(|(key, _)| key == &solana_instructions_sysvar::ID)
+        {
+            // If it was not provided, create the fallback.
+            let (ix_sysvar_id, ix_sysvar_acct) =
+                crate::instructions_sysvar::keyed_account(all_instructions);
+            fallbacks.insert(ix_sysvar_id, ix_sysvar_acct);
+        }
+
+        fallbacks
+    }
+
     #[cfg(feature = "inner-instructions")]
     fn deconstruct_transaction(
         transaction_context: &mut TransactionContext,
@@ -966,7 +1008,11 @@ impl Mollusk {
 
         let loader_key = self.get_loader_key(&instruction.program_id);
 
-        let _fallback_accounts = get_account_fallbacks(std::iter::once(instruction), accounts);
+        let _fallback_accounts = self.get_account_fallbacks(
+            std::iter::once(&instruction.program_id),
+            std::iter::once(instruction),
+            accounts,
+        );
 
         let CompiledAccounts {
             program_id_index,
@@ -1012,7 +1058,11 @@ impl Mollusk {
         for (index, instruction) in instructions.iter().enumerate() {
             let loader_key = self.get_loader_key(&instruction.program_id);
 
-            let _fallback_accounts = get_account_fallbacks(instructions.iter(), accounts);
+            let _fallback_accounts = self.get_account_fallbacks(
+                instructions.iter().map(|ix| &ix.program_id),
+                instructions.iter(),
+                accounts,
+            );
 
             let CompiledAccounts {
                 program_id_index,
@@ -1076,7 +1126,11 @@ impl Mollusk {
 
         let loader_key = self.get_loader_key(&instruction.program_id);
 
-        let _fallback_accounts = get_account_fallbacks(std::iter::once(instruction), accounts);
+        let _fallback_accounts = self.get_account_fallbacks(
+            std::iter::once(&instruction.program_id),
+            std::iter::once(instruction),
+            accounts,
+        );
 
         let CompiledAccounts {
             program_id_index,
@@ -1143,8 +1197,11 @@ impl Mollusk {
             let loader_key = self.get_loader_key(&instruction.program_id);
             let accounts = &composite_result.resulting_accounts;
 
-            let _fallback_accounts =
-                get_account_fallbacks(instructions.iter().map(|(ix, _)| *ix), accounts);
+            let _fallback_accounts = self.get_account_fallbacks(
+                instructions.iter().map(|(ix, _)| &ix.program_id),
+                instructions.iter().map(|(ix, _)| *ix),
+                accounts,
+            );
 
             let CompiledAccounts {
                 program_id_index,
@@ -1571,27 +1628,4 @@ impl<AS: AccountStore> MolluskContext<AS> {
         self.consume_mollusk_result(&result);
         result
     }
-}
-
-// Determine the accounts to fallback to during account compilation.
-fn get_account_fallbacks<'a, 'b>(
-    all_instructions: impl Iterator<Item = &'a Instruction>,
-    accounts: &[(Pubkey, Account)],
-) -> HashMap<Pubkey, Account> {
-    let mut fallbacks = HashMap::new();
-
-    // Instructions sysvar.
-
-    // First check to see if the instructions sysvar was provided as an account.
-    if !accounts
-        .iter()
-        .any(|(key, _)| key == &solana_instructions_sysvar::ID)
-    {
-        // If it was not provided, create the fallback.
-        let (ix_sysvar_id, ix_sysvar_acct) =
-            crate::instructions_sysvar::keyed_account(all_instructions);
-        fallbacks.insert(ix_sysvar_id, ix_sysvar_acct);
-    }
-
-    fallbacks
 }
