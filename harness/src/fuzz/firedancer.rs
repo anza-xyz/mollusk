@@ -79,8 +79,11 @@ fn build_fixture_context(
     .into_iter()
     .collect();
 
-    let (sanitized_message, transaction_accounts) =
-        compile_accounts(instruction, accounts.iter(), &fallbacks);
+    let (sanitized_message, transaction_accounts) = compile_accounts(
+        std::slice::from_ref(instruction),
+        accounts.iter(),
+        &fallbacks,
+    );
 
     let compiled_ix = sanitized_message.instructions().first().unwrap();
     let instruction_accounts: Vec<InstructionAccount> = compiled_ix
