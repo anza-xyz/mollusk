@@ -387,7 +387,7 @@ pub fn create_program_account_loader_v4(elf: &[u8]) -> Account {
     Account {
         lamports,
         data,
-        owner: loader_keys::LOADER_V3,
+        owner: loader_keys::LOADER_V4,
         executable: false,
         ..Default::default()
     }
