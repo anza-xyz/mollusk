@@ -53,6 +53,8 @@ impl From<&mollusk_svm_fuzz_fixture::effects::Effects> for InstructionResult {
             resulting_accounts,
             #[cfg(feature = "inner-instructions")]
             inner_instructions: vec![],
+            #[cfg(feature = "inner-instructions")]
+            message: None,
         }
     }
 }

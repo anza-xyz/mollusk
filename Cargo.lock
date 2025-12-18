@@ -2417,6 +2417,7 @@ dependencies = [
  "serde",
  "solana-account",
  "solana-instruction",
+ "solana-message",
  "solana-program-error",
  "solana-pubkey 4.0.0",
  "solana-rent",

@@ -1,11 +1,11 @@
 //! Core result types for SVM program execution.
 
-#[cfg(feature = "inner-instructions")]
-use solana_transaction_status_client_types::InnerInstruction;
 use {
     solana_account::Account, solana_instruction::error::InstructionError,
     solana_program_error::ProgramError, solana_pubkey::Pubkey,
 };
+#[cfg(feature = "inner-instructions")]
+use {solana_message::SanitizedMessage, solana_transaction_status_client_types::InnerInstruction};
 
 /// The result code of the program's execution.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -71,6 +71,15 @@ pub struct InstructionResult {
     /// was called.
     #[cfg(feature = "inner-instructions")]
     pub inner_instructions: Vec<InnerInstruction>,
+    /// The compiled message used to execute the instruction.
+    ///
+    /// This can be used to map account indices in inner instructions back to
+    /// their corresponding pubkeys via `message.account_keys()`.
+    ///
+    /// This is `None` when the result is loaded from a fuzz fixture, since
+    /// fixtures don't contain the compiled message.
+    #[cfg(feature = "inner-instructions")]
+    pub message: Option<SanitizedMessage>,
 }
 
 impl Default for InstructionResult {
@@ -84,6 +93,8 @@ impl Default for InstructionResult {
             resulting_accounts: vec![],
             #[cfg(feature = "inner-instructions")]
             inner_instructions: vec![],
+            #[cfg(feature = "inner-instructions")]
+            message: None,
         }
     }
 }
@@ -107,6 +118,7 @@ impl InstructionResult {
         #[cfg(feature = "inner-instructions")]
         {
             self.inner_instructions = other.inner_instructions;
+            self.message = other.message;
         }
     }
 }

@@ -445,12 +445,31 @@ fn test_inner_instructions_cpi() {
         ],
     );
 
+    // Use the message to map indices back to pubkeys.
+    let message = result.message.as_ref().unwrap();
+    let account_keys = message.account_keys();
+
     let inner_ix = &result.inner_instructions[0];
     assert_eq!(inner_ix.stack_height, Some(2));
+
+    let program_id_index = inner_ix.instruction.program_id_index as usize;
     assert_eq!(
-        inner_ix.instruction.program_id_index as usize, 1,
+        account_keys[program_id_index], cpi_target_program_id,
         "Inner instruction program_id_index should point to the CPI target"
     );
+
+    assert_eq!(
+        inner_ix.instruction.accounts.len(),
+        1,
+        "Inner instruction accounts length should be 1"
+    );
+
+    let account_index = *inner_ix.instruction.accounts.first().unwrap() as usize;
+    assert_eq!(
+        account_keys[account_index], key,
+        "Inner instruction accounts should reference the key account"
+    );
+
     assert_eq!(
         &inner_ix.instruction.data[0], &1u8,
         "Inner instruction should be WriteData (1)"
@@ -459,11 +478,6 @@ fn test_inner_instructions_cpi() {
         &inner_ix.instruction.data[1..],
         &data[1..],
         "Inner instruction data should match the CPI call"
-    );
-    assert_eq!(
-        inner_ix.instruction.accounts,
-        vec![2],
-        "Inner instruction accounts should reference the key account"
     );
 }
 
@@ -519,16 +533,36 @@ fn test_inner_instructions_transfer() {
         ],
     );
 
+    // Use the message to map indices back to pubkeys.
+    let message = result.message.as_ref().unwrap();
+    let account_keys = message.account_keys();
+
     let inner_ix = &result.inner_instructions[0];
     assert_eq!(inner_ix.stack_height, Some(2));
+
+    let program_id_index = inner_ix.instruction.program_id_index as usize;
     assert_eq!(
-        inner_ix.instruction.program_id_index as usize, 0,
-        "Inner instruction should invoke the system program"
+        account_keys[program_id_index],
+        solana_sdk_ids::system_program::id(),
+        "Inner instruction program_id_index should point to the system program"
     );
+
     assert_eq!(
-        inner_ix.instruction.accounts,
-        vec![2, 3],
-        "Inner instruction accounts should reference payer and recipient"
+        inner_ix.instruction.accounts.len(),
+        2,
+        "Inner instruction accounts length should be 2"
+    );
+
+    let payer_index = inner_ix.instruction.accounts[0] as usize;
+    assert_eq!(
+        account_keys[payer_index], payer,
+        "Inner instruction first account should be the payer"
+    );
+
+    let recipient_index = inner_ix.instruction.accounts[1] as usize;
+    assert_eq!(
+        account_keys[recipient_index], recipient,
+        "Inner instruction second account should be the recipient"
     );
 }
 

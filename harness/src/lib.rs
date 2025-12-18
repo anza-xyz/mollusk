@@ -1002,6 +1002,8 @@ impl Mollusk {
             resulting_accounts,
             #[cfg(feature = "inner-instructions")]
             inner_instructions,
+            #[cfg(feature = "inner-instructions")]
+            message: Some(sanitized_message.clone()),
         }
     }
 

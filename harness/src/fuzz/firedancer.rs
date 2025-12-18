@@ -248,6 +248,8 @@ pub(crate) fn parse_fixture_effects(
         resulting_accounts,
         #[cfg(feature = "inner-instructions")]
         inner_instructions: vec![],
+        #[cfg(feature = "inner-instructions")]
+        message: None,
     }
 }
 
