@@ -2246,7 +2246,6 @@ dependencies = [
  "mollusk-svm-fuzz-fixture",
  "mollusk-svm-fuzz-fixture-firedancer",
  "mollusk-svm-fuzz-fs",
- "mollusk-svm-keys",
  "mollusk-svm-result",
  "openssl",
  "rand 0.7.3",
@@ -2284,6 +2283,7 @@ dependencies = [
  "solana-svm-callback",
  "solana-svm-log-collector",
  "solana-svm-timings",
+ "solana-svm-transaction",
  "solana-system-interface",
  "solana-system-program",
  "solana-sysvar",
@@ -2385,17 +2385,6 @@ dependencies = [
  "serde",
  "serde_json",
  "solana-keccak-hasher",
-]
-
-[[package]]
-name = "mollusk-svm-keys"
-version = "0.8.1"
-dependencies = [
- "mollusk-svm-error",
- "solana-account",
- "solana-instruction",
- "solana-pubkey 4.0.0",
- "solana-transaction-context",
 ]
 
 [[package]]

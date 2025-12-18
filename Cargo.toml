@@ -5,7 +5,6 @@ members = [
     "error",
     "fuzz/*",
     "harness",
-    "keys",
     "programs/*",
     "result",
     "test-programs/*",
@@ -39,7 +38,6 @@ mollusk-svm-error = { path = "error", version = "0.8.1" }
 mollusk-svm-fuzz-fixture = { path = "fuzz/fixture", version = "0.8.1" }
 mollusk-svm-fuzz-fixture-firedancer = { path = "fuzz/fixture-fd", version = "0.8.1" }
 mollusk-svm-fuzz-fs = { path = "fuzz/fs", version = "0.8.1" }
-mollusk-svm-keys = { path = "keys", version = "0.8.1" }
 mollusk-svm-programs-memo = { path = "programs/memo", version = "0.8.1" }
 mollusk-svm-result = { path = "result", version = "0.8.1" }
 mollusk-svm-programs-token = { path = "programs/token", version = "0.8.1" }
@@ -90,6 +88,7 @@ solana-stake-interface = "2.0.1"
 solana-svm-callback = "3.1.0"
 solana-svm-log-collector = "3.1.0"
 solana-svm-timings = "3.1.0"
+solana-svm-transaction = "3.0.0"
 solana-system-interface = "2.0"
 solana-system-program = "3.1.0"
 solana-sysvar = "3.0"

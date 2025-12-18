@@ -5,10 +5,7 @@
 //! Only available when the `fuzz-fd` feature is enabled.
 
 use {
-    crate::{
-        compile_accounts::{compile_accounts, CompiledAccounts},
-        Mollusk, DEFAULT_LOADER_KEY,
-    },
+    crate::{compile_accounts::compile_accounts, Mollusk, DEFAULT_LOADER_KEY},
     agave_feature_set::FeatureSet,
     mollusk_svm_fuzz_fixture_firedancer::{
         context::{
@@ -24,6 +21,8 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_pubkey::Pubkey,
+    solana_transaction_context::InstructionAccount,
+    std::collections::HashMap,
 };
 
 static BUILTIN_PROGRAM_IDS: &[Pubkey] = &[
@@ -69,7 +68,7 @@ fn build_fixture_context(
         DEFAULT_LOADER_KEY
     };
 
-    let fallbacks = [(
+    let fallbacks: HashMap<Pubkey, Account> = [(
         instruction.program_id,
         Account {
             owner: loader_key,
@@ -80,11 +79,22 @@ fn build_fixture_context(
     .into_iter()
     .collect();
 
-    let CompiledAccounts {
-        instruction_accounts,
-        transaction_accounts,
-        ..
-    } = compile_accounts(instruction, accounts.iter(), &fallbacks);
+    let (sanitized_message, transaction_accounts) =
+        compile_accounts(instruction, accounts.iter(), &fallbacks);
+
+    let compiled_ix = sanitized_message.instructions().first().unwrap();
+    let instruction_accounts: Vec<InstructionAccount> = compiled_ix
+        .accounts
+        .iter()
+        .map(|&index_in_transaction| {
+            let index = index_in_transaction as usize;
+            InstructionAccount::new(
+                index_in_transaction as u16,
+                sanitized_message.is_signer(index),
+                sanitized_message.is_writable(index),
+            )
+        })
+        .collect();
 
     let accounts = transaction_accounts
         .into_iter()

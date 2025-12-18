@@ -459,10 +459,12 @@ pub use mollusk_svm_result as result;
 use mollusk_svm_result::Compare;
 #[cfg(feature = "precompiles")]
 use solana_precompile_error::PrecompileError;
+#[cfg(feature = "invocation-inspect-callback")]
+use solana_transaction_context::InstructionAccount;
 use {
     crate::{
-        account_store::AccountStore, compile_accounts::CompiledAccounts, epoch_stake::EpochStake,
-        program::ProgramCache, sysvar::Sysvars,
+        account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
+        sysvar::Sysvars,
     },
     agave_feature_set::FeatureSet,
     agave_syscalls::{
@@ -474,6 +476,7 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
+    solana_message::SanitizedMessage,
     solana_program_runtime::{
         invoke_context::{EnvironmentConfig, InvokeContext},
         loaded_programs::ProgramRuntimeEnvironments,
@@ -482,7 +485,8 @@ use {
     solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
-    solana_transaction_context::{InstructionAccount, TransactionContext},
+    solana_svm_transaction::instruction::SVMInstruction,
+    solana_transaction_context::{IndexOfAccount, TransactionContext},
     std::{
         cell::RefCell,
         collections::{HashMap, HashSet},
@@ -853,8 +857,7 @@ impl Mollusk {
         instruction_index: usize,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
-        program_id_index: u16,
-        instruction_accounts: Vec<InstructionAccount>,
+        sanitized_message: &SanitizedMessage,
         transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
     ) -> InstructionResult {
         let mut compute_units_consumed = 0;
@@ -916,23 +919,32 @@ impl Mollusk {
                 self.compute_budget.to_cost(),
             );
 
-            // Configure the next instruction frame for this invocation.
+            let compiled_ix = sanitized_message.instructions().first().unwrap();
+            let program_id_index = compiled_ix.program_id_index as IndexOfAccount;
+
             invoke_context
-                .transaction_context
-                .configure_next_instruction_for_tests(
+                .prepare_next_top_level_instruction(
+                    sanitized_message,
+                    &SVMInstruction::from(compiled_ix),
                     program_id_index,
-                    instruction_accounts.clone(),
-                    instruction.data.clone(),
+                    &instruction.data,
                 )
-                .expect("failed to configure next instruction");
+                .expect("failed to prepare instruction");
 
             #[cfg(feature = "invocation-inspect-callback")]
-            self.invocation_inspect_callback.before_invocation(
-                &instruction.program_id,
-                &instruction.data,
-                &instruction_accounts,
-                &invoke_context,
-            );
+            {
+                let instruction_context = invoke_context
+                    .transaction_context
+                    .get_next_instruction_context()
+                    .unwrap();
+                let instruction_accounts = instruction_context.instruction_accounts().to_vec();
+                self.invocation_inspect_callback.before_invocation(
+                    &instruction.program_id,
+                    &instruction.data,
+                    &instruction_accounts,
+                    &invoke_context,
+                );
+            }
 
             let result = if invoke_context.is_precompile(&instruction.program_id) {
                 invoke_context.process_precompile(
@@ -1008,11 +1020,7 @@ impl Mollusk {
             accounts,
         );
 
-        let CompiledAccounts {
-            program_id_index,
-            instruction_accounts,
-            transaction_accounts,
-        } = crate::compile_accounts::compile_accounts(
+        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             instruction,
             accounts.iter(),
             &fallback_accounts,
@@ -1022,8 +1030,7 @@ impl Mollusk {
             INDEX,
             instruction,
             accounts,
-            program_id_index,
-            instruction_accounts,
+            &sanitized_message,
             transaction_accounts,
         )
     }
@@ -1055,22 +1062,18 @@ impl Mollusk {
         );
 
         for (index, instruction) in instructions.iter().enumerate() {
-            let CompiledAccounts {
-                program_id_index,
-                instruction_accounts,
-                transaction_accounts,
-            } = crate::compile_accounts::compile_accounts(
-                instruction,
-                accounts.iter(),
-                &fallback_accounts,
-            );
+            let (sanitized_message, transaction_accounts) =
+                crate::compile_accounts::compile_accounts(
+                    instruction,
+                    accounts.iter(),
+                    &fallback_accounts,
+                );
 
             let this_result = self.process_instruction_inner(
                 index,
                 instruction,
                 accounts,
-                program_id_index,
-                instruction_accounts,
+                &sanitized_message,
                 transaction_accounts,
             );
 
@@ -1120,11 +1123,7 @@ impl Mollusk {
             accounts,
         );
 
-        let CompiledAccounts {
-            program_id_index,
-            instruction_accounts,
-            transaction_accounts,
-        } = crate::compile_accounts::compile_accounts(
+        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             instruction,
             accounts.iter(),
             &fallback_accounts,
@@ -1134,8 +1133,7 @@ impl Mollusk {
             INDEX,
             instruction,
             accounts,
-            program_id_index,
-            instruction_accounts,
+            &sanitized_message,
             transaction_accounts,
         );
 
@@ -1189,22 +1187,18 @@ impl Mollusk {
         for (index, (instruction, checks)) in instructions.iter().enumerate() {
             let accounts = &composite_result.resulting_accounts;
 
-            let CompiledAccounts {
-                program_id_index,
-                instruction_accounts,
-                transaction_accounts,
-            } = crate::compile_accounts::compile_accounts(
-                instruction,
-                accounts.iter(),
-                &fallback_accounts,
-            );
+            let (sanitized_message, transaction_accounts) =
+                crate::compile_accounts::compile_accounts(
+                    instruction,
+                    accounts.iter(),
+                    &fallback_accounts,
+                );
 
             let this_result = self.process_instruction_inner(
                 index,
                 instruction,
                 accounts,
-                program_id_index,
-                instruction_accounts,
+                &sanitized_message,
                 transaction_accounts,
             );
 

@@ -27,7 +27,6 @@ fuzz-fd = [
 ]
 inner-instructions = [
     "mollusk-svm-result/inner-instructions",
-    "dep:solana-message",
     "dep:solana-transaction-status-client-types",
 ]
 invocation-inspect-callback = []
@@ -53,7 +52,6 @@ mollusk-svm-error = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true, optional = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true, optional = true }
 mollusk-svm-fuzz-fs = { workspace = true, optional = true }
-mollusk-svm-keys = { workspace = true }
 mollusk-svm-result = { workspace = true }
 sha2 = { workspace = true, optional = true }
 solana-account = { workspace = true }
@@ -70,7 +68,7 @@ solana-loader-v3-interface = { workspace = true, features = ["serde"] }
 solana-loader-v4-interface = { workspace = true }
 solana-loader-v4-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-logger = { workspace = true }
-solana-message = { workspace = true, optional = true }
+solana-message = { workspace = true }
 solana-precompile-error = { workspace = true }
 solana-program-error = { workspace = true }
 solana-program-runtime = { workspace = true }
@@ -82,6 +80,7 @@ solana-stake-interface = { workspace = true }
 solana-svm-callback = { workspace = true }
 solana-svm-log-collector = { workspace = true }
 solana-svm-timings = { workspace = true }
+solana-svm-transaction = { workspace = true }
 solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }
