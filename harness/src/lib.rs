@@ -1076,6 +1076,62 @@ impl Mollusk {
         }
     }
 
+    fn process_instruction_chain_element(
+        &self,
+        index: usize,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+        fallback_accounts: &HashMap<Pubkey, Account>,
+        sysvar_cache: &SysvarCache,
+    ) -> InstructionResult {
+        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
+            std::slice::from_ref(instruction),
+            accounts.iter(),
+            fallback_accounts,
+        );
+
+        let mut transaction_context = self.create_transaction_context(transaction_accounts);
+        transaction_context.set_top_level_instruction_index(index);
+
+        let message_result = self.process_transaction_message(
+            &sanitized_message,
+            &mut transaction_context,
+            sysvar_cache,
+        );
+
+        let resulting_accounts = if message_result.raw_result.is_ok() {
+            Self::deconstruct_resulting_accounts(&transaction_context, accounts)
+        } else {
+            accounts.to_vec()
+        };
+
+        let raw_result = message_result
+            .raw_result
+            .map_err(MessageResult::extract_ix_err);
+
+        let this_result = InstructionResult {
+            compute_units_consumed: message_result.compute_units_consumed,
+            execution_time: message_result.execution_time,
+            program_result: raw_result.clone().into(),
+            raw_result,
+            return_data: message_result.return_data,
+            resulting_accounts,
+            #[cfg(feature = "inner-instructions")]
+            inner_instructions: message_result
+                .inner_instructions
+                .into_iter()
+                .nth(index)
+                .unwrap_or_default(),
+            #[cfg(feature = "inner-instructions")]
+            message: message_result.message,
+        };
+
+        #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
+        fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &this_result);
+
+        this_result
+    }
+
     /// Process an instruction using the minified Solana Virtual Machine (SVM)
     /// environment. Simply returns the result.
     ///
@@ -1211,53 +1267,13 @@ impl Mollusk {
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         for (index, instruction) in instructions.iter().enumerate() {
-            let accounts = &composite_result.resulting_accounts;
-
-            let (sanitized_message, transaction_accounts) =
-                crate::compile_accounts::compile_accounts(
-                    std::slice::from_ref(instruction),
-                    accounts.iter(),
-                    &fallback_accounts,
-                );
-
-            let mut transaction_context = self.create_transaction_context(transaction_accounts);
-            transaction_context.set_top_level_instruction_index(index);
-
-            let message_result = self.process_transaction_message(
-                &sanitized_message,
-                &mut transaction_context,
+            let this_result = self.process_instruction_chain_element(
+                index,
+                instruction,
+                &composite_result.resulting_accounts,
+                &fallback_accounts,
                 &sysvar_cache,
             );
-
-            let resulting_accounts = if message_result.raw_result.is_ok() {
-                Self::deconstruct_resulting_accounts(&transaction_context, accounts)
-            } else {
-                accounts.to_vec()
-            };
-
-            let raw_result = message_result
-                .raw_result
-                .map_err(MessageResult::extract_ix_err);
-
-            let this_result = InstructionResult {
-                compute_units_consumed: message_result.compute_units_consumed,
-                execution_time: message_result.execution_time,
-                program_result: raw_result.clone().into(),
-                raw_result,
-                return_data: message_result.return_data,
-                resulting_accounts,
-                #[cfg(feature = "inner-instructions")]
-                inner_instructions: message_result
-                    .inner_instructions
-                    .into_iter()
-                    .nth(index)
-                    .unwrap_or_default(),
-                #[cfg(feature = "inner-instructions")]
-                message: message_result.message,
-            };
-
-            #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
-            fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &this_result);
 
             composite_result.absorb(this_result);
 
@@ -1415,53 +1431,13 @@ impl Mollusk {
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         for (index, (instruction, checks)) in instructions.iter().enumerate() {
-            let accounts = &composite_result.resulting_accounts;
-
-            let (sanitized_message, transaction_accounts) =
-                crate::compile_accounts::compile_accounts(
-                    std::slice::from_ref(instruction),
-                    accounts.iter(),
-                    &fallback_accounts,
-                );
-
-            let mut transaction_context = self.create_transaction_context(transaction_accounts);
-            transaction_context.set_top_level_instruction_index(index);
-
-            let message_result = self.process_transaction_message(
-                &sanitized_message,
-                &mut transaction_context,
+            let this_result = self.process_instruction_chain_element(
+                index,
+                instruction,
+                &composite_result.resulting_accounts,
+                &fallback_accounts,
                 &sysvar_cache,
             );
-
-            let resulting_accounts = if message_result.raw_result.is_ok() {
-                Self::deconstruct_resulting_accounts(&transaction_context, accounts)
-            } else {
-                accounts.to_vec()
-            };
-
-            let raw_result = message_result
-                .raw_result
-                .map_err(MessageResult::extract_ix_err);
-
-            let this_result = InstructionResult {
-                compute_units_consumed: message_result.compute_units_consumed,
-                execution_time: message_result.execution_time,
-                program_result: raw_result.clone().into(),
-                raw_result,
-                return_data: message_result.return_data,
-                resulting_accounts,
-                #[cfg(feature = "inner-instructions")]
-                inner_instructions: message_result
-                    .inner_instructions
-                    .into_iter()
-                    .nth(index)
-                    .unwrap_or_default(),
-                #[cfg(feature = "inner-instructions")]
-                message: message_result.message,
-            };
-
-            #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
-            fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &this_result);
 
             this_result.run_checks(checks, &self.config, self);
 
