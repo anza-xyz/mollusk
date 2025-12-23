@@ -135,6 +135,18 @@ pub enum TransactionProgramResult {
     UnknownError(usize, InstructionError),
 }
 
+impl TransactionProgramResult {
+    /// Returns `true` if the transaction succeeded.
+    pub const fn is_ok(&self) -> bool {
+        matches!(self, TransactionProgramResult::Success)
+    }
+
+    /// Returns `true` if the transaction returned an error.
+    pub const fn is_err(&self) -> bool {
+        !self.is_ok()
+    }
+}
+
 /// The overall result of the transaction.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionResult {
