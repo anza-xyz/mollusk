@@ -472,7 +472,7 @@ use {
     },
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
-    solana_account::{Account, AccountSharedData, ReadableAccount},
+    solana_account::{Account, ReadableAccount},
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
@@ -851,12 +851,15 @@ impl Mollusk {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn build_transaction_result(
         transaction_context: &TransactionContext,
         accounts: &[(Pubkey, Account)],
         compute_units_consumed: u64,
         timings: &ExecuteTimings,
         program_result: Result<(), solana_instruction_error::InstructionError>,
+        #[cfg(feature = "inner-instructions")] inner_instructions: Vec<InnerInstruction>,
+        #[cfg(feature = "inner-instructions")] message: Option<SanitizedMessage>,
     ) -> InstructionResult {
         let return_data = transaction_context.get_return_data().1.to_vec();
         let resulting_accounts =
@@ -869,15 +872,12 @@ impl Mollusk {
             return_data,
             resulting_accounts,
             #[cfg(feature = "inner-instructions")]
-            inner_instructions: vec![],
+            inner_instructions,
             #[cfg(feature = "inner-instructions")]
-            message: None,
+            message,
         }
     }
 
-    /// Execute a single instruction within a shared transaction context.
-    /// This is the core execution logic used by
-    /// process_transaction_instructions.
     #[allow(clippy::too_many_arguments)]
     fn process_instruction_core<'a>(
         &self,
@@ -1014,391 +1014,11 @@ impl Mollusk {
             .collect()
     }
 
-    fn process_instruction_inner(
-        &self,
-        instruction_index: usize,
-        instruction: &Instruction,
-        accounts: &[(Pubkey, Account)],
-        sanitized_message: &SanitizedMessage,
-        transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
-    ) -> InstructionResult {
-        let mut compute_units_consumed = 0;
-        let mut timings = ExecuteTimings::default();
-
-        let mut transaction_context = TransactionContext::new(
-            transaction_accounts,
-            self.sysvars.rent.clone(),
-            self.compute_budget.max_instruction_stack_depth,
-            self.compute_budget.max_instruction_trace_length,
-        );
-        transaction_context.set_top_level_instruction_index(instruction_index);
-
-        let invoke_result = {
-            let mut program_cache = self.program_cache.cache();
-            let callback = MolluskInvokeContextCallback {
-                epoch_stake: &self.epoch_stake,
-                feature_set: &self.feature_set,
-            };
-            let execution_budget = self.compute_budget.to_budget();
-            let runtime_features = self.feature_set.runtime_features();
-            let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
-
-            let _enable_register_tracing = false;
-            #[cfg(feature = "register-tracing")]
-            let _enable_register_tracing = self.enable_register_tracing;
-
-            let program_runtime_environments: ProgramRuntimeEnvironments =
-                ProgramRuntimeEnvironments {
-                    program_runtime_v1: Arc::new(
-                        create_program_runtime_environment_v1(
-                            &runtime_features,
-                            &execution_budget,
-                            /* reject_deployment_of_broken_elfs */ false,
-                            /* debugging_features */ _enable_register_tracing,
-                        )
-                        .unwrap(),
-                    ),
-                    program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
-                        &execution_budget,
-                        /* debugging_features */ _enable_register_tracing,
-                    )),
-                };
-
-            let mut invoke_context = InvokeContext::new(
-                &mut transaction_context,
-                &mut program_cache,
-                EnvironmentConfig::new(
-                    Hash::default(),
-                    /* blockhash_lamports_per_signature */ 5000, // The default value
-                    &callback,
-                    &runtime_features,
-                    &program_runtime_environments,
-                    &program_runtime_environments,
-                    &sysvar_cache,
-                ),
-                self.logger.clone(),
-                self.compute_budget.to_budget(),
-                self.compute_budget.to_cost(),
-            );
-
-            let compiled_ix = sanitized_message.instructions().first().unwrap();
-            let program_id_index = compiled_ix.program_id_index as IndexOfAccount;
-
-            invoke_context
-                .prepare_next_top_level_instruction(
-                    sanitized_message,
-                    &SVMInstruction::from(compiled_ix),
-                    program_id_index,
-                    &instruction.data,
-                )
-                .expect("failed to prepare instruction");
-
-            #[cfg(feature = "invocation-inspect-callback")]
-            {
-                let instruction_context = invoke_context
-                    .transaction_context
-                    .get_next_instruction_context()
-                    .unwrap();
-                let instruction_accounts = instruction_context.instruction_accounts().to_vec();
-                self.invocation_inspect_callback.before_invocation(
-                    &instruction.program_id,
-                    &instruction.data,
-                    &instruction_accounts,
-                    &invoke_context,
-                );
-            }
-
-            let result = if invoke_context.is_precompile(&instruction.program_id) {
-                invoke_context.process_precompile(
-                    &instruction.program_id,
-                    &instruction.data,
-                    std::iter::once(instruction.data.as_ref()),
-                )
-            } else {
-                invoke_context.process_instruction(&mut compute_units_consumed, &mut timings)
-            };
-
-            #[cfg(feature = "invocation-inspect-callback")]
-            self.invocation_inspect_callback
-                .after_invocation(&invoke_context, self.enable_register_tracing);
-
-            result
-        };
-
-        let return_data = transaction_context.get_return_data().1.to_vec();
-
-        #[cfg(feature = "inner-instructions")]
-        let inner_instructions = Self::deconstruct_transaction(&mut transaction_context);
-
-        let resulting_accounts: Vec<(Pubkey, Account)> = if invoke_result.is_ok() {
-            accounts
-                .iter()
-                .map(|(pubkey, account)| {
-                    transaction_context
-                        .find_index_of_account(pubkey)
-                        .map(|index| {
-                            let account_ref =
-                                transaction_context.accounts().try_borrow(index).unwrap();
-                            let resulting_account = Account {
-                                lamports: account_ref.lamports(),
-                                data: account_ref.data().to_vec(),
-                                owner: *account_ref.owner(),
-                                executable: account_ref.executable(),
-                                rent_epoch: account_ref.rent_epoch(),
-                            };
-                            (*pubkey, resulting_account)
-                        })
-                        .unwrap_or((*pubkey, account.clone()))
-                })
-                .collect()
-        } else {
-            accounts.to_vec()
-        };
-
-        InstructionResult {
-            compute_units_consumed,
-            execution_time: timings.details.execute_us.0,
-            program_result: invoke_result.clone().into(),
-            raw_result: invoke_result,
-            return_data,
-            resulting_accounts,
-            #[cfg(feature = "inner-instructions")]
-            inner_instructions,
-            #[cfg(feature = "inner-instructions")]
-            message: Some(sanitized_message.clone()),
-        }
-    }
-
-    /// Process an instruction using the minified Solana Virtual Machine (SVM)
-    /// environment. Simply returns the result.
-    pub fn process_instruction(
-        &self,
-        instruction: &Instruction,
-        accounts: &[(Pubkey, Account)],
-    ) -> InstructionResult {
-        const INDEX: usize = 0;
-
-        let fallback_accounts = self.get_account_fallbacks(
-            std::iter::once(&instruction.program_id),
-            std::iter::once(instruction),
-            accounts,
-        );
-
-        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
-            std::slice::from_ref(instruction),
-            accounts.iter(),
-            &fallback_accounts,
-        );
-
-        self.process_instruction_inner(
-            INDEX,
-            instruction,
-            accounts,
-            &sanitized_message,
-            transaction_accounts,
-        )
-    }
-
-    /// Process a chain of instructions using the minified Solana Virtual
-    /// Machine (SVM) environment. The returned result is an
-    /// `InstructionResult`, containing:
-    ///
-    /// * `compute_units_consumed`: The total compute units consumed across all
-    ///   instructions.
-    /// * `execution_time`: The total execution time across all instructions.
-    /// * `program_result`: The program result of the _last_ instruction.
-    /// * `resulting_accounts`: The resulting accounts after the _last_
-    ///   instruction.
-    pub fn process_instruction_chain(
+    fn process_transaction_instructions_inner(
         &self,
         instructions: &[Instruction],
         accounts: &[(Pubkey, Account)],
-    ) -> InstructionResult {
-        let mut composite_result = InstructionResult {
-            resulting_accounts: accounts.to_vec(),
-            ..Default::default()
-        };
-
-        let fallback_accounts = self.get_account_fallbacks(
-            instructions.iter().map(|ix| &ix.program_id),
-            instructions.iter(),
-            accounts,
-        );
-
-        for (index, instruction) in instructions.iter().enumerate() {
-            let (sanitized_message, transaction_accounts) =
-                crate::compile_accounts::compile_accounts(
-                    std::slice::from_ref(instruction),
-                    accounts.iter(),
-                    &fallback_accounts,
-                );
-
-            let this_result = self.process_instruction_inner(
-                index,
-                instruction,
-                accounts,
-                &sanitized_message,
-                transaction_accounts,
-            );
-
-            composite_result.absorb(this_result);
-
-            if composite_result.program_result.is_err() {
-                break;
-            }
-        }
-
-        composite_result
-    }
-
-    /// Process an instruction using the minified Solana Virtual Machine (SVM)
-    /// environment, then perform checks on the result. Panics if any checks
-    /// fail.
-    ///
-    /// For `fuzz` feature only:
-    ///
-    /// If the `EJECT_FUZZ_FIXTURES` environment variable is set, this function
-    /// will convert the provided test to a fuzz fixture and write it to the
-    /// provided directory.
-    ///
-    /// ```ignore
-    /// EJECT_FUZZ_FIXTURES="./fuzz-fixtures" cargo test-sbf ...
-    /// ```
-    ///
-    /// You can also provide `EJECT_FUZZ_FIXTURES_JSON` to write the fixture in
-    /// JSON format.
-    ///
-    /// The `fuzz-fd` feature works the same way, but the variables require
-    /// the `_FD` suffix, in case both features are active together
-    /// (ie. `EJECT_FUZZ_FIXTURES_FD`). This will generate Firedancer fuzzing
-    /// fixtures, which are structured a bit differently than Mollusk's own
-    /// protobuf layouts.
-    pub fn process_and_validate_instruction(
-        &self,
-        instruction: &Instruction,
-        accounts: &[(Pubkey, Account)],
-        checks: &[Check],
-    ) -> InstructionResult {
-        const INDEX: usize = 0;
-
-        let fallback_accounts = self.get_account_fallbacks(
-            std::iter::once(&instruction.program_id),
-            std::iter::once(instruction),
-            accounts,
-        );
-
-        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
-            std::slice::from_ref(instruction),
-            accounts.iter(),
-            &fallback_accounts,
-        );
-
-        let result = self.process_instruction_inner(
-            INDEX,
-            instruction,
-            accounts,
-            &sanitized_message,
-            transaction_accounts,
-        );
-
-        #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
-        fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &result);
-
-        result.run_checks(checks, &self.config, self);
-        result
-    }
-
-    /// Process a chain of instructions using the minified Solana Virtual
-    /// Machine (SVM) environment, then perform checks on the result.
-    /// Panics if any checks fail.
-    ///
-    /// For `fuzz` feature only:
-    ///
-    /// Similar to `process_and_validate_instruction`, if the
-    /// `EJECT_FUZZ_FIXTURES` environment variable is set, this function will
-    /// convert the provided test to a set of fuzz fixtures - each of which
-    /// corresponds to a single instruction in the chain - and write them to
-    /// the provided directory.
-    ///
-    /// ```ignore
-    /// EJECT_FUZZ_FIXTURES="./fuzz-fixtures" cargo test-sbf ...
-    /// ```
-    ///
-    /// You can also provide `EJECT_FUZZ_FIXTURES_JSON` to write the fixture in
-    /// JSON format.
-    ///
-    /// The `fuzz-fd` feature works the same way, but the variables require
-    /// the `_FD` suffix, in case both features are active together
-    /// (ie. `EJECT_FUZZ_FIXTURES_FD`). This will generate Firedancer fuzzing
-    /// fixtures, which are structured a bit differently than Mollusk's own
-    /// protobuf layouts.
-    pub fn process_and_validate_instruction_chain(
-        &self,
-        instructions: &[(&Instruction, &[Check])],
-        accounts: &[(Pubkey, Account)],
-    ) -> InstructionResult {
-        let mut composite_result = InstructionResult {
-            resulting_accounts: accounts.to_vec(),
-            ..Default::default()
-        };
-
-        let fallback_accounts = self.get_account_fallbacks(
-            instructions.iter().map(|(ix, _)| &ix.program_id),
-            instructions.iter().map(|(ix, _)| *ix),
-            accounts,
-        );
-
-        for (index, (instruction, checks)) in instructions.iter().enumerate() {
-            let accounts = &composite_result.resulting_accounts;
-
-            let (sanitized_message, transaction_accounts) =
-                crate::compile_accounts::compile_accounts(
-                    std::slice::from_ref(instruction),
-                    accounts.iter(),
-                    &fallback_accounts,
-                );
-
-            let this_result = self.process_instruction_inner(
-                index,
-                instruction,
-                accounts,
-                &sanitized_message,
-                transaction_accounts,
-            );
-
-            #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
-            fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &this_result);
-
-            this_result.run_checks(checks, &self.config, self);
-
-            composite_result.absorb(this_result);
-
-            if composite_result.program_result.is_err() {
-                break;
-            }
-        }
-
-        composite_result
-    }
-
-    /// Process multiple instructions using a single shared TransactionContext.
-    ///
-    /// Unlike `process_instruction_chain`, which creates a fresh context for
-    /// each instruction, this function maintains a single context throughout.
-    /// Account state changes from one instruction are visible to subsequent
-    /// instructions, like a true transaction.
-    ///
-    /// The returned result is an `InstructionResult`, containing:
-    ///
-    /// * `compute_units_consumed`: The total compute units consumed across all
-    ///   instructions.
-    /// * `execution_time`: The total execution time across all instructions.
-    /// * `program_result`: The program result of the _last_ instruction
-    /// * `resulting_accounts`: The resulting accounts after all instructions
-    pub fn process_transaction_instructions(
-        &self,
-        instructions: &[Instruction],
-        accounts: &[(Pubkey, Account)],
+        checks: Option<&[Check]>,
     ) -> InstructionResult {
         let mut compute_units_consumed = 0;
         let mut timings = ExecuteTimings::default();
@@ -1442,31 +1062,96 @@ impl Mollusk {
             }
         }
 
-        Self::build_transaction_result(
+        #[cfg(feature = "inner-instructions")]
+        let inner_instructions = Self::deconstruct_transaction(&mut transaction_context);
+
+        let result = Self::build_transaction_result(
             &transaction_context,
             accounts,
             compute_units_consumed,
             &timings,
             current_program_result,
+            #[cfg(feature = "inner-instructions")]
+            inner_instructions,
+            #[cfg(feature = "inner-instructions")]
+            Some(sanitized_message.clone()),
+        );
+
+        if let Some(checks) = checks {
+            #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
+            if let Some(instruction) = instructions.first() {
+                fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &result);
+            }
+
+            result.run_checks(checks, &self.config, self);
+        }
+
+        result
+    }
+
+    /// Process an instruction using the minified Solana Virtual Machine (SVM)
+    /// environment. Simply returns the result.
+    pub fn process_instruction(
+        &self,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+    ) -> InstructionResult {
+        self.process_transaction_instructions_inner(
+            std::slice::from_ref(instruction),
+            accounts,
+            None,
         )
     }
 
-    /// Process multiple instructions using a single shared TransactionContext,
-    /// then perform checks on the result after each instruction.
-    /// Panics if any checks fail.
+    /// Process a chain of instructions using the minified Solana Virtual
+    /// Machine (SVM) environment. The returned result is an
+    /// `InstructionResult`, containing:
     ///
-    /// Unlike `process_and_validate_instruction_chain`, which creates a fresh
-    /// context for each instruction, this function maintains a single context
-    /// throughout. Account state changes from one instruction are visible to
-    /// subsequent instructions, mimicking true transaction behavior.
+    /// * `compute_units_consumed`: The total compute units consumed across all
+    ///   instructions.
+    /// * `execution_time`: The total execution time across all instructions.
+    /// * `program_result`: The program result of the _last_ instruction.
+    /// * `resulting_accounts`: The resulting accounts after the _last_
+    ///   instruction.
+    ///
+    /// Note: Unlike `process_transaction_instructions`, this creates a fresh
+    /// context for each instruction (account changes don't persist between).
+    pub fn process_instruction_chain(
+        &self,
+        instructions: &[Instruction],
+        accounts: &[(Pubkey, Account)],
+    ) -> InstructionResult {
+        let mut composite_result = InstructionResult {
+            resulting_accounts: accounts.to_vec(),
+            ..Default::default()
+        };
+
+        for instruction in instructions.iter() {
+            let this_result = self.process_transaction_instructions_inner(
+                std::slice::from_ref(instruction),
+                accounts,
+                None,
+            );
+
+            composite_result.absorb(this_result);
+
+            if composite_result.program_result.is_err() {
+                break;
+            }
+        }
+
+        composite_result
+    }
+
+    /// Process an instruction using the minified Solana Virtual Machine (SVM)
+    /// environment, then perform checks on the result. Panics if any checks
+    /// fail.
     ///
     /// For `fuzz` feature only:
     ///
-    /// Similar to `process_and_validate_instruction`, if the
-    /// `EJECT_FUZZ_FIXTURES` environment variable is set, this function will
-    /// convert the provided test to a set of fuzz fixtures - each of which
-    /// corresponds to a single instruction - and write them to the provided
-    /// directory.
+    /// If the `EJECT_FUZZ_FIXTURES` environment variable is set, this function
+    /// will convert the provided test to a fuzz fixture and write it to the
+    /// provided directory.
     ///
     /// ```ignore
     /// EJECT_FUZZ_FIXTURES="./fuzz-fixtures" cargo test-sbf ...
@@ -1480,75 +1165,125 @@ impl Mollusk {
     /// (ie. `EJECT_FUZZ_FIXTURES_FD`). This will generate Firedancer fuzzing
     /// fixtures, which are structured a bit differently than Mollusk's own
     /// protobuf layouts.
-    pub fn process_and_validate_transaction_instructions(
+    pub fn process_and_validate_instruction(
+        &self,
+        instruction: &Instruction,
+        accounts: &[(Pubkey, Account)],
+        checks: &[Check],
+    ) -> InstructionResult {
+        self.process_transaction_instructions_inner(
+            std::slice::from_ref(instruction),
+            accounts,
+            Some(checks),
+        )
+    }
+
+    /// Process a chain of instructions using the minified Solana Virtual
+    /// Machine (SVM) environment, then perform checks on each result.
+    /// Panics if any checks fail.
+    ///
+    /// Note: Unlike `process_and_validate_transaction_instructions`, this
+    /// creates a fresh context for each instruction, but uses the resulting
+    /// accounts from the previous instruction as input to the next.
+    ///
+    /// For `fuzz` feature only:
+    ///
+    /// Similar to `process_and_validate_instruction`, if the
+    /// `EJECT_FUZZ_FIXTURES` environment variable is set, this function will
+    /// convert the provided test to a set of fuzz fixtures - each of which
+    /// corresponds to a single instruction in the chain - and write them to
+    /// the provided directory.
+    ///
+    /// ```ignore
+    /// EJECT_FUZZ_FIXTURES="./fuzz-fixtures" cargo test-sbf ...
+    /// ```
+    ///
+    /// You can also provide `EJECT_FUZZ_FIXTURES_JSON` to write the fixture in
+    /// JSON format.
+    ///
+    /// The `fuzz-fd` feature works the same way, but the variables require
+    /// the `_FD` suffix, in case both features are active together
+    /// (ie. `EJECT_FUZZ_FIXTURES_FD`). This will generate Firedancer fuzzing
+    /// fixtures, which are structured a bit differently than Mollusk's own
+    /// protobuf layouts.
+    pub fn process_and_validate_instruction_chain(
         &self,
         instructions: &[(&Instruction, &[Check])],
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let mut compute_units_consumed = 0;
-        let mut timings = ExecuteTimings::default();
+        let mut composite_result = InstructionResult {
+            resulting_accounts: accounts.to_vec(),
+            ..Default::default()
+        };
 
-        let fallback_accounts = self.get_account_fallbacks(
-            instructions.iter().map(|(ix, _)| &ix.program_id),
-            instructions.iter().map(|(ix, _)| *ix),
-            accounts,
-        );
+        for (instruction, checks) in instructions.iter() {
+            let current_accounts = &composite_result.resulting_accounts;
 
-        let owned_instructions: Vec<Instruction> =
-            instructions.iter().map(|(ix, _)| (*ix).clone()).collect();
-        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
-            &owned_instructions,
-            accounts.iter(),
-            &fallback_accounts,
-        );
-
-        let mut transaction_context = TransactionContext::new(
-            transaction_accounts,
-            self.sysvars.rent.clone(),
-            self.compute_budget.max_instruction_stack_depth,
-            self.compute_budget.max_instruction_trace_length,
-        );
-
-        let mut current_program_result = Ok(());
-
-        for (index, (instruction, checks)) in instructions.iter().enumerate() {
-            transaction_context.set_top_level_instruction_index(index);
-
-            current_program_result = self.process_instruction_core(
-                &mut transaction_context,
-                instruction,
-                accounts,
-                &sanitized_message,
-                index,
-                &mut compute_units_consumed,
-                &mut timings,
-            );
-
-            let this_result = Self::build_transaction_result(
-                &transaction_context,
-                accounts,
-                compute_units_consumed,
-                &timings,
-                current_program_result.clone(),
+            let this_result = self.process_transaction_instructions_inner(
+                std::slice::from_ref(*instruction),
+                current_accounts,
+                None,
             );
 
             #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
-            fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &this_result);
+            fuzz::generate_fixtures_from_mollusk_test(
+                self,
+                instruction,
+                current_accounts,
+                &this_result,
+            );
 
             this_result.run_checks(checks, &self.config, self);
 
-            if current_program_result.is_err() {
+            composite_result.absorb(this_result);
+
+            if composite_result.program_result.is_err() {
                 break;
             }
         }
 
-        Self::build_transaction_result(
-            &transaction_context,
-            accounts,
-            compute_units_consumed,
-            &timings,
-            current_program_result,
-        )
+        composite_result
+    }
+
+    /// Process multiple instructions using a single shared TransactionContext.
+    ///
+    /// Unlike `process_instruction_chain`, which creates a fresh context for
+    /// each instruction, this function maintains a single context throughout.
+    /// Account state changes from one instruction are visible to subsequent
+    /// instructions, like a true transaction.
+    ///
+    /// The returned result is an `InstructionResult`, containing:
+    ///
+    /// * `compute_units_consumed`: The total compute units consumed across all
+    ///   instructions.
+    /// * `execution_time`: The total execution time across all instructions.
+    /// * `program_result`: The program result of the _last_ instruction
+    /// * `resulting_accounts`: The resulting accounts after all instructions
+    pub fn process_transaction_instructions(
+        &self,
+        instructions: &[Instruction],
+        accounts: &[(Pubkey, Account)],
+    ) -> InstructionResult {
+        self.process_transaction_instructions_inner(instructions, accounts, None)
+    }
+
+    /// Process multiple instructions using a single shared TransactionContext,
+    /// then perform checks on the result. Panics if any checks fail.
+    ///
+    /// Unlike `process_and_validate_instruction_chain`, which creates a fresh
+    /// context for each instruction, this function maintains a single context
+    /// throughout. Account state changes from one instruction are visible to
+    /// subsequent instructions, mimicking true transaction behavior.
+    ///
+    /// Since this is atomic (like a real transaction), checks are run once
+    /// at the end after all instructions complete.
+    pub fn process_and_validate_transaction_instructions(
+        &self,
+        instructions: &[Instruction],
+        accounts: &[(Pubkey, Account)],
+        checks: &[Check],
+    ) -> InstructionResult {
+        self.process_transaction_instructions_inner(instructions, accounts, Some(checks))
     }
 
     #[cfg(feature = "fuzz")]

@@ -10,10 +10,6 @@ use {
     std::collections::{HashMap, HashSet},
 };
 
-/// Compile accounts for one or more instructions in a transaction context.
-///
-/// For single-instruction processing, pass a slice with one element:
-/// `&[instruction]`.
 pub fn compile_accounts<'a>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
@@ -39,14 +35,12 @@ fn build_transaction_accounts(
     all_instructions: &[Instruction],
     fallback_accounts: &HashMap<Pubkey, Account>,
 ) -> Vec<(Pubkey, AccountSharedData)> {
-    // Collect all program IDs from the instructions
     let program_ids: HashSet<Pubkey> = all_instructions.iter().map(|ix| ix.program_id).collect();
 
     message
         .account_keys()
         .iter()
         .map(|key| {
-            // Handle program accounts for any instruction in the batch
             if program_ids.contains(key) {
                 if let Some(provided_account) = accounts.iter().find(|(k, _)| k == key) {
                     return (*key, AccountSharedData::from(provided_account.1.clone()));

@@ -20,41 +20,25 @@ fn test_transfers_with_persisted_state() {
     let initial_balance = 100_000_000u64;
     let transfer_amount = 50_000_000u64;
 
+    let instructions = vec![
+        solana_system_interface::instruction::transfer(&sender, &intermediary, transfer_amount),
+        solana_system_interface::instruction::transfer(&intermediary, &recipient, transfer_amount),
+    ];
+
     mollusk.process_and_validate_transaction_instructions(
-        &[
-            (
-                &solana_system_interface::instruction::transfer(
-                    &sender,
-                    &intermediary,
-                    transfer_amount,
-                ),
-                &[
-                    Check::success(),
-                    Check::account(&sender)
-                        .lamports(initial_balance - transfer_amount)
-                        .build(),
-                    Check::account(&intermediary)
-                        .lamports(transfer_amount)
-                        .build(),
-                ],
-            ),
-            (
-                &solana_system_interface::instruction::transfer(
-                    &intermediary,
-                    &recipient,
-                    transfer_amount,
-                ),
-                &[
-                    Check::success(),
-                    Check::account(&intermediary).lamports(0).build(),
-                    Check::account(&recipient).lamports(transfer_amount).build(),
-                ],
-            ),
-        ],
+        &instructions,
         &[
             (sender, system_account_with_lamports(initial_balance)),
             (intermediary, system_account_with_lamports(0)),
             (recipient, system_account_with_lamports(0)),
+        ],
+        &[
+            Check::success(),
+            Check::account(&sender)
+                .lamports(initial_balance - transfer_amount)
+                .build(),
+            Check::account(&intermediary).lamports(0).build(),
+            Check::account(&recipient).lamports(transfer_amount).build(),
         ],
     );
 }
@@ -86,27 +70,22 @@ fn test_multi_program_transaction() {
         )
     };
 
+    let instructions = vec![ix_transfer, ix_allocate, ix_assign, ix_write_data];
+
     mollusk.process_and_validate_transaction_instructions(
-        &[
-            (&ix_transfer, &[Check::success()]),
-            (&ix_allocate, &[Check::success()]),
-            (&ix_assign, &[Check::success()]),
-            (
-                &ix_write_data,
-                &[
-                    Check::success(),
-                    Check::account(&target)
-                        .data(data)
-                        .lamports(lamports)
-                        .owner(&program_id)
-                        .build(),
-                ],
-            ),
-        ],
+        &instructions,
         &[
             (payer, system_account_with_lamports(lamports * 2)),
             (target, Account::default()),
             keyed_account_for_system_program(),
+        ],
+        &[
+            Check::success(),
+            Check::account(&target)
+                .data(data)
+                .lamports(lamports)
+                .owner(&program_id)
+                .build(),
         ],
     );
 }
@@ -170,7 +149,6 @@ fn test_failure_stops_instruction_chain() {
 
     let initial_balance = 1_000_000u64;
 
-    // First transfer succeeds, second fails (insufficient funds), third never runs
     let result = mollusk.process_transaction_instructions(
         &[
             solana_system_interface::instruction::transfer(&alice, &bob, 100),
