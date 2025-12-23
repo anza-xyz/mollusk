@@ -1064,6 +1064,8 @@ impl Mollusk {
         );
 
         for (index, instruction) in instructions.iter().enumerate() {
+            let accounts = &composite_result.resulting_accounts;
+
             let (sanitized_message, transaction_accounts) =
                 crate::compile_accounts::compile_accounts(
                     instruction,
