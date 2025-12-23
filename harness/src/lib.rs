@@ -480,6 +480,7 @@ use {
     solana_program_runtime::{
         invoke_context::{EnvironmentConfig, InvokeContext},
         loaded_programs::ProgramRuntimeEnvironments,
+        sysvar_cache::SysvarCache,
     },
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
@@ -868,6 +869,7 @@ impl Mollusk {
         &self,
         sanitized_message: &'a SanitizedMessage,
         transaction_context: &mut TransactionContext<'a>,
+        sysvar_cache: &SysvarCache,
         original_accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
         let mut compute_units_consumed = 0;
@@ -880,7 +882,6 @@ impl Mollusk {
         };
         let execution_budget = self.compute_budget.to_budget();
         let runtime_features = self.feature_set.runtime_features();
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(original_accounts);
 
         let _enable_register_tracing = false;
         #[cfg(feature = "register-tracing")]
@@ -912,7 +913,7 @@ impl Mollusk {
                 &runtime_features,
                 &program_runtime_environments,
                 &program_runtime_environments,
-                &sysvar_cache,
+                sysvar_cache,
             ),
             self.logger.clone(),
             self.compute_budget.to_budget(),
@@ -1031,8 +1032,14 @@ impl Mollusk {
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts);
+        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
-        self.process_transaction_message(&sanitized_message, &mut transaction_context, accounts)
+        self.process_transaction_message(
+            &sanitized_message,
+            &mut transaction_context,
+            &sysvar_cache,
+            accounts,
+        )
     }
 
     /// Process a chain of instructions using the minified Solana Virtual
@@ -1061,6 +1068,8 @@ impl Mollusk {
             accounts,
         );
 
+        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+
         for (index, instruction) in instructions.iter().enumerate() {
             let (sanitized_message, transaction_accounts) =
                 crate::compile_accounts::compile_accounts(
@@ -1075,6 +1084,7 @@ impl Mollusk {
             let this_result = self.process_transaction_message(
                 &sanitized_message,
                 &mut transaction_context,
+                &sysvar_cache,
                 accounts,
             );
 
@@ -1129,10 +1139,12 @@ impl Mollusk {
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts);
+        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         let result = self.process_transaction_message(
             &sanitized_message,
             &mut transaction_context,
+            &sysvar_cache,
             accounts,
         );
 
@@ -1183,6 +1195,8 @@ impl Mollusk {
             accounts,
         );
 
+        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+
         for (index, (instruction, checks)) in instructions.iter().enumerate() {
             let accounts = &composite_result.resulting_accounts;
 
@@ -1199,6 +1213,7 @@ impl Mollusk {
             let this_result = self.process_transaction_message(
                 &sanitized_message,
                 &mut transaction_context,
+                &sysvar_cache,
                 accounts,
             );
 
