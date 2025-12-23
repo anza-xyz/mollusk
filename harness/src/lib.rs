@@ -1312,53 +1312,7 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         checks: &[Check],
     ) -> InstructionResult {
-        let fallback_accounts = self.get_account_fallbacks(
-            std::iter::once(&instruction.program_id),
-            std::iter::once(instruction),
-            accounts,
-        );
-
-        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
-            std::slice::from_ref(instruction),
-            accounts.iter(),
-            &fallback_accounts,
-        );
-
-        let mut transaction_context = self.create_transaction_context(transaction_accounts);
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
-
-        let message_result = self.process_transaction_message(
-            &sanitized_message,
-            &mut transaction_context,
-            &sysvar_cache,
-        );
-
-        let resulting_accounts = if message_result.raw_result.is_ok() {
-            Self::deconstruct_resulting_accounts(&transaction_context, accounts)
-        } else {
-            accounts.to_vec()
-        };
-
-        let raw_result = message_result
-            .raw_result
-            .map_err(MessageResult::extract_ix_err);
-
-        let result = InstructionResult {
-            compute_units_consumed: message_result.compute_units_consumed,
-            execution_time: message_result.execution_time,
-            program_result: raw_result.clone().into(),
-            raw_result,
-            return_data: message_result.return_data,
-            resulting_accounts,
-            #[cfg(feature = "inner-instructions")]
-            inner_instructions: message_result
-                .inner_instructions
-                .into_iter()
-                .next()
-                .unwrap_or_default(),
-            #[cfg(feature = "inner-instructions")]
-            message: message_result.message,
-        };
+        let result = self.process_instruction(instruction, accounts);
 
         #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
         fuzz::generate_fixtures_from_mollusk_test(self, instruction, accounts, &result);
