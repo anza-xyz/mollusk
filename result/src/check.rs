@@ -5,7 +5,7 @@ use solana_transaction_status_client_types::InnerInstruction;
 use {
     crate::{
         config::{compare, throw, CheckContext, Config},
-        types::{InstructionResult, ProgramResult},
+        types::{InstructionResult, ProgramResult, TransactionProgramResult, TransactionResult},
     },
     solana_account::{Account, ReadableAccount},
     solana_instruction::error::InstructionError,
@@ -338,6 +338,43 @@ impl InstructionResult {
             &self.resulting_accounts,
             #[cfg(feature = "inner-instructions")]
             &self.inner_instructions,
+        )
+    }
+}
+
+impl TransactionResult {
+    /// Perform checks on the transaction result with a custom context.
+    /// See `CheckContext` for more details.
+    ///
+    /// Note: `Mollusk` implements `CheckContext`, in case you don't want to
+    /// define a custom context.
+    pub fn run_checks<C: CheckContext>(
+        &self,
+        checks: &[Check],
+        config: &Config,
+        context: &C,
+    ) -> bool {
+        let program_result = match &self.program_result {
+            TransactionProgramResult::Success => ProgramResult::Success,
+            TransactionProgramResult::Failure(_idx, err) => ProgramResult::Failure(err.clone()),
+            TransactionProgramResult::UnknownError(_idx, err) => {
+                ProgramResult::UnknownError(err.clone())
+            }
+        };
+        run_checks(
+            checks,
+            config,
+            context,
+            self.compute_units_consumed,
+            self.execution_time,
+            &program_result,
+            &self.return_data,
+            &self.resulting_accounts,
+            #[cfg(feature = "inner-instructions")]
+            self.inner_instructions
+                .first()
+                .map(Vec::as_slice)
+                .unwrap_or(&[]),
         )
     }
 }
