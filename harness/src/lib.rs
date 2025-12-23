@@ -820,6 +820,18 @@ impl Mollusk {
         fallbacks
     }
 
+    fn create_transaction_context(
+        &self,
+        transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
+    ) -> TransactionContext<'_> {
+        TransactionContext::new(
+            transaction_accounts,
+            self.sysvars.rent.clone(),
+            self.compute_budget.max_instruction_stack_depth,
+            self.compute_budget.max_instruction_trace_length,
+        )
+    }
+
     #[cfg(feature = "inner-instructions")]
     fn deconstruct_transaction(
         transaction_context: &mut TransactionContext,
@@ -852,23 +864,14 @@ impl Mollusk {
             .collect()
     }
 
-    fn process_transaction_message(
+    fn process_transaction_message<'a>(
         &self,
-        instruction_index: usize,
-        sanitized_message: &SanitizedMessage,
-        transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
+        sanitized_message: &'a SanitizedMessage,
+        transaction_context: &mut TransactionContext<'a>,
         original_accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
         let mut compute_units_consumed = 0;
         let mut timings = ExecuteTimings::default();
-
-        let mut transaction_context = TransactionContext::new(
-            transaction_accounts,
-            self.sysvars.rent.clone(),
-            self.compute_budget.max_instruction_stack_depth,
-            self.compute_budget.max_instruction_trace_length,
-        );
-        transaction_context.set_top_level_instruction_index(instruction_index);
 
         let mut program_cache = self.program_cache.cache();
         let callback = MolluskInvokeContextCallback {
@@ -900,7 +903,7 @@ impl Mollusk {
         };
 
         let mut invoke_context = InvokeContext::new(
-            &mut transaction_context,
+            transaction_context,
             &mut program_cache,
             EnvironmentConfig::new(
                 Hash::default(),
@@ -967,7 +970,7 @@ impl Mollusk {
         let return_data = transaction_context.get_return_data().1.to_vec();
 
         #[cfg(feature = "inner-instructions")]
-        let inner_instructions = Self::deconstruct_transaction(&mut transaction_context);
+        let inner_instructions = Self::deconstruct_transaction(transaction_context);
 
         let resulting_accounts: Vec<(Pubkey, Account)> = if invoke_result.is_ok() {
             original_accounts
@@ -1015,8 +1018,6 @@ impl Mollusk {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        const INDEX: usize = 0;
-
         let fallback_accounts = self.get_account_fallbacks(
             std::iter::once(&instruction.program_id),
             std::iter::once(instruction),
@@ -1029,7 +1030,9 @@ impl Mollusk {
             &fallback_accounts,
         );
 
-        self.process_transaction_message(INDEX, &sanitized_message, transaction_accounts, accounts)
+        let mut transaction_context = self.create_transaction_context(transaction_accounts);
+
+        self.process_transaction_message(&sanitized_message, &mut transaction_context, accounts)
     }
 
     /// Process a chain of instructions using the minified Solana Virtual
@@ -1066,10 +1069,12 @@ impl Mollusk {
                     &fallback_accounts,
                 );
 
+            let mut transaction_context = self.create_transaction_context(transaction_accounts);
+            transaction_context.set_top_level_instruction_index(index);
+
             let this_result = self.process_transaction_message(
-                index,
                 &sanitized_message,
-                transaction_accounts,
+                &mut transaction_context,
                 accounts,
             );
 
@@ -1111,8 +1116,6 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         checks: &[Check],
     ) -> InstructionResult {
-        const INDEX: usize = 0;
-
         let fallback_accounts = self.get_account_fallbacks(
             std::iter::once(&instruction.program_id),
             std::iter::once(instruction),
@@ -1125,10 +1128,11 @@ impl Mollusk {
             &fallback_accounts,
         );
 
+        let mut transaction_context = self.create_transaction_context(transaction_accounts);
+
         let result = self.process_transaction_message(
-            INDEX,
             &sanitized_message,
-            transaction_accounts,
+            &mut transaction_context,
             accounts,
         );
 
@@ -1189,10 +1193,12 @@ impl Mollusk {
                     &fallback_accounts,
                 );
 
+            let mut transaction_context = self.create_transaction_context(transaction_accounts);
+            transaction_context.set_top_level_instruction_index(index);
+
             let this_result = self.process_transaction_message(
-                index,
                 &sanitized_message,
-                transaction_accounts,
+                &mut transaction_context,
                 accounts,
             );
 
