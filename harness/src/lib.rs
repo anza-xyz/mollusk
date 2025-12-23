@@ -471,13 +471,17 @@ use {
         create_program_runtime_environment_v1, create_program_runtime_environment_v2,
     },
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
-    mollusk_svm_result::{Check, CheckContext, Config, InstructionResult},
+    mollusk_svm_result::{
+        types::{TransactionProgramResult, TransactionResult},
+        Check, CheckContext, Config, InstructionResult,
+    },
     solana_account::{Account, AccountSharedData, ReadableAccount},
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
     solana_instruction_error::InstructionError,
     solana_message::SanitizedMessage,
+    solana_program_error::ProgramError,
     solana_program_runtime::{
         invoke_context::{EnvironmentConfig, InvokeContext},
         loaded_programs::ProgramRuntimeEnvironments,
@@ -669,6 +673,23 @@ impl MessageResult {
     fn extract_ix_err(txn_err: TransactionError) -> InstructionError {
         match txn_err {
             TransactionError::InstructionError(_, ix_err) => ix_err,
+            _ => unreachable!(), // Mollusk only uses `InstructionError` variant.
+        }
+    }
+
+    fn extract_txn_program_result(
+        raw_result: &Result<(), TransactionError>,
+    ) -> TransactionProgramResult {
+        match raw_result {
+            Ok(()) => TransactionProgramResult::Success,
+            Err(TransactionError::InstructionError(idx, ix_err)) => {
+                let index = *idx as usize;
+                if let Ok(program_error) = ProgramError::try_from(ix_err.clone()) {
+                    TransactionProgramResult::Failure(index, program_error)
+                } else {
+                    TransactionProgramResult::UnknownError(index, ix_err.clone())
+                }
+            }
             _ => unreachable!(), // Mollusk only uses `InstructionError` variant.
         }
     }
@@ -1121,6 +1142,12 @@ impl Mollusk {
     /// * `program_result`: The program result of the _last_ instruction.
     /// * `resulting_accounts`: The resulting accounts after the _last_
     ///   instruction.
+    ///
+    /// Note: Unlike `process_transaction_instructions`, this creates a new
+    /// transaction context for each instruction, bypassing any
+    /// transaction-level restrictions and treating each instruction in the
+    /// chain as its own standalone invocation. However, account changes are
+    /// persisted between invocations.
     pub fn process_instruction_chain(
         &self,
         instructions: &[Instruction],
@@ -1191,6 +1218,70 @@ impl Mollusk {
         }
 
         composite_result
+    }
+
+    /// Process multiple instructions using a single shared transaction context.
+    ///
+    /// This API is the closest Mollusk offers to a transaction. All
+    /// instructions are processed in the same message using the same
+    /// transaction context. The result is atomic, meaning resulting accounts
+    /// only reflect the end state of the entire instruction set if all are
+    /// successful. Upon any error, the execution is returned immediately.
+    ///
+    /// The returned result is a `TransactionResult`, containing:
+    ///
+    /// * `compute_units_consumed`: The total compute units consumed across all
+    ///   instructions.
+    /// * `execution_time`: The total execution time across all instructions.
+    /// * `program_result`: The result code of the last program's execution and
+    ///   its index.
+    /// * `resulting_accounts`: The resulting accounts after all instructions.
+    pub fn process_transaction_instructions(
+        &self,
+        instructions: &[Instruction],
+        accounts: &[(Pubkey, Account)],
+    ) -> TransactionResult {
+        let fallback_accounts = self.get_account_fallbacks(
+            instructions.iter().map(|ix| &ix.program_id),
+            instructions.iter(),
+            accounts,
+        );
+
+        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
+            instructions,
+            accounts.iter(),
+            &fallback_accounts,
+        );
+
+        let mut transaction_context = self.create_transaction_context(transaction_accounts);
+        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+
+        let message_result = self.process_transaction_message(
+            &sanitized_message,
+            &mut transaction_context,
+            &sysvar_cache,
+        );
+
+        let resulting_accounts = if message_result.raw_result.is_ok() {
+            Self::deconstruct_resulting_accounts(&transaction_context, accounts)
+        } else {
+            accounts.to_vec()
+        };
+
+        let program_result = MessageResult::extract_txn_program_result(&message_result.raw_result);
+
+        TransactionResult {
+            compute_units_consumed: message_result.compute_units_consumed,
+            execution_time: message_result.execution_time,
+            program_result,
+            raw_result: message_result.raw_result,
+            return_data: message_result.return_data,
+            resulting_accounts,
+            #[cfg(feature = "inner-instructions")]
+            inner_instructions: message_result.inner_instructions,
+            #[cfg(feature = "inner-instructions")]
+            message: message_result.message,
+        }
     }
 
     /// Process an instruction using the minified Solana Virtual Machine (SVM)
@@ -1300,6 +1391,12 @@ impl Mollusk {
     /// (ie. `EJECT_FUZZ_FIXTURES_FD`). This will generate Firedancer fuzzing
     /// fixtures, which are structured a bit differently than Mollusk's own
     /// protobuf layouts.
+    ///
+    /// Note: Unlike `process_and_validate_transaction_instructions`, this
+    /// creates a new transaction context for each instruction, bypassing any
+    /// transaction-level restrictions and treating each instruction in the
+    /// chain as its own standalone invocation. However, account changes are
+    /// persisted between invocations.
     pub fn process_and_validate_instruction_chain(
         &self,
         instructions: &[(&Instruction, &[Check])],
@@ -1377,6 +1474,34 @@ impl Mollusk {
         }
 
         composite_result
+    }
+
+    /// Process multiple instructions using a single shared transaction context,
+    /// then perform checks on the result. Panics if any checks fail.
+    ///
+    /// This API is the closest Mollusk offers to a transaction. All
+    /// instructions are processed in the same message using the same
+    /// transaction context. The result is atomic, meaning resulting accounts
+    /// only reflect the end state of the entire instruction set if all are
+    /// successful. Upon any error, the execution is returned immediately.
+    ///
+    /// The returned result is a `TransactionResult`, containing:
+    ///
+    /// * `compute_units_consumed`: The total compute units consumed across all
+    ///   instructions.
+    /// * `execution_time`: The total execution time across all instructions.
+    /// * `program_result`: The result code of the last program's execution and
+    ///   its index.
+    /// * `resulting_accounts`: The resulting accounts after all instructions.
+    pub fn process_and_validate_transaction_instructions(
+        &self,
+        instructions: &[Instruction],
+        accounts: &[(Pubkey, Account)],
+        checks: &[Check],
+    ) -> TransactionResult {
+        let result = self.process_transaction_instructions(instructions, accounts);
+        result.run_checks(checks, &self.config, self);
+        result
     }
 
     #[cfg(feature = "fuzz")]
