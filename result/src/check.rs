@@ -1,11 +1,13 @@
 //! Check system for validating individual instruction results.
 
+#[cfg(feature = "inner-instructions")]
+use solana_transaction_status_client_types::InnerInstruction;
 use {
     crate::{
         config::{compare, throw, CheckContext, Config},
         types::{InstructionResult, ProgramResult},
     },
-    solana_account::ReadableAccount,
+    solana_account::{Account, ReadableAccount},
     solana_instruction::error::InstructionError,
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
@@ -177,6 +179,142 @@ impl<'a> AccountCheckBuilder<'a> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn run_checks<C: CheckContext>(
+    checks: &[Check],
+    config: &Config,
+    context: &C,
+    compute_units_consumed: u64,
+    execution_time: u64,
+    program_result: &ProgramResult,
+    return_data: &[u8],
+    resulting_accounts: &[(Pubkey, Account)],
+    #[cfg(feature = "inner-instructions")] inner_instructions: &[InnerInstruction],
+) -> bool {
+    let c = config;
+    let mut pass = true;
+    for check in checks {
+        match &check.check {
+            CheckType::ComputeUnitsConsumed(units) => {
+                let check_units = *units;
+                let actual_units = compute_units_consumed;
+                pass &= compare!(c, "compute_units", check_units, actual_units);
+            }
+            CheckType::ExecutionTime(time) => {
+                let check_time = *time;
+                let actual_time = execution_time;
+                pass &= compare!(c, "execution_time", check_time, actual_time);
+            }
+            CheckType::ProgramResult(check_program_result) => {
+                let check_result = check_program_result;
+                let actual_result = program_result;
+                pass &= compare!(c, "program_result", check_result, actual_result);
+            }
+            CheckType::ReturnData(check_return_data) => {
+                let actual_return_data = return_data;
+                pass &= compare!(c, "return_data", *check_return_data, actual_return_data);
+            }
+            CheckType::ResultingAccount(account) => {
+                let pubkey = account.pubkey;
+                let Some(resulting_account) = resulting_accounts
+                    .iter()
+                    .find(|(k, _)| k == &pubkey)
+                    .map(|(_, a)| a)
+                else {
+                    pass &= throw!(c, "Account not found in resulting accounts: {}", pubkey);
+                    continue;
+                };
+                if let Some(check_data) = account.check_data {
+                    let actual_data = resulting_account.data();
+                    pass &= compare!(c, "account_data", check_data, actual_data);
+                }
+                if let Some(check_executable) = account.check_executable {
+                    let actual_executable = resulting_account.executable();
+                    pass &= compare!(c, "account_executable", check_executable, actual_executable);
+                }
+                if let Some(check_lamports) = account.check_lamports {
+                    let actual_lamports = resulting_account.lamports();
+                    pass &= compare!(c, "account_lamports", check_lamports, actual_lamports);
+                }
+                if let Some(check_owner) = account.check_owner {
+                    let actual_owner = resulting_account.owner();
+                    pass &= compare!(c, "account_owner", check_owner, actual_owner);
+                }
+                if let Some(check_space) = account.check_space {
+                    let actual_space = resulting_account.data().len();
+                    pass &= compare!(c, "account_space", check_space, actual_space);
+                }
+                if let Some(check_state) = &account.check_state {
+                    match check_state {
+                        AccountStateCheck::Closed => {
+                            pass &= compare!(
+                                c,
+                                "account_closed",
+                                true,
+                                resulting_account == &Default::default(),
+                            );
+                        }
+                        AccountStateCheck::RentExempt => {
+                            pass &= compare!(
+                                c,
+                                "account_rent_exempt",
+                                true,
+                                context.is_rent_exempt(
+                                    resulting_account.lamports,
+                                    resulting_account.data.len(),
+                                    resulting_account.owner,
+                                ),
+                            );
+                        }
+                    }
+                }
+                if let Some((offset, check_data_slice)) = account.check_data_slice {
+                    let actual_data = resulting_account.data();
+                    if offset + check_data_slice.len() > actual_data.len() {
+                        pass &= throw!(
+                            c,
+                            "Account data slice: offset {} + slice length {} exceeds account data \
+                             length {}",
+                            offset,
+                            check_data_slice.len(),
+                            actual_data.len(),
+                        );
+                        continue;
+                    }
+                    let actual_data_slice = &actual_data[offset..offset + check_data_slice.len()];
+                    pass &= compare!(c, "account_data_slice", check_data_slice, actual_data_slice,);
+                }
+            }
+            CheckType::AllRentExempt => {
+                for (pubkey, account) in resulting_accounts {
+                    let is_rent_exempt = context.is_rent_exempt(
+                        account.lamports(),
+                        account.data().len(),
+                        account.owner,
+                    );
+                    if !is_rent_exempt {
+                        pass &= throw!(
+                            c,
+                            "Account {} is not rent exempt after execution (lamports: {}, \
+                             data_len: {})",
+                            pubkey,
+                            account.lamports(),
+                            account.data().len()
+                        );
+                    }
+                }
+            }
+            #[cfg(feature = "inner-instructions")]
+            CheckType::InnerInstructionCount(count) => {
+                let check_count = *count;
+                let actual_count = inner_instructions.len();
+                pass &= compare!(c, "inner_instruction_count", check_count, actual_count);
+            }
+        }
+    }
+    pass
+}
+
 impl InstructionResult {
     /// Perform checks on the instruction result with a custom context.
     /// See `CheckContext` for more details.
@@ -189,132 +327,17 @@ impl InstructionResult {
         config: &Config,
         context: &C,
     ) -> bool {
-        let c = config;
-        let mut pass = true;
-        for check in checks {
-            match &check.check {
-                CheckType::ComputeUnitsConsumed(units) => {
-                    let check_units = *units;
-                    let actual_units = self.compute_units_consumed;
-                    pass &= compare!(c, "compute_units", check_units, actual_units);
-                }
-                CheckType::ExecutionTime(time) => {
-                    let check_time = *time;
-                    let actual_time = self.execution_time;
-                    pass &= compare!(c, "execution_time", check_time, actual_time);
-                }
-                CheckType::ProgramResult(result) => {
-                    let check_result = result;
-                    let actual_result = &self.program_result;
-                    pass &= compare!(c, "program_result", check_result, actual_result);
-                }
-                CheckType::ReturnData(return_data) => {
-                    let check_return_data = return_data;
-                    let actual_return_data = &self.return_data;
-                    pass &= compare!(c, "return_data", check_return_data, actual_return_data);
-                }
-                CheckType::ResultingAccount(account) => {
-                    let pubkey = account.pubkey;
-                    let Some(resulting_account) = self
-                        .resulting_accounts
-                        .iter()
-                        .find(|(k, _)| k == &pubkey)
-                        .map(|(_, a)| a)
-                    else {
-                        pass &= throw!(c, "Account not found in resulting accounts: {}", pubkey);
-                        continue;
-                    };
-                    if let Some(check_data) = account.check_data {
-                        let actual_data = resulting_account.data();
-                        pass &= compare!(c, "account_data", check_data, actual_data);
-                    }
-                    if let Some(check_executable) = account.check_executable {
-                        let actual_executable = resulting_account.executable();
-                        pass &=
-                            compare!(c, "account_executable", check_executable, actual_executable);
-                    }
-                    if let Some(check_lamports) = account.check_lamports {
-                        let actual_lamports = resulting_account.lamports();
-                        pass &= compare!(c, "account_lamports", check_lamports, actual_lamports);
-                    }
-                    if let Some(check_owner) = account.check_owner {
-                        let actual_owner = resulting_account.owner();
-                        pass &= compare!(c, "account_owner", check_owner, actual_owner);
-                    }
-                    if let Some(check_space) = account.check_space {
-                        let actual_space = resulting_account.data().len();
-                        pass &= compare!(c, "account_space", check_space, actual_space);
-                    }
-                    if let Some(check_state) = &account.check_state {
-                        match check_state {
-                            AccountStateCheck::Closed => {
-                                pass &= compare!(
-                                    c,
-                                    "account_closed",
-                                    true,
-                                    resulting_account == &Default::default(),
-                                );
-                            }
-                            AccountStateCheck::RentExempt => {
-                                pass &= compare!(
-                                    c,
-                                    "account_rent_exempt",
-                                    true,
-                                    context.is_rent_exempt(
-                                        resulting_account.lamports,
-                                        resulting_account.data.len(),
-                                        resulting_account.owner,
-                                    ),
-                                );
-                            }
-                        }
-                    }
-                    if let Some((offset, check_data_slice)) = account.check_data_slice {
-                        let actual_data = resulting_account.data();
-                        if offset + check_data_slice.len() > actual_data.len() {
-                            pass &= throw!(
-                                c,
-                                "Account data slice: offset {} + slice length {} exceeds account \
-                                 data length {}",
-                                offset,
-                                check_data_slice.len(),
-                                actual_data.len(),
-                            );
-                            continue;
-                        }
-                        let actual_data_slice =
-                            &actual_data[offset..offset + check_data_slice.len()];
-                        pass &=
-                            compare!(c, "account_data_slice", check_data_slice, actual_data_slice,);
-                    }
-                }
-                CheckType::AllRentExempt => {
-                    for (pubkey, account) in &self.resulting_accounts {
-                        let is_rent_exempt = context.is_rent_exempt(
-                            account.lamports(),
-                            account.data().len(),
-                            account.owner,
-                        );
-                        if !is_rent_exempt {
-                            pass &= throw!(
-                                c,
-                                "Account {} is not rent exempt after execution (lamports: {}, \
-                                 data_len: {})",
-                                pubkey,
-                                account.lamports(),
-                                account.data().len()
-                            );
-                        }
-                    }
-                }
-                #[cfg(feature = "inner-instructions")]
-                CheckType::InnerInstructionCount(count) => {
-                    let check_count = *count;
-                    let actual_count = self.inner_instructions.len();
-                    pass &= compare!(c, "inner_instruction_count", check_count, actual_count);
-                }
-            }
-        }
-        pass
+        run_checks(
+            checks,
+            config,
+            context,
+            self.compute_units_consumed,
+            self.execution_time,
+            &self.program_result,
+            &self.return_data,
+            &self.resulting_accounts,
+            #[cfg(feature = "inner-instructions")]
+            &self.inner_instructions,
+        )
     }
 }
