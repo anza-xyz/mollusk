@@ -834,33 +834,60 @@ impl Mollusk {
     }
 
     #[cfg(feature = "inner-instructions")]
-    fn deconstruct_transaction(
+    fn deconstruct_inner_instructions(
         transaction_context: &mut TransactionContext,
-    ) -> Vec<InnerInstruction> {
-        const TRANSACTION_LEVEL_STACK_HEIGHT: usize = 1;
-
+    ) -> Vec<Vec<InnerInstruction>> {
         let ix_trace = transaction_context.take_instruction_trace();
-        ix_trace
-            .into_iter()
-            .filter_map(|ix_in_trace| {
-                let stack_height = ix_in_trace.nesting_level.saturating_add(1);
-                if stack_height > TRANSACTION_LEVEL_STACK_HEIGHT {
-                    let stack_height = u32::try_from(stack_height).ok();
-                    Some(InnerInstruction {
-                        instruction: CompiledInstruction::new_from_raw_parts(
-                            ix_in_trace.program_account_index_in_tx as u8,
-                            ix_in_trace.instruction_data.to_vec(),
-                            ix_in_trace
-                                .instruction_accounts
-                                .iter()
-                                .map(|acc| acc.index_in_transaction as u8)
-                                .collect(),
-                        ),
-                        stack_height,
+        let mut all_inner_instructions: Vec<Vec<InnerInstruction>> = Vec::new();
+
+        for ix_in_trace in ix_trace {
+            let stack_height = ix_in_trace.nesting_level.saturating_add(1);
+
+            if stack_height == 1 {
+                // Top-level instruction: start a new empty group for its inner instructions.
+                all_inner_instructions.push(Vec::new());
+            } else if let Some(last_group) = all_inner_instructions.last_mut() {
+                // Inner instruction (CPI): add to the current group.
+                let inner_instruction = InnerInstruction {
+                    instruction: CompiledInstruction::new_from_raw_parts(
+                        ix_in_trace.program_account_index_in_tx as u8,
+                        ix_in_trace.instruction_data.to_vec(),
+                        ix_in_trace
+                            .instruction_accounts
+                            .iter()
+                            .map(|acc| acc.index_in_transaction as u8)
+                            .collect(),
+                    ),
+                    stack_height: u32::try_from(stack_height).ok(),
+                };
+                last_group.push(inner_instruction);
+            }
+        }
+
+        all_inner_instructions
+    }
+
+    fn deconstruct_resulting_accounts(
+        transaction_context: &TransactionContext,
+        original_accounts: &[(Pubkey, Account)],
+    ) -> Vec<(Pubkey, Account)> {
+        original_accounts
+            .iter()
+            .map(|(pubkey, account)| {
+                transaction_context
+                    .find_index_of_account(pubkey)
+                    .map(|index| {
+                        let account_ref = transaction_context.accounts().try_borrow(index).unwrap();
+                        let resulting_account = Account {
+                            lamports: account_ref.lamports(),
+                            data: account_ref.data().to_vec(),
+                            owner: *account_ref.owner(),
+                            executable: account_ref.executable(),
+                            rent_epoch: account_ref.rent_epoch(),
+                        };
+                        (*pubkey, resulting_account)
                     })
-                } else {
-                    None
-                }
+                    .unwrap_or((*pubkey, account.clone()))
             })
             .collect()
     }
@@ -971,29 +998,13 @@ impl Mollusk {
         let return_data = transaction_context.get_return_data().1.to_vec();
 
         #[cfg(feature = "inner-instructions")]
-        let inner_instructions = Self::deconstruct_transaction(transaction_context);
+        let inner_instructions = Self::deconstruct_inner_instructions(transaction_context)
+            .first()
+            .cloned()
+            .unwrap_or(Vec::new());
 
-        let resulting_accounts: Vec<(Pubkey, Account)> = if invoke_result.is_ok() {
-            original_accounts
-                .iter()
-                .map(|(pubkey, account)| {
-                    transaction_context
-                        .find_index_of_account(pubkey)
-                        .map(|index| {
-                            let account_ref =
-                                transaction_context.accounts().try_borrow(index).unwrap();
-                            let resulting_account = Account {
-                                lamports: account_ref.lamports(),
-                                data: account_ref.data().to_vec(),
-                                owner: *account_ref.owner(),
-                                executable: account_ref.executable(),
-                                rent_epoch: account_ref.rent_epoch(),
-                            };
-                            (*pubkey, resulting_account)
-                        })
-                        .unwrap_or((*pubkey, account.clone()))
-                })
-                .collect()
+        let resulting_accounts = if invoke_result.is_ok() {
+            Self::deconstruct_resulting_accounts(transaction_context, original_accounts)
         } else {
             original_accounts.to_vec()
         };
