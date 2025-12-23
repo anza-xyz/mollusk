@@ -18,6 +18,7 @@ solana-message = { workspace = true, optional = true }
 solana-program-error = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
+solana-transaction-error = { workspace = true }
 solana-transaction-status-client-types = { workspace = true, optional = true }
 
 [features]

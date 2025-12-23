@@ -2422,6 +2422,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey 4.0.0",
  "solana-rent",
+ "solana-transaction-error",
  "solana-transaction-status-client-types",
 ]
 
