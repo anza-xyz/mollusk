@@ -515,6 +515,7 @@ pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgrade
 /// All fields can be manipulated through a handful of helper methods, but
 /// users can also directly access and modify them if they desire more control.
 pub struct Mollusk {
+    pub file_name: Option<String>,
     pub config: Config,
     pub compute_budget: ComputeBudget,
     pub epoch_stake: EpochStake,
@@ -723,6 +724,7 @@ impl Mollusk {
 
         #[allow(unused_mut)]
         let mut me = Self {
+            file_name: None,
             config: Config::default(),
             compute_budget,
             epoch_stake: EpochStake::default(),
@@ -797,6 +799,10 @@ impl Mollusk {
     ///
     /// If you intend to CPI to a program, this is likely what you want to use.
     pub fn add_program(&mut self, program_id: &Pubkey, program_name: &str) {
+        self.file_name = std::path::Path::new(program_name)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string());
         self.add_program_with_loader(program_id, program_name, &DEFAULT_LOADER_KEY);
     }
 
