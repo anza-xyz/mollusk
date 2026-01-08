@@ -56,6 +56,11 @@ pub mod precompile_keys {
     }
 }
 
+pub struct CacheEntry {
+    pub loader_key: Pubkey,
+    pub elf_bytes: Option<Vec<u8>>,
+}
+
 pub struct ProgramCache {
     cache: Rc<RefCell<ProgramCacheForTxBatch>>,
     // This stinks, but the `ProgramCacheForTxBatch` doesn't offer a way to
@@ -66,8 +71,8 @@ pub struct ProgramCache {
     // all program accounts they may use, when `Mollusk` has that information
     // already.
     //
-    // K: program ID, V: loader key
-    entries_cache: Rc<RefCell<HashMap<Pubkey, Pubkey>>>,
+    // K: program ID, V: cache entry
+    entries_cache: Rc<RefCell<HashMap<Pubkey, CacheEntry>>>,
     // The function registry (syscalls) to use for verifying and loading
     // program ELFs.
     pub program_runtime_environment: BuiltinProgram<InvokeContext<'static, 'static>>,
@@ -93,7 +98,7 @@ impl ProgramCache {
         BUILTINS.iter().for_each(|builtin| {
             let program_id = builtin.program_id;
             let entry = builtin.program_cache_entry();
-            me.replenish(program_id, entry);
+            me.replenish(program_id, entry, None);
         });
         me
     }
@@ -102,10 +107,19 @@ impl ProgramCache {
         self.cache.borrow_mut()
     }
 
-    fn replenish(&self, program_id: Pubkey, entry: Arc<ProgramCacheEntry>) {
-        self.entries_cache
-            .borrow_mut()
-            .insert(program_id, entry.account_owner());
+    fn replenish(
+        &self,
+        program_id: Pubkey,
+        entry: Arc<ProgramCacheEntry>,
+        elf_bytes: Option<&[u8]>,
+    ) {
+        self.entries_cache.borrow_mut().insert(
+            program_id,
+            CacheEntry {
+                loader_key: entry.account_owner(),
+                elf_bytes: elf_bytes.map(|s| s.to_vec()),
+            },
+        );
         self.cache.borrow_mut().replenish(program_id, entry);
     }
 
@@ -113,7 +127,7 @@ impl ProgramCache {
     pub fn add_builtin(&mut self, builtin: Builtin) {
         let program_id = builtin.program_id;
         let entry = builtin.program_cache_entry();
-        self.replenish(program_id, entry);
+        self.replenish(program_id, entry, None);
     }
 
     /// Add a program to the cache.
@@ -149,6 +163,7 @@ impl ProgramCache {
                 )
                 .unwrap(),
             ),
+            Some(elf),
         );
     }
 
@@ -164,7 +179,7 @@ impl ProgramCache {
         self.entries_cache
             .borrow()
             .iter()
-            .map(|(program_id, loader_key)| match *loader_key {
+            .map(|(program_id, cache_entry)| match cache_entry.loader_key {
                 loader_keys::NATIVE_LOADER => {
                     create_keyed_account_for_builtin_program(program_id, "I'm a stub!")
                 }
@@ -174,7 +189,7 @@ impl ProgramCache {
                     (*program_id, create_program_account_loader_v3(program_id))
                 }
                 loader_keys::LOADER_V4 => (*program_id, create_program_account_loader_v4(&[])),
-                _ => panic!("Invalid loader key: {}", loader_key),
+                _ => panic!("Invalid loader key: {}", cache_entry.loader_key),
             })
             .collect()
     }
@@ -185,7 +200,7 @@ impl ProgramCache {
         self.entries_cache
             .borrow()
             .get(pubkey)
-            .map(|loader_key| match *loader_key {
+            .map(|cache_entry| match cache_entry.loader_key {
                 loader_keys::NATIVE_LOADER => {
                     create_keyed_account_for_builtin_program(pubkey, "I'm a stub!").1
                 }
@@ -193,8 +208,15 @@ impl ProgramCache {
                 loader_keys::LOADER_V2 => create_program_account_loader_v2(&[]),
                 loader_keys::LOADER_V3 => create_program_account_loader_v3(pubkey),
                 loader_keys::LOADER_V4 => create_program_account_loader_v4(&[]),
-                _ => panic!("Invalid loader key: {}", loader_key),
+                _ => panic!("Invalid loader key: {}", cache_entry.loader_key),
             })
+    }
+
+    pub fn get_program_elf_bytes(&self, program_id: &Pubkey) -> Option<Vec<u8>> {
+        match self.entries_cache.borrow().get(program_id) {
+            None => None,
+            Some(cache_entry) => cache_entry.elf_bytes.to_owned(),
+        }
     }
 }
 

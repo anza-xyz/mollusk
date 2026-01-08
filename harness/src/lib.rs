@@ -548,13 +548,19 @@ pub struct Mollusk {
 pub trait InvocationInspectCallback {
     fn before_invocation(
         &self,
+        mollusk: &Mollusk,
         program_id: &Pubkey,
         instruction_data: &[u8],
         instruction_accounts: &[InstructionAccount],
         invoke_context: &InvokeContext,
     );
 
-    fn after_invocation(&self, invoke_context: &InvokeContext, register_tracing_enabled: bool);
+    fn after_invocation(
+        &self,
+        mollusk: &Mollusk,
+        invoke_context: &InvokeContext,
+        register_tracing_enabled: bool,
+    );
 }
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -562,10 +568,17 @@ pub struct EmptyInvocationInspectCallback;
 
 #[cfg(feature = "invocation-inspect-callback")]
 impl InvocationInspectCallback for EmptyInvocationInspectCallback {
-    fn before_invocation(&self, _: &Pubkey, _: &[u8], _: &[InstructionAccount], _: &InvokeContext) {
+    fn before_invocation(
+        &self,
+        _: &Mollusk,
+        _: &Pubkey,
+        _: &[u8],
+        _: &[InstructionAccount],
+        _: &InvokeContext,
+    ) {
     }
 
-    fn after_invocation(&self, _: &InvokeContext, _register_tracing_enabled: bool) {}
+    fn after_invocation(&self, _: &Mollusk, _: &InvokeContext, _register_tracing_enabled: bool) {}
 }
 
 impl Default for Mollusk {
@@ -1029,6 +1042,7 @@ impl Mollusk {
                     .unwrap();
                 let instruction_accounts = instruction_context.instruction_accounts().to_vec();
                 self.invocation_inspect_callback.before_invocation(
+                    self,
                     program_id,
                     &compiled_ix.data,
                     &instruction_accounts,
@@ -1047,8 +1061,11 @@ impl Mollusk {
             };
 
             #[cfg(feature = "invocation-inspect-callback")]
-            self.invocation_inspect_callback
-                .after_invocation(&invoke_context, self.enable_register_tracing);
+            self.invocation_inspect_callback.after_invocation(
+                self,
+                &invoke_context,
+                self.enable_register_tracing,
+            );
 
             if let Err(err) = invoke_result {
                 raw_result = Err(TransactionError::InstructionError(
