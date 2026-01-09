@@ -61,7 +61,10 @@ pub mod result;
 use {
     chrono::Utc,
     mollusk_svm::{result::ProgramResult, Mollusk},
-    result::{write_results, MolluskComputeUnitBenchResult},
+    result::{
+        mx_write_results, write_results, MolluskComputeUnitBenchResult,
+        MolluskComputeUnitMatrixBenchResult,
+    },
     solana_account::Account,
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
@@ -135,6 +138,96 @@ impl<'a> MolluskComputeUnitBencher<'a> {
             })
             .collect::<Vec<_>>();
         write_results(&self.out_dir, &table_header, &solana_version, bench_results);
+    }
+}
+
+/// Mollusk's program matrix compute unit bencher.
+///
+/// Allows developers to bench test compute unit usage on multiple
+/// implementation of their programs.
+pub struct MolluskComputeUnitMatrixBencher<'a> {
+    programs: Vec<(&'a str, &'a Mollusk)>,
+    benches: Vec<Bench<'a>>,
+    must_pass: bool,
+    out_dir: PathBuf,
+}
+
+impl Default for MolluskComputeUnitMatrixBencher<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> MolluskComputeUnitMatrixBencher<'a> {
+    /// Create a new matrix bencher, to which benches and configurations can be
+    /// added.
+    pub fn new() -> Self {
+        let mut out_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+        out_dir.push("benches");
+        Self {
+            programs: Vec::new(),
+            benches: Vec::new(),
+            must_pass: false,
+            out_dir,
+        }
+    }
+
+    /// Add a program to the bencher.
+    pub fn add_program(mut self, program: (&'a str, &'a Mollusk)) -> Self {
+        self.programs.push(program);
+        self
+    }
+
+    /// Add a bench to the bencher.
+    pub fn bench(mut self, bench: Bench<'a>) -> Self {
+        self.benches.push(bench);
+        self
+    }
+
+    /// Set whether the bencher should panic if a program execution fails.
+    pub fn must_pass(mut self, must_pass: bool) -> Self {
+        self.must_pass = must_pass;
+        self
+    }
+
+    /// Set the output directory for the results.
+    pub fn out_dir(mut self, out_dir: &str) -> Self {
+        self.out_dir = PathBuf::from(out_dir);
+        self
+    }
+
+    /// Execute the benches.
+    pub fn execute(&mut self) {
+        let table_header = Utc::now().to_string();
+        let solana_version = get_solana_version();
+
+        let mut bench_results = Vec::new();
+
+        //Iterate through every instruction for every program
+        for (ix_name, instruction, accounts) in &self.benches {
+            for (program_name, mollusk) in &self.programs {
+                let result = mollusk.process_instruction(instruction, accounts);
+                match result.program_result {
+                    ProgramResult::Success => (),
+                    _ => {
+                        if self.must_pass {
+                            panic!(
+                                "Program execution failed, but `must_pass` was set. Error: {:?}",
+                                result.program_result
+                            );
+                        }
+                    }
+                }
+
+                bench_results.push(MolluskComputeUnitMatrixBenchResult::new(
+                    program_name,
+                    ix_name,
+                    result,
+                ));
+            }
+        }
+
+        mx_write_results(&self.out_dir, &table_header, &solana_version, bench_results);
     }
 }
 
