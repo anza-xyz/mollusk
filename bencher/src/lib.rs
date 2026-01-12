@@ -144,7 +144,7 @@ impl<'a> MolluskComputeUnitBencher<'a> {
 /// Mollusk's program matrix compute unit bencher.
 ///
 /// Allows developers to bench test compute unit usage on multiple
-/// implementation of their programs.
+/// implementations of their programs.
 pub struct MolluskComputeUnitMatrixBencher<'a> {
     programs: Vec<(&'a str, &'a Mollusk)>,
     benches: Vec<Bench<'a>>,
