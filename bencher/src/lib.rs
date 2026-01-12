@@ -203,7 +203,7 @@ impl<'a> MolluskComputeUnitMatrixBencher<'a> {
 
         let mut bench_results = Vec::new();
 
-        //Iterate through every instruction for every program
+        // Iterate through every instruction for every program
         for (ix_name, instruction, accounts) in &self.benches {
             for (program_name, mollusk) in &self.programs {
                 let result = mollusk.process_instruction(instruction, accounts);
