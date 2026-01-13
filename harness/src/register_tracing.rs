@@ -1,13 +1,10 @@
 use {
-    crate::{
-        file::{default_shared_object_dirs, read_file},
-        InvocationInspectCallback,
-    },
+    crate::{InvocationInspectCallback, Mollusk},
     sha2::{Digest, Sha256},
     solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
     solana_pubkey::Pubkey,
     solana_transaction_context::{InstructionAccount, InstructionContext},
-    std::{fs::File, io::Write, path::PathBuf},
+    std::{fs::File, io::Write},
 };
 
 const DEFAULT_PATH: &str = "target/sbf/trace";
@@ -28,6 +25,7 @@ impl Default for DefaultRegisterTracingCallback {
 impl DefaultRegisterTracingCallback {
     pub fn handler(
         &self,
+        mollusk: &Mollusk,
         instruction_context: InstructionContext,
         executable: &Executable,
         register_trace: RegisterTrace,
@@ -45,19 +43,18 @@ impl DefaultRegisterTracingCallback {
         let base_fname = sbf_trace_dir.join(&trace_digest[..16]);
         let mut regs_file = File::create(base_fname.with_extension("regs"))?;
         let mut insns_file = File::create(base_fname.with_extension("insns"))?;
-        let mut so_hash_file = File::create(base_fname.with_extension("exec.sha256"))?;
+        let mut program_id_file = File::create(base_fname.with_extension("program_id"))?;
 
         // Get program_id.
         let program_id = instruction_context.get_program_key()?;
+        // Persist the program id.
+        let _ = program_id_file.write(program_id.to_string().as_bytes());
 
-        // Persist the preload hash of the executable.
-        let _ = so_hash_file.write(
-            find_executable_pre_load_hash(executable)
-                .ok_or(format!(
-                    "Can't find shared object for executable with program_id: {program_id}"
-                ))?
-                .as_bytes(),
-        );
+        if let Some(elf_data) = mollusk.program_cache.get_program_elf_bytes(program_id) {
+            // Persist the preload hash of the executable.
+            let mut so_hash_file = File::create(base_fname.with_extension("exec.sha256"))?;
+            let _ = so_hash_file.write(compute_hash(elf_data.as_slice()).as_bytes());
+        }
 
         // Get the relocated executable.
         let (_, program) = executable.get_text_bytes();
@@ -79,17 +76,31 @@ impl DefaultRegisterTracingCallback {
 }
 
 impl InvocationInspectCallback for DefaultRegisterTracingCallback {
-    fn before_invocation(&self, _: &Pubkey, _: &[u8], _: &[InstructionAccount], _: &InvokeContext) {
+    fn before_invocation(
+        &self,
+        _: &Mollusk,
+        _: &Pubkey,
+        _: &[u8],
+        _: &[InstructionAccount],
+        _: &InvokeContext,
+    ) {
     }
 
-    fn after_invocation(&self, invoke_context: &InvokeContext, register_tracing_enabled: bool) {
+    fn after_invocation(
+        &self,
+        mollusk: &Mollusk,
+        invoke_context: &InvokeContext,
+        register_tracing_enabled: bool,
+    ) {
         if register_tracing_enabled {
             // Only read the register traces if they were actually enabled.
             invoke_context.iterate_vm_traces(
                 &|instruction_context: InstructionContext,
                   executable: &Executable,
                   register_trace: RegisterTrace| {
-                    if let Err(e) = self.handler(instruction_context, executable, register_trace) {
+                    if let Err(e) =
+                        self.handler(mollusk, instruction_context, executable, register_trace)
+                    {
                         eprintln!("Error collecting the register tracing: {}", e);
                     }
                 },
@@ -100,44 +111,6 @@ impl InvocationInspectCallback for DefaultRegisterTracingCallback {
 
 pub(crate) fn as_bytes<T>(slice: &[T]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u8, std::mem::size_of_val(slice)) }
-}
-
-fn find_so_files(dirs: &[PathBuf]) -> Vec<PathBuf> {
-    let mut so_files = Vec::new();
-
-    for dir in dirs {
-        if dir.is_dir() {
-            if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_file() && path.extension().is_some_and(|ext| ext == "so") {
-                        so_files.push(path);
-                    }
-                }
-            }
-        }
-    }
-
-    so_files
-}
-
-fn find_executable_pre_load_hash(executable: &Executable) -> Option<String> {
-    find_so_files(&default_shared_object_dirs())
-        .iter()
-        .filter_map(|file| {
-            let so = read_file(file);
-            // Reconstruct a loaded Exectuable just to compare its relocated
-            // text bytes with the passed executable ones.
-            // If there's a match return the preload hash of the corresponding shared
-            // object.
-            Executable::load(&so, executable.get_loader().clone())
-                .ok()
-                .map(|e| Some((so, e)))
-                .unwrap_or(None)
-        })
-        .filter(|(_, e)| executable.get_text_bytes().1 == e.get_text_bytes().1)
-        .map(|(so, _)| compute_hash(&so))
-        .next_back()
 }
 
 fn compute_hash(slice: &[u8]) -> String {
