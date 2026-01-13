@@ -40,15 +40,10 @@ fn mx_test_markdown() {
     let instruction = Instruction::new_with_bytes(program_id, &[0], vec![]);
     let accounts = vec![];
 
-    //this stinks, but should be enough for demonstration.
-    let mollusk1 = Mollusk::new(&program_id, "test_program_primary");
-    let mollusk2 = Mollusk::new(&program_id, "test_program_primary");
-    let mollusk3 = Mollusk::new(&program_id, "test_program_primary");
+    let mut mollusk = Mollusk::new(&program_id, "test_program_primary");
 
-    MolluskComputeUnitMatrixBencher::new()
-        .add_program(("program_v1", &mollusk1))
-        .add_program(("program_v2", &mollusk2))
-        .add_program(("program_v3", &mollusk3))
+    MolluskComputeUnitMatrixBencher::new(&mut mollusk)
+        .programs(&["test_program_primary", "test_program_primary_v2"])
         .bench(("bench0", &instruction, &accounts))
         .bench(("bench1", &instruction, &accounts))
         .bench(("bench2", &instruction, &accounts))

@@ -20,18 +20,20 @@ impl<'a> MolluskComputeUnitBenchResult<'a> {
 
 pub struct MolluskComputeUnitMatrixBenchResult<'a> {
     program_name: &'a str,
-    ix_name: &'a str,
-    cus_consumed: u64,
+    results: Vec<MolluskComputeUnitBenchResult<'a>>,
 }
 
 impl<'a> MolluskComputeUnitMatrixBenchResult<'a> {
-    pub fn new(program_name: &'a str, ix_name: &'a &str, result: InstructionResult) -> Self {
-        let cus_consumed = result.compute_units_consumed;
+    pub fn new(program_name: &'a str) -> Self {
         Self {
             program_name,
-            ix_name,
-            cus_consumed,
+            results: Vec::new(),
         }
+    }
+
+    pub fn add_result(&mut self, name: &'a str, result: InstructionResult) {
+        self.results
+            .push(MolluskComputeUnitBenchResult::new(name, result))
     }
 }
 
@@ -132,32 +134,31 @@ pub fn mx_write_results(
     out_dir: &Path,
     table_header: &str,
     solana_version: &str,
-    results: Vec<MolluskComputeUnitMatrixBenchResult>,
+    results: &[MolluskComputeUnitMatrixBenchResult],
 ) {
     if results.is_empty() {
         return;
     }
+    let mut mx_md_table = mx_md_header(table_header, solana_version, results);
 
-    let mut mx_md_table = mx_md_header(table_header, solana_version, &results);
-    let mut current_ix = "";
+    // Determine how many ix there are (based on the first program's results)
+    if let Some(first_program) = results.first() {
+        for (row_idx, first_ix) in first_program.results.iter().enumerate() {
+            // Start row with instruction name
+            mx_md_table.push_str(&format!("| {} ", first_ix.name));
 
-    for result in &results {
-        if result.ix_name != current_ix {
-            // If we are moving from one instruction to the next, close the previous line
-            if !current_ix.is_empty() {
-                mx_md_table.push_str("|\n");
+            // Fill columns with CU consumed from each program
+            for program in results {
+                if let Some(ix) = program.results.get(row_idx) {
+                    mx_md_table.push_str(&format!("| {} ", ix.cus_consumed));
+                }
             }
-            // Start the new row with the instruction name
-            mx_md_table.push_str(&format!("| `{}` ", result.ix_name));
-            current_ix = result.ix_name;
+
+            // Close the row.
+            mx_md_table.push_str("|\n");
         }
-
-        // Add the CU value for this program in the current row
-        mx_md_table.push_str(&format!("| {} ", result.cus_consumed));
+        mx_md_table.push('\n');
     }
-
-    // Close the final row
-    mx_md_table.push_str("|\n");
 
     let path = out_dir.join("mx_compute_units.md");
     prepend_to_md_file(&path, &mx_md_table);
@@ -168,32 +169,24 @@ fn mx_md_header(
     solana_version: &str,
     results: &[MolluskComputeUnitMatrixBenchResult],
 ) -> String {
-    //Get ONLY the unique program names.
-    let mut program_names = Vec::new();
-    for r in results {
-        if !program_names.contains(&r.program_name) {
-            program_names.push(r.program_name);
-        }
-    }
-
     // Header: | Name | CU (p1) | CU (p2) | ...
     let mut header_row = String::from("| Name ");
-    for program_name in &program_names {
-        header_row.push_str(&format!("| CU (`{}`) ", program_name));
+    for program in results {
+        header_row.push_str(&format!("| CU (`{}`) ", program.program_name));
     }
     header_row.push('|');
 
     // Separator: |----------|----------|----------| ...
-    let separator =
-        std::iter::repeat_n("|----------", program_names.len() + 1).collect::<String>() + "|";
+    let separator = "|----------".repeat(results.len() + 1) + "|";
 
     format!(
-        "#### {}
+        r#"#### {}
 
 Solana CLI Version: {}
 
 {}
-{}\n",
+{}
+"#,
         table_header, solana_version, header_row, separator
     )
 }

@@ -23,15 +23,15 @@ budget, feature set, or sysvars. These configurations are stored directly
 on the test harness (the `Mollusk` struct), but can be manipulated through
 a handful of helpers.
 
-* [Single Instructions](#single-instructions)
-* [Instruction Chains](#instruction-chains)
-* [Stateful Testing with MolluskContext](#stateful-testing-with-molluskcontext)
-* [Benchmarking Compute Units](#benchmarking-compute-units)
-* [Fixtures](#fixtures)
-  * [Generating Fixtures from Mollusk Tests](#generating-fixtures-from-mollusk-tests)
-  * [Loading and Executing Fixtures](#loading-and-executing-fixtures)
-* [Inner Instructions Tracking](#inner-instructions-tracking)
-* [Register tracing](#register-tracing)
+- [Single Instructions](#single-instructions)
+- [Instruction Chains](#instruction-chains)
+- [Stateful Testing with MolluskContext](#stateful-testing-with-molluskcontext)
+- [Benchmarking Compute Units](#benchmarking-compute-units)
+- [Fixtures](#fixtures)
+  - [Generating Fixtures from Mollusk Tests](#generating-fixtures-from-mollusk-tests)
+  - [Loading and Executing Fixtures](#loading-and-executing-fixtures)
+- [Inner Instructions Tracking](#inner-instructions-tracking)
+- [Register tracing](#register-tracing)
 
 ## Single Instructions
 
@@ -279,9 +279,10 @@ state between calls, `MolluskContext` provides a stateful wrapper around
 API methods without requiring explicit account management.
 
 `MolluskContext` is ideal for:
-* Testing instruction chains where account state persists between calls
-* Complex program interactions that require maintaining account state
-* Scenarios where manually managing accounts becomes cumbersome
+
+- Testing instruction chains where account state persists between calls
+- Complex program interactions that require maintaining account state
+- Scenarios where manually managing accounts becomes cumbersome
 
 To use `MolluskContext`, you need to provide an implementation of the
 `AccountStore` trait:
@@ -330,10 +331,10 @@ let result2 = context.process_instruction(&instruction2);
 
 The `MolluskContext` API provides the same core methods as `Mollusk`:
 
-* `process_instruction`: Process an instruction with automatic account management
-* `process_instruction_chain`: Process a chain of instructions
-* `process_and_validate_instruction`: Process and validate an instruction
-* `process_and_validate_instruction_chain`: Process and validate an instruction chain
+- `process_instruction`: Process an instruction with automatic account management
+- `process_instruction_chain`: Process a chain of instructions
+- `process_and_validate_instruction`: Process and validate an instruction
+- `process_and_validate_instruction_chain`: Process and validate an instruction chain
 
 All methods return `InstructionResult`, just like the base `Mollusk` methods.
 The `resulting_accounts` field will reflect the final state after execution,
@@ -344,15 +345,10 @@ so you can use it as a simple in-memory account store without needing
 to implement your own.
 
 ## Benchmarking Compute Units
-The Mollusk Compute Unit Bencher can be used to benchmark the compute unit
-usage of Solana programs. It provides a simple API for developers to write
-benchmarks for their programs, which can be checked while making changes to
-the program.
 
-A markdown file is generated, which captures all of the compute unit
-benchmarks. If a benchmark has a previous value, the delta is also
-recorded. This can be useful for developers to check the implications of
-changes to the program on compute unit usage.
+The Mollusk Compute Unit Bencher can be used to benchmark the compute unit usage of Solana programs. It provides a simple API for developers to write benchmarks for their programs, or compare multiple implementations of their programs in a matrix, which can be checked while making changes to the program.
+
+A markdown file is generated, which captures all of the compute unit benchmarks. In the case of single program if a benchmark has a previous value, the delta is also recorded. This can be useful for developers to check the implications of changes to the program on compute unit usage.
 
 ```rust
 use {
@@ -396,11 +392,36 @@ The markdown file will contain entries according to the defined benchmarks.
 
 ```markdown
 | Name   | CUs   | Delta  |
-|--------|-------|--------|
+| ------ | ----- | ------ |
 | bench0 | 450   | --     |
 | bench1 | 579   | -129   |
 | bench2 | 1,204 | +754   |
 | bench3 | 2,811 | +2,361 |
+```
+
+#### Matrix Benchmarking
+
+If you want to compare multiple program implementations (e.g., comparing an optimized version against a baseline), use `MolluskComputeUnitMatrixBencher`. This generates a table where each program is a column.
+
+```rust
+use {
+    mollusk_svm_bencher::MolluskComputeUnitMatrixBencher,
+    mollusk_svm::Mollusk,
+    /* ... */
+};
+
+/* Instruction & accounts setup ... */
+
+let mollusk = Mollusk::new(&program_id, "program_v1");
+
+MolluskComputeUnitMatrixBencher::new(mollusk)
+    .programs(&["program_v1", "program_v2", "program_v3"])
+    .bench(("bench0", &instruction0, &accounts0))
+    .bench(("bench1", &instruction1, &accounts1))
+    .must_pass(true)
+    .out_dir("../target/benches")
+    .execute();
+
 ```
 
 ## Fixtures
@@ -547,12 +568,14 @@ mollusk.process_and_validate_instruction(
 ```
 
 The tracked inner instructions include:
+
 - The program ID being invoked
 - The instruction data passed to the CPI
 - The accounts passed to the CPI
 - The stack height (nesting level) of the invocation
 
 This feature is particularly useful for:
+
 - Testing programs that make CPIs to verify correct invocation behavior
 - Debugging complex program interactions
 - Validating that the expected number of CPIs occur during execution

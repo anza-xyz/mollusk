@@ -1,12 +1,13 @@
 //! The Mollusk Compute Unit Bencher can be used to benchmark the compute unit
 //! usage of Solana programs. It provides a simple API for developers to write
-//! benchmarks for their programs, which can be checked while making changes to
-//! the program.
+//! benchmarks for their programs, or compare multiple implementations of their
+//! programs in a matrix, which can be checked while making changes to the
+//! program.
 //!
 //! A markdown file is generated, which captures all of the compute unit
-//! benchmarks. If a benchmark has a previous value, the delta is also
-//! recorded. This can be useful for developers to check the implications of
-//! changes to the program on compute unit usage.
+//! benchmarks. In the case of single program if a benchmark has a previous
+//! value, the delta is also recorded. This can be useful for developers to
+//! check the implications of changes to the program on compute unit usage.
 //!
 //! ```rust,ignore
 //! use {
@@ -54,6 +55,41 @@
 //! | bench1 | 579   | -129   |
 //! | bench2 | 1,204 | +754   |
 //! | bench3 | 2,811 | +2,361 |
+//! ```
+//! ### Matrix Benchmarking
+//!
+//! If you want to compare multiple program implementations (e.g., comparing
+//! an optimized version against a baseline), use
+//! `MolluskComputeUnitMatrixBencher`. This generates a table where each program
+//! is a column.
+//!
+//! ```rust,ignore
+//! use {
+//!     mollusk_svm_bencher::MolluskComputeUnitMatrixBencher,
+//!     mollusk_svm::Mollusk,
+//!     /* ... */
+//! };
+//!
+//! /* Instruction & accounts setup ... */
+//!
+//! let mollusk = Mollusk::new(&program_id, "program_v1");
+//!
+//! MolluskComputeUnitMatrixBencher::new(mollusk)
+//!     .programs(&["program_v1", "program_v2", "program_v3"])
+//!     .bench(("bench0", &instruction0, &accounts0))
+//!     .bench(("bench1", &instruction1, &accounts1))
+//!     .must_pass(true)
+//!     .out_dir("../target/benches")
+//!     .execute();
+//! ```
+//! The matrix markdown file will contain entries comparing all provided
+//! programs.
+//!
+//! ```markdown
+//! | Name     | CU (`program_v1`) | CU (`program_v2`) | CU (`program_v3`) |
+//! |----------|-------------------|-------------------|-------------------|
+//! | `bench0` | 1,400             | 1,390             | 1,385             |
+//! | `bench1` | 2,100             | 2,050             | 2,045             |
 //! ```
 
 pub mod result;
@@ -141,40 +177,36 @@ impl<'a> MolluskComputeUnitBencher<'a> {
     }
 }
 
-/// Mollusk's program matrix compute unit bencher.
+/// Mollusk's matrix compute unit bencher.
 ///
 /// Allows developers to bench test compute unit usage on multiple
 /// implementations of their programs.
 pub struct MolluskComputeUnitMatrixBencher<'a> {
-    programs: Vec<(&'a str, &'a Mollusk)>,
+    mollusk: &'a mut Mollusk,
+    program_names: Vec<&'a str>,
     benches: Vec<Bench<'a>>,
     must_pass: bool,
     out_dir: PathBuf,
 }
 
-impl Default for MolluskComputeUnitMatrixBencher<'_> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<'a> MolluskComputeUnitMatrixBencher<'a> {
     /// Create a new matrix bencher, to which benches and configurations can be
     /// added.
-    pub fn new() -> Self {
+    pub fn new(mollusk: &'a mut Mollusk) -> Self {
         let mut out_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
         out_dir.push("benches");
         Self {
-            programs: Vec::new(),
+            mollusk,
+            program_names: Vec::new(),
             benches: Vec::new(),
             must_pass: false,
             out_dir,
         }
     }
 
-    /// Add a program to the bencher.
-    pub fn add_program(mut self, program: (&'a str, &'a Mollusk)) -> Self {
-        self.programs.push(program);
+    /// Add the program names to be benched.
+    pub fn programs(mut self, names: &[&'a str]) -> Self {
+        self.program_names = names.to_vec();
         self
     }
 
@@ -201,12 +233,18 @@ impl<'a> MolluskComputeUnitMatrixBencher<'a> {
         let table_header = Utc::now().to_string();
         let solana_version = get_solana_version();
 
-        let mut bench_results = Vec::new();
+        let mut bench_results: Vec<MolluskComputeUnitMatrixBenchResult> = Vec::new();
+        for program_name in &self.program_names {
+            // Extract the program ID from the first instruction.
+            if let Some((_, first_instruction, _)) = self.benches.first() {
+                self.mollusk
+                    .add_program(&first_instruction.program_id, program_name);
+            }
 
-        // Iterate through every instruction for every program
-        for (ix_name, instruction, accounts) in &self.benches {
-            for (program_name, mollusk) in &self.programs {
-                let result = mollusk.process_instruction(instruction, accounts);
+            let mut ix_results = MolluskComputeUnitMatrixBenchResult::new(program_name);
+
+            for (ix_name, instruction, accounts) in &self.benches {
+                let result = self.mollusk.process_instruction(instruction, accounts);
                 match result.program_result {
                     ProgramResult::Success => (),
                     _ => {
@@ -218,16 +256,17 @@ impl<'a> MolluskComputeUnitMatrixBencher<'a> {
                         }
                     }
                 }
-
-                bench_results.push(MolluskComputeUnitMatrixBenchResult::new(
-                    program_name,
-                    ix_name,
-                    result,
-                ));
+                ix_results.add_result(ix_name, result);
             }
+            bench_results.push(ix_results);
         }
 
-        mx_write_results(&self.out_dir, &table_header, &solana_version, bench_results);
+        mx_write_results(
+            &self.out_dir,
+            &table_header,
+            &solana_version,
+            &bench_results,
+        );
     }
 }
 
