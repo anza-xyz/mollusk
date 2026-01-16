@@ -1,5 +1,5 @@
 [package]
-name = "test-program-primary-v2"
+name = "test-program-noop-log"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,12 +7,12 @@ edition = "2021"
 solana-account-info = { workspace = true }
 solana-cpi = { workspace = true }
 solana-instruction = { workspace = true }
+solana-msg = { workspace = true }
 solana-program-entrypoint = { workspace = true }
 solana-program-error = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-sdk-ids = { workspace = true }
 solana-system-interface = { workspace = true, features = ["bincode"] }
-solana-msg = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "lib"]

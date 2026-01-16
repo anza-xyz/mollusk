@@ -346,9 +346,15 @@ to implement your own.
 
 ## Benchmarking Compute Units
 
-The Mollusk Compute Unit Bencher can be used to benchmark the compute unit usage of Solana programs. It provides a simple API for developers to write benchmarks for their programs, or compare multiple implementations of their programs in a matrix, which can be checked while making changes to the program.
+The Mollusk Compute Unit Bencher can be used to benchmark the compute unit usage
+of Solana programs. It provides a simple API for developers to write benchmarks
+for their programs, or compare multiple implementations of their programs in a
+matrix, which can be checked while making changes to the program.
 
-A markdown file is generated, which captures all of the compute unit benchmarks. In the case of single program if a benchmark has a previous value, the delta is also recorded. This can be useful for developers to check the implications of changes to the program on compute unit usage.
+A markdown file is generated, which captures all of the compute unit benchmarks.
+In the case of single program if a benchmark has a previous value, the delta is
+also recorded. This can be useful for developers to check the implications of
+changes to the program on compute unit usage.
 
 ```rust
 use {
@@ -401,7 +407,9 @@ The markdown file will contain entries according to the defined benchmarks.
 
 #### Matrix Benchmarking
 
-If you want to compare multiple program implementations (e.g., comparing an optimized version against a baseline), use `MolluskComputeUnitMatrixBencher`. This generates a table where each program is a column.
+If you want to compare multiple program implementations (e.g., comparing an
+optimized version against a baseline), use `MolluskComputeUnitMatrixBencher`.
+This generates a table where each program is a column.
 
 ```rust
 use {

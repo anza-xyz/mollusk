@@ -43,7 +43,7 @@ fn mx_test_markdown() {
     let mut mollusk = Mollusk::new(&program_id, "test_program_primary");
 
     MolluskComputeUnitMatrixBencher::new(&mut mollusk)
-        .programs(&["test_program_primary", "test_program_primary_v2"])
+        .programs(&["test_program_primary", "test_program_noop_log"])
         .bench(("bench0", &instruction, &accounts))
         .bench(("bench1", &instruction, &accounts))
         .bench(("bench2", &instruction, &accounts))

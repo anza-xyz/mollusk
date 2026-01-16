@@ -4975,12 +4975,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "test-program-primary"
+name = "test-program-noop-log"
 version = "0.1.0"
 dependencies = [
  "solana-account-info",
  "solana-cpi",
  "solana-instruction",
+ "solana-msg",
  "solana-program-entrypoint",
  "solana-program-error",
  "solana-pubkey 4.0.0",
@@ -4989,13 +4990,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "test-program-primary-v2"
+name = "test-program-primary"
 version = "0.1.0"
 dependencies = [
  "solana-account-info",
  "solana-cpi",
  "solana-instruction",
- "solana-msg",
  "solana-program-entrypoint",
  "solana-program-error",
  "solana-pubkey 4.0.0",
