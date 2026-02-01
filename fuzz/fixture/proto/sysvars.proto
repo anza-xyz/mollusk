@@ -61,6 +61,17 @@ message StakeHistory {
     repeated StakeHistoryEntry stake_history = 1;
 }
 
+// A `RecentBlockhashEntry` entry for the `RecentBlockhashes` sysvar.
+message RecentBlockhashEntry {
+    bytes blockhash = 1;
+    uint64 lamports_per_signature = 2;
+}
+
+// The `RecentBlockhashes` sysvar.
+message RecentBlockhashes {
+    repeated RecentBlockhashEntry entries = 1;
+}
+
 // The sysvar context.
 message SysvarContext {
     Clock clock = 1;
@@ -69,4 +80,5 @@ message SysvarContext {
     Rent rent = 4;
     SlotHashes slot_hashes = 5;
     StakeHistory stake_history = 6;
+    RecentBlockhashes recent_blockhashes = 7;
 }

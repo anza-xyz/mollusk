@@ -30,6 +30,7 @@ impl From<&Sysvars> for FuzzSysvars {
             rent: input.rent.clone(),
             slot_hashes,
             stake_history: input.stake_history.clone(),
+            recent_blockhashes: input.recent_blockhashes.clone(),
         }
     }
 }
@@ -45,6 +46,7 @@ impl From<&FuzzSysvars> for Sysvars {
             rent: input.rent.clone(),
             slot_hashes,
             stake_history: input.stake_history.clone(),
+            recent_blockhashes: input.recent_blockhashes.clone(),
         }
     }
 }
