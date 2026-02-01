@@ -79,7 +79,7 @@ fn build_fixture_context(
     .into_iter()
     .collect();
 
-    let (sanitized_message, transaction_accounts) = compile_accounts(
+    let (sanitized_message, _transaction_accounts) = compile_accounts(
         std::slice::from_ref(instruction),
         accounts.iter(),
         &fallbacks,
@@ -99,9 +99,11 @@ fn build_fixture_context(
         })
         .collect();
 
-    let accounts = transaction_accounts
-        .into_iter()
-        .map(|(key, account)| (key, account.into(), None))
+    // Include unreferenced accounts as well in order for all sysvars to be
+    // well-formed.
+    let accounts = accounts
+        .iter()
+        .map(|(key, account)| (*key, account.clone(), None))
         .collect::<Vec<_>>();
 
     FuzzContext {
