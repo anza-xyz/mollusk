@@ -225,6 +225,9 @@ impl Sysvars {
             if pubkey.eq(&StakeHistory::id()) {
                 set_sysvar(&bincode::serialize(&self.stake_history).unwrap());
             }
+            if pubkey.eq(&RecentBlockhashes::id()) {
+                set_sysvar(&bincode::serialize(&self.recent_blockhashes).unwrap());
+            }
         });
 
         sysvar_cache
@@ -255,6 +258,9 @@ impl From<&Sysvars> for SysvarCache {
             }
             if pubkey.eq(&StakeHistory::id()) {
                 set_sysvar(&bincode::serialize(&mollusk_cache.stake_history).unwrap());
+            }
+            if pubkey.eq(&RecentBlockhashes::id()) {
+                set_sysvar(&bincode::serialize(&mollusk_cache.recent_blockhashes).unwrap());
             }
         });
         sysvar_cache

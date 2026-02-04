@@ -356,4 +356,11 @@ pub(crate) fn hash_proto_sysvars(hasher: &mut Hasher, sysvars: &ProtoSysvars) {
             hasher.hash(&entry.deactivating.to_le_bytes());
         }
     }
+    // RecentBlockhashes
+    if let Some(recent_blockhashes) = &sysvars.recent_blockhashes {
+        for entry in &recent_blockhashes.entries {
+            hasher.hash(&entry.blockhash);
+            hasher.hash(&entry.lamports_per_signature.to_le_bytes());
+        }
+    }
 }
