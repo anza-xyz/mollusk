@@ -18,6 +18,7 @@ solana-clock = { workspace = true }
 solana-compute-budget = { workspace = true, features = ["agave-unstable-api"] }
 solana-epoch-rewards = { workspace = true }
 solana-epoch-schedule = { workspace = true }
+solana-fee-calculator = { workspace = true }
 solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
 solana-keccak-hasher = { workspace = true }
@@ -25,6 +26,7 @@ solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-slot-hashes = { workspace = true }
 solana-stake-interface = { workspace = true }
+solana-sysvar.workspace = true
 
 [build-dependencies]
 prost-build = { workspace = true }

@@ -2350,6 +2350,7 @@ dependencies = [
  "solana-compute-budget",
  "solana-epoch-rewards",
  "solana-epoch-schedule",
+ "solana-fee-calculator",
  "solana-hash 3.1.0",
  "solana-instruction",
  "solana-keccak-hasher",
@@ -2357,6 +2358,7 @@ dependencies = [
  "solana-rent",
  "solana-slot-hashes",
  "solana-stake-interface",
+ "solana-sysvar",
  "which",
 ]
 

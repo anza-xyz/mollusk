@@ -1,9 +1,10 @@
 //! Runtime sysvars.
-
+#![allow(deprecated)]
 use {
     super::proto::{
         Clock as ProtoClock, EpochRewards as ProtoEpochRewards,
-        EpochSchedule as ProtoEpochSchedule, Rent as ProtoRent,
+        EpochSchedule as ProtoEpochSchedule, RecentBlockhashEntry as ProtoRecentBlockhashEntry,
+        RecentBlockhashes as ProtoRecentBlockhashes, Rent as ProtoRent,
         SlotHashEntry as ProtoSlotHashEntry, SlotHashes as ProtoSlotHashes,
         StakeHistory as ProtoStakeHistory, StakeHistoryEntry as ProtoStakeHistoryEntry,
         SysvarContext as ProtoSysvars,
@@ -16,6 +17,7 @@ use {
     solana_rent::Rent,
     solana_slot_hashes::{SlotHash, SlotHashes},
     solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
+    solana_sysvar::recent_blockhashes::RecentBlockhashes,
 };
 
 /// A fixture of runtime sysvars.
@@ -33,6 +35,8 @@ pub struct Sysvars {
     pub slot_hashes: SlotHashes,
     /// `StakeHistory` sysvar.
     pub stake_history: StakeHistory,
+    /// `RecentBlockhashes` sysvar.
+    pub recent_blockhashes: RecentBlockhashes,
 }
 
 impl Clone for Sysvars {
@@ -44,6 +48,7 @@ impl Clone for Sysvars {
             rent: self.rent.clone(),
             slot_hashes: SlotHashes::new(self.slot_hashes.slot_hashes()),
             stake_history: self.stake_history.clone(),
+            recent_blockhashes: self.recent_blockhashes.clone(),
         }
     }
 }
@@ -224,6 +229,52 @@ impl From<StakeHistory> for ProtoStakeHistory {
     }
 }
 
+impl From<ProtoRecentBlockhashes> for RecentBlockhashes {
+    fn from(value: ProtoRecentBlockhashes) -> Self {
+        let hashes: Vec<Hash> = value
+            .entries
+            .iter()
+            .map(|entry| {
+                let hash_bytes: [u8; 32] = entry
+                    .blockhash
+                    .clone()
+                    .try_into()
+                    .expect("Invalid bytes for blockhash");
+                Hash::new_from_array(hash_bytes)
+            })
+            .collect();
+
+        let iter_items =
+            value
+                .entries
+                .iter()
+                .enumerate()
+                .zip(hashes.iter())
+                .map(|((idx, entry), hash)| {
+                    solana_sysvar::recent_blockhashes::IterItem(
+                        idx as u64,
+                        hash,
+                        entry.lamports_per_signature,
+                    )
+                });
+
+        RecentBlockhashes::from_iter(iter_items)
+    }
+}
+
+impl From<RecentBlockhashes> for ProtoRecentBlockhashes {
+    fn from(value: RecentBlockhashes) -> Self {
+        let entries = value
+            .iter()
+            .map(|entry| ProtoRecentBlockhashEntry {
+                blockhash: entry.blockhash.to_bytes().to_vec(),
+                lamports_per_signature: entry.fee_calculator.lamports_per_signature,
+            })
+            .collect();
+        Self { entries }
+    }
+}
+
 // Sysvars.
 impl From<ProtoSysvars> for Sysvars {
     fn from(value: ProtoSysvars) -> Self {
@@ -234,6 +285,7 @@ impl From<ProtoSysvars> for Sysvars {
             rent: value.rent.map(Into::into).unwrap_or_default(),
             slot_hashes: value.slot_hashes.map(Into::into).unwrap_or_default(),
             stake_history: value.stake_history.map(Into::into).unwrap_or_default(),
+            recent_blockhashes: value.recent_blockhashes.map(Into::into).unwrap_or_default(),
         }
     }
 }
@@ -246,6 +298,7 @@ impl From<Sysvars> for ProtoSysvars {
             rent: Some(value.rent.into()),
             slot_hashes: Some(value.slot_hashes.into()),
             stake_history: Some(value.stake_history.into()),
+            recent_blockhashes: Some(value.recent_blockhashes.into()),
         }
     }
 }
@@ -301,6 +354,13 @@ pub(crate) fn hash_proto_sysvars(hasher: &mut Hasher, sysvars: &ProtoSysvars) {
             hasher.hash(&entry.effective.to_le_bytes());
             hasher.hash(&entry.activating.to_le_bytes());
             hasher.hash(&entry.deactivating.to_le_bytes());
+        }
+    }
+    // RecentBlockhashes
+    if let Some(recent_blockhashes) = &sysvars.recent_blockhashes {
+        for entry in &recent_blockhashes.entries {
+            hasher.hash(&entry.blockhash);
+            hasher.hash(&entry.lamports_per_signature.to_le_bytes());
         }
     }
 }

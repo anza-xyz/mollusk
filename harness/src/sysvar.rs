@@ -1,5 +1,5 @@
 //! Module for working with Solana sysvars.
-
+#![allow(deprecated)]
 use {
     solana_account::{Account, ReadableAccount},
     solana_clock::{Clock, Slot},
@@ -11,7 +11,10 @@ use {
     solana_rent::Rent,
     solana_slot_hashes::{SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
     solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
-    solana_sysvar::{self, last_restart_slot::LastRestartSlot, SysvarSerialize},
+    solana_sysvar::{
+        self, last_restart_slot::LastRestartSlot, recent_blockhashes::RecentBlockhashes,
+        SysvarSerialize,
+    },
     solana_sysvar_id::SysvarId,
 };
 
@@ -26,6 +29,7 @@ pub struct Sysvars {
     pub rent: Rent,
     pub slot_hashes: SlotHashes,
     pub stake_history: StakeHistory,
+    pub recent_blockhashes: RecentBlockhashes,
 }
 
 impl Default for Sysvars {
@@ -53,6 +57,7 @@ impl Default for Sysvars {
             rent,
             slot_hashes,
             stake_history,
+            recent_blockhashes: RecentBlockhashes::default(),
         }
     }
 }
@@ -87,6 +92,8 @@ impl Sysvars {
             Some(self.sysvar_account(&self.slot_hashes).1)
         } else if pubkey.eq(&StakeHistory::id()) {
             Some(self.sysvar_account(&self.stake_history).1)
+        } else if pubkey.eq(&RecentBlockhashes::id()) {
+            Some(self.sysvar_account(&self.recent_blockhashes).1)
         } else {
             None
         }
@@ -127,7 +134,12 @@ impl Sysvars {
         self.sysvar_account(&self.stake_history)
     }
 
-    pub(crate) fn get_all_keyed_sysvar_accounts(&self) -> Vec<(Pubkey, Account)> {
+    /// Get the key and account for the recent blockhashes sysvar.
+    pub fn keyed_account_for_recent_blockhashes_sysvar(&self) -> (Pubkey, Account) {
+        self.sysvar_account(&self.recent_blockhashes)
+    }
+
+    pub fn get_all_keyed_sysvar_accounts(&self) -> Vec<(Pubkey, Account)> {
         vec![
             self.keyed_account_for_clock_sysvar(),
             self.keyed_account_for_epoch_rewards_sysvar(),
@@ -136,6 +148,7 @@ impl Sysvars {
             self.keyed_account_for_rent_sysvar(),
             self.keyed_account_for_slot_hashes_sysvar(),
             self.keyed_account_for_stake_history_sysvar(),
+            self.keyed_account_for_recent_blockhashes_sysvar(),
         ]
     }
 
@@ -212,6 +225,9 @@ impl Sysvars {
             if pubkey.eq(&StakeHistory::id()) {
                 set_sysvar(&bincode::serialize(&self.stake_history).unwrap());
             }
+            if pubkey.eq(&RecentBlockhashes::id()) {
+                set_sysvar(&bincode::serialize(&self.recent_blockhashes).unwrap());
+            }
         });
 
         sysvar_cache
@@ -242,6 +258,9 @@ impl From<&Sysvars> for SysvarCache {
             }
             if pubkey.eq(&StakeHistory::id()) {
                 set_sysvar(&bincode::serialize(&mollusk_cache.stake_history).unwrap());
+            }
+            if pubkey.eq(&RecentBlockhashes::id()) {
+                set_sysvar(&bincode::serialize(&mollusk_cache.recent_blockhashes).unwrap());
             }
         });
         sysvar_cache
@@ -319,6 +338,7 @@ mod tests {
             rent,
             slot_hashes,
             stake_history,
+            recent_blockhashes: RecentBlockhashes::default(),
         };
 
         let sysvar_cache: SysvarCache = (&sysvars).into();
