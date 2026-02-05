@@ -2232,7 +2232,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "agave-feature-set",
  "agave-precompiles",
@@ -2297,7 +2297,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-bencher"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "chrono",
  "mollusk-svm",
@@ -2311,7 +2311,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-cli"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "chrono",
  "clap",
@@ -2330,7 +2330,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-error"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "solana-pubkey 4.0.0",
  "thiserror 1.0.69",
@@ -2338,7 +2338,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-fuzz-fixture"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "agave-feature-set",
  "mollusk-svm-fuzz-fs",
@@ -2364,7 +2364,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-fuzz-fixture-firedancer"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "agave-feature-set",
  "mollusk-svm-fuzz-fs",
@@ -2381,7 +2381,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-fuzz-fs"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "bs58",
  "prost",
@@ -2392,7 +2392,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-programs-memo"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "mollusk-svm",
  "solana-account",
@@ -2401,7 +2401,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-programs-token"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "mollusk-svm",
  "solana-account",
@@ -2414,7 +2414,7 @@ dependencies = [
 
 [[package]]
 name = "mollusk-svm-result"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "mollusk-svm-fuzz-fixture",
  "serde",
