@@ -1050,6 +1050,7 @@ impl Mollusk {
                 );
             }
 
+            let mut compute_units_consumed_instruction = 0u64;
             let invoke_result = if invoke_context.is_precompile(program_id) {
                 invoke_context.process_precompile(
                     program_id,
@@ -1057,8 +1058,10 @@ impl Mollusk {
                     std::iter::once(compiled_ix.data.as_ref()),
                 )
             } else {
-                invoke_context.process_instruction(&mut compute_units_consumed, &mut timings)
+                invoke_context
+                    .process_instruction(&mut compute_units_consumed_instruction, &mut timings)
             };
+            compute_units_consumed += compute_units_consumed_instruction;
 
             #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.after_invocation(

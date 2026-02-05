@@ -108,8 +108,7 @@ fn test_compute_units_tracked() {
         ],
     );
 
-    assert!(result.compute_units_consumed > 0);
-    assert!(result.compute_units_consumed <= 1000);
+    assert_eq!(result.compute_units_consumed, 150);
 }
 
 #[test]
@@ -132,9 +131,9 @@ fn test_compute_units_accumulate_across_instructions() {
         ],
     );
 
-    assert!(
-        result.compute_units_consumed >= 150,
-        "Expected CU >= 150 for two transfers, got {}",
+    assert_eq!(
+        result.compute_units_consumed, 300,
+        "Expected CU == 150 for two transfers, got {}",
         result.compute_units_consumed
     );
 }
