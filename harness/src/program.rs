@@ -221,9 +221,9 @@ impl ProgramCache {
 }
 
 pub struct Builtin {
-    program_id: Pubkey,
-    name: &'static str,
-    entrypoint: BuiltinFunctionWithContext,
+    pub program_id: Pubkey,
+    pub name: &'static str,
+    pub entrypoint: BuiltinFunctionWithContext,
 }
 
 impl Builtin {
@@ -269,6 +269,18 @@ static BUILTINS: &[Builtin] = &[
         program_id: solana_sdk_ids::zk_elgamal_proof_program::id(),
         name: "zk_elgamal_proof_program",
         entrypoint: solana_zk_elgamal_proof_program::Entrypoint::vm,
+    },
+    #[cfg(feature = "all-builtins")]
+    Builtin {
+        program_id: solana_sdk_ids::compute_budget::id(),
+        name: "compute_budget_program",
+        entrypoint: solana_compute_budget_program::Entrypoint::vm,
+    },
+    #[cfg(feature = "all-builtins")]
+    Builtin {
+        program_id: solana_sdk_ids::vote::id(),
+        name: "vote_program",
+        entrypoint: solana_vote_program::vote_processor::Entrypoint::vm,
     },
 ];
 
