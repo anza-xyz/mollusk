@@ -221,9 +221,9 @@ impl ProgramCache {
 }
 
 pub struct Builtin {
-    program_id: Pubkey,
-    name: &'static str,
-    entrypoint: BuiltinFunctionWithContext,
+    pub program_id: Pubkey,
+    pub name: &'static str,
+    pub entrypoint: BuiltinFunctionWithContext,
 }
 
 impl Builtin {
