@@ -2257,6 +2257,7 @@ dependencies = [
  "solana-bpf-loader-program",
  "solana-clock",
  "solana-compute-budget",
+ "solana-compute-budget-program",
  "solana-ed25519-program",
  "solana-epoch-rewards",
  "solana-epoch-schedule",
@@ -3732,6 +3733,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce3f669e3d35a893461cfbd66160a043409a541a8f65c269e1a7c76c88506689"
 dependencies = [
  "solana-fee-structure",
+ "solana-program-runtime",
+]
+
+[[package]]
+name = "solana-compute-budget-program"
+version = "3.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a8f77f276e3fb5a3eb20287d670dfa0c96c8c76523cbefcce2018f5b4632b46"
+dependencies = [
  "solana-program-runtime",
 ]
 

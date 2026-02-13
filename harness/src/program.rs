@@ -270,6 +270,18 @@ static BUILTINS: &[Builtin] = &[
         name: "zk_elgamal_proof_program",
         entrypoint: solana_zk_elgamal_proof_program::Entrypoint::vm,
     },
+    #[cfg(feature = "all-builtins")]
+    Builtin {
+        program_id: solana_sdk_ids::compute_budget::id(),
+        name: "compute_budget_program",
+        entrypoint: solana_compute_budget_program::Entrypoint::vm,
+    },
+    #[cfg(feature = "all-builtins")]
+    Builtin {
+        program_id: solana_sdk_ids::vote::id(),
+        name: "vote_program",
+        entrypoint: solana_vote_program::vote_processor::Entrypoint::vm,
+    },
 ];
 
 /// Create a key and account for a builtin program.

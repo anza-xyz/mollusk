@@ -12,6 +12,7 @@ version = { workspace = true }
 [features]
 default = []
 all-builtins = [
+    "dep:solana-compute-budget-program",
     "dep:solana-loader-v4-program",
     "dep:solana-vote-program",
     "dep:solana-zk-elgamal-proof-program",
@@ -58,6 +59,7 @@ solana-account = { workspace = true }
 solana-bpf-loader-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-clock = { workspace = true }
 solana-compute-budget = { workspace = true, features = ["agave-unstable-api"] }
+solana-compute-budget-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-epoch-rewards = { workspace = true }
 solana-epoch-schedule = { workspace = true }
 solana-hash = { workspace = true }
