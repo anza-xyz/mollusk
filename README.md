@@ -639,5 +639,6 @@ mollusk.invocation_inspect_callback = Box::new(EmptyInvocationInspectCallback {}
 mollusk.invocation_inspect_callback =
     Box::new(register_tracing::DefaultRegisterTracingCallback {
         sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap(),
+        sbf_trace_disassemble: std::env::var("SBF_TRACE_DISASSEMBLE").is_ok(),
     });
 ```

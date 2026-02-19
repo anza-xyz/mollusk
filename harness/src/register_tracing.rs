@@ -37,7 +37,7 @@ impl DefaultRegisterTracingCallback {
         ) {
             Ok(analysis) => {
                 if let Err(e) = analysis.disassemble_register_trace(writer, register_trace) {
-                    eprintln!("Can't dissasemble register trace for {program_id}: {e:#?}");
+                    eprintln!("Can't disassemble register trace for {program_id}: {e:#?}");
                 }
             }
             Err(e) => {
@@ -73,7 +73,7 @@ impl DefaultRegisterTracingCallback {
 
         // Persist a full trace disassembly if requested.
         if self.sbf_trace_disassemble {
-            let mut trace_disassemble_file = File::create(base_fname.with_extension("disassem"))?;
+            let mut trace_disassemble_file = File::create(base_fname.with_extension("trace"))?;
             self.disassemble_register_trace(
                 &mut trace_disassemble_file,
                 program_id,
