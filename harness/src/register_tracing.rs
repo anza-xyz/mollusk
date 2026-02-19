@@ -11,6 +11,7 @@ const DEFAULT_PATH: &str = "target/sbf/trace";
 
 pub struct DefaultRegisterTracingCallback {
     pub sbf_trace_dir: String,
+    pub sbf_trace_disassemble: bool,
 }
 
 impl Default for DefaultRegisterTracingCallback {
@@ -18,6 +19,7 @@ impl Default for DefaultRegisterTracingCallback {
         Self {
             // User can override default path with `SBF_TRACE_DIR` environment variable.
             sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap_or(DEFAULT_PATH.to_string()),
+            sbf_trace_disassemble: std::env::var("SBF_TRACE_DISASSEMBLE").is_ok(),
         }
     }
 }
@@ -69,8 +71,8 @@ impl DefaultRegisterTracingCallback {
         // Get program_id.
         let program_id = instruction_context.get_program_key()?;
 
-        // If set persist a full trace disassembly.
-        if std::env::var("SBF_TRACE_DISASSEMBLE").is_ok() {
+        // Persist a full trace disassembly if requested.
+        if self.sbf_trace_disassemble {
             let mut trace_disassemble_file = File::create(base_fname.with_extension("disassem"))?;
             self.disassemble_register_trace(
                 &mut trace_disassemble_file,
