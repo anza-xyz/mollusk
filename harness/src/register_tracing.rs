@@ -11,6 +11,7 @@ const DEFAULT_PATH: &str = "target/sbf/trace";
 
 pub struct DefaultRegisterTracingCallback {
     pub sbf_trace_dir: String,
+    pub sbf_trace_disassemble: bool,
 }
 
 impl Default for DefaultRegisterTracingCallback {
@@ -18,11 +19,33 @@ impl Default for DefaultRegisterTracingCallback {
         Self {
             // User can override default path with `SBF_TRACE_DIR` environment variable.
             sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap_or(DEFAULT_PATH.to_string()),
+            sbf_trace_disassemble: std::env::var("SBF_TRACE_DISASSEMBLE").is_ok(),
         }
     }
 }
 
 impl DefaultRegisterTracingCallback {
+    pub fn disassemble_register_trace<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        program_id: &Pubkey,
+        executable: &Executable,
+        register_trace: RegisterTrace,
+    ) {
+        match solana_program_runtime::solana_sbpf::static_analysis::Analysis::from_executable(
+            executable,
+        ) {
+            Ok(analysis) => {
+                if let Err(e) = analysis.disassemble_register_trace(writer, register_trace) {
+                    eprintln!("Can't disassemble register trace for {program_id}: {e:#?}");
+                }
+            }
+            Err(e) => {
+                eprintln!("Can't create trace disassemble analysis for {program_id}: {e:#?}")
+            }
+        }
+    }
+
     pub fn handler(
         &self,
         mollusk: &Mollusk,
@@ -47,6 +70,18 @@ impl DefaultRegisterTracingCallback {
 
         // Get program_id.
         let program_id = instruction_context.get_program_key()?;
+
+        // Persist a full trace disassembly if requested.
+        if self.sbf_trace_disassemble {
+            let mut trace_disassemble_file = File::create(base_fname.with_extension("trace"))?;
+            self.disassemble_register_trace(
+                &mut trace_disassemble_file,
+                program_id,
+                executable,
+                register_trace,
+            );
+        }
+
         // Persist the program id.
         let _ = program_id_file.write(program_id.to_string().as_bytes());
 
