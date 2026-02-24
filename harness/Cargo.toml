@@ -38,7 +38,7 @@ register-tracing = [
     "dep:sha2",
     "dep:nom"
 ]
-sbpf-debugger = ["register-tracing"]
+sbpf-debugger = ["register-tracing"] # with 4.0.0 here I have to add "solana-program-runtime/sbpf-debugger"
 serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
@@ -108,8 +108,8 @@ solana-native-token = { workspace = true }
 solana-secp256k1-program = { workspace = true, features = ["bincode"] }
 solana-secp256r1-program = { workspace = true }
 solana-system-interface = { workspace = true }
-solana-sbpf = { workspace = true }
-solana-program-entrypoint = { workspace = true }
+solana-sbpf = { workspace = true } # will remove it with 4.0.0
+solana-program-entrypoint = { workspace = true } # will remove it with 4.0.0
 
 [[bench]]
 name = "ips"

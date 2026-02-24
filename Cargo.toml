@@ -107,4 +107,4 @@ spl-token-interface = "2.0.0"
 thiserror = "1.0.64"
 tokio = "1.37.0"
 which = "=4.4.0"
-solana-sbpf = { version = "0.13.1", features = ["debugger"] }
+solana-sbpf = { version = "0.13.1", features = ["debugger"] } # will remove it with 4.0.0
