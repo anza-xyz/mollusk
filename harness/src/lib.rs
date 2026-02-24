@@ -449,6 +449,8 @@ pub mod instructions_sysvar;
 pub mod program;
 #[cfg(feature = "register-tracing")]
 pub mod register_tracing;
+#[cfg(feature = "register-tracing")]
+pub mod register_tracing_filter;
 pub mod sysvar;
 
 #[cfg(feature = "register-tracing")]
@@ -552,7 +554,8 @@ pub trait InvocationInspectCallback {
         program_id: &Pubkey,
         instruction_data: &[u8],
         instruction_accounts: &[InstructionAccount],
-        invoke_context: &InvokeContext,
+        invoke_context: &mut InvokeContext,
+        register_tracing_enabled: bool,
     );
 
     fn after_invocation(
@@ -561,6 +564,9 @@ pub trait InvocationInspectCallback {
         invoke_context: &InvokeContext,
         register_tracing_enabled: bool,
     );
+
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -568,13 +574,22 @@ pub struct EmptyInvocationInspectCallback;
 
 #[cfg(feature = "invocation-inspect-callback")]
 impl InvocationInspectCallback for EmptyInvocationInspectCallback {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
     fn before_invocation(
         &self,
         _: &Mollusk,
         _: &Pubkey,
         _: &[u8],
         _: &[InstructionAccount],
-        _: &InvokeContext,
+        _: &mut InvokeContext,
+        _register_tracing_enabled: bool,
     ) {
     }
 
@@ -1046,7 +1061,8 @@ impl Mollusk {
                     program_id,
                     &compiled_ix.data,
                     &instruction_accounts,
-                    &invoke_context,
+                    &mut invoke_context,
+                    self.enable_register_tracing,
                 );
             }
 

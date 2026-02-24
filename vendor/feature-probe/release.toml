@@ -1,0 +1,6 @@
+pre-release-replacements = [
+  { file="README.md", search="feature-probe = \"[0-9.]*\"", replace="feature-probe = \"{{version}}\"" },
+  { file="src/lib.rs", search="feature-probe = \"[0-9.]*\"", replace="feature-probe = \"{{version}}\"" },
+  { file="src/lib.rs", search="https://docs[.]rs/feature-probe/[0-9.]*", replace="https://docs.rs/feature-probe/{{version}}" },
+  { file="CHANGELOG.md", search="\\[Unreleased\\]", replace="[{{version}}] - {{date}}" }
+]

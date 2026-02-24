@@ -1,0 +1,154 @@
+//! A test for every supported item.
+//! This test requires the nightly toolchain to compile.
+
+#![allow(dead_code, unused_imports, unused_macros)]
+#![feature(extern_types, specialization, trait_alias)]
+
+#[macro_use]
+extern crate qualifier_attr;
+
+#[qualifiers(pub)]
+mod outer {
+    // testing "common" items first...
+
+    // const
+    #[qualifiers(pub)]
+    const ITEM_CONST: &str = "item const!";
+
+    trait TraitItemConst {
+        const IMPL_ITEM_CONST: &'static str;
+    }
+
+    struct ImplItemConst;
+
+    impl TraitItemConst for ImplItemConst {
+        #[qualifiers(default)]
+        const IMPL_ITEM_CONST: &'static str = "impl item const!";
+    }
+
+    // fn
+    #[qualifiers(pub, const, unsafe, extern "C")]
+    fn item_fn_const() {}
+
+    #[qualifiers(pub, async, unsafe, extern "C")]
+    fn item_fn_async() {}
+
+    extern "C" {
+        #[qualifiers(pub)]
+        fn foreign_item_fn();
+    }
+
+    trait TraitItemFn {
+        #[qualifiers(unsafe, extern "C")]
+        fn impl_item_fn();
+    }
+
+    struct ImplItemFn;
+
+    impl TraitItemFn for ImplItemFn {
+        #[qualifiers(default, unsafe, extern "C")]
+        fn impl_item_fn() {}
+    }
+
+    // static
+    #[qualifiers(pub)]
+    static ITEM_STATIC: &str = "item static!";
+
+    extern "C" {
+        #[qualifiers(pub)]
+        static FOREIGN_ITEM_STATIC: *const u8;
+    }
+
+    // type
+    #[qualifiers(pub)]
+    type ItemType<T> = [T; 2];
+
+    extern "C" {
+        #[qualifiers(pub)]
+        type ForeignItemType;
+    }
+
+    trait TraitItemType {
+        type ImplItemType<T: 'static>: 'static
+        where
+            T: TraitItemFn;
+    }
+
+    struct ImplItemType;
+
+    impl TraitItemType for ImplItemType {
+        #[qualifiers(default)]
+        type ImplItemType<T: 'static> = ImplItemFn where T: TraitItemFn;
+    }
+
+    // other items...
+
+    // enum
+    #[qualifiers(pub)]
+    enum ItemEnum {
+        A,
+        B,
+        C,
+    }
+
+    // extern crate
+    #[qualifiers(pub)]
+    extern crate qualifier_attr as item_extern_crate;
+
+    // (foreign mod supports unsafe syntactically but it does not compile)
+    extern "C" {}
+
+    // impl
+    unsafe trait ItemImpl {}
+
+    #[qualifiers(default, unsafe)]
+    impl<T> ItemImpl for T {}
+
+    // (macros have no support)
+    macro_rules! item_macro {
+        () => {};
+    }
+
+    // mod (supports unsafe syntactically but it does not compile)
+    #[qualifiers(pub)]
+    mod item_mod {}
+
+    // struct
+    #[qualifiers(pub)]
+    struct ItemStruct {
+        pub x: i32,
+        pub y: i32,
+    }
+
+    // trait
+    #[qualifiers(pub, unsafe)]
+    trait ItemTrait {}
+
+    unsafe impl ItemTrait for () {}
+
+    // trait alias
+    #[qualifiers(pub)]
+    trait ItemTraitAlias = ItemTrait;
+
+    // union
+    #[qualifiers(pub)]
+    union ItemUnion {
+        pub x: i32,
+        pub y: i32,
+    }
+}
+
+mod export {
+    #[qualifiers(pub)]
+    use super::outer::{
+        foreign_item_fn, item_extern_crate, item_fn_async, item_fn_const, item_mod,
+        ForeignItemType, ItemEnum, ItemStruct, ItemTrait, ItemTraitAlias, ItemType, ItemUnion,
+        FOREIGN_ITEM_STATIC, ITEM_CONST, ITEM_STATIC,
+    };
+}
+
+use export::{
+    foreign_item_fn, item_extern_crate, item_fn_async, item_fn_const, item_mod, ForeignItemType,
+    ItemEnum, ItemStruct, ItemTrait, ItemTraitAlias, ItemType, ItemUnion, FOREIGN_ITEM_STATIC,
+    ITEM_CONST, ITEM_STATIC,
+};
