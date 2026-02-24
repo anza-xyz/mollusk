@@ -10,7 +10,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [features]
-default = ["sbpf-debugger"]
+default = ["sbpf-debugger"] # TODO REMOVE: added just for easy testing.
 all-builtins = [
     "dep:solana-compute-budget-program",
     "dep:solana-loader-v4-program",
