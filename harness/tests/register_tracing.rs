@@ -246,10 +246,10 @@ mod debugger_tests {
         reader.read_until(b'#', &mut buf)?;
         // Then read exactly 2 bytes representing the checksum.
         let mut cbuf = [0];
-        reader.read(&mut cbuf)?;
-        buf.write(&cbuf)?;
-        reader.read(&mut cbuf)?;
-        buf.write(&cbuf)?;
+        let _ = reader.read(&mut cbuf)?;
+        let _ = buf.write(&cbuf)?;
+        let _ = reader.read(&mut cbuf)?;
+        let _ = buf.write(&cbuf)?;
         let reply = String::from_utf8_lossy(&buf).to_string();
         // eprintln!("gdbstub reply: {}", reply);
         Ok(reply)

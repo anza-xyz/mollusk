@@ -201,12 +201,11 @@ impl DefaultRegisterTracingCallback {
 
         instruction_accounts
             .iter()
-            .map(|ia| {
+            .flat_map(|ia| {
                 invoke_context
                     .transaction_context
                     .get_key_of_account_at_index(ia.index_in_transaction)
             })
-            .flatten()
             .for_each(|pubkey| {
                 persist_elf_sha256(&mut program_ids_file, pubkey);
             });
