@@ -413,7 +413,7 @@ mod debugger_tests {
             .as_any_mut()
             .downcast_mut()
             .unwrap();
-        tracing_callback.filter = format!("program_id == {}", Pubkey::new_unique());
+        tracing_callback.sbf_trace_filter = format!("program_id == {}", Pubkey::new_unique());
 
         let data = &[1, 2, 3, 4, 5];
         let space = data.len();
@@ -466,7 +466,7 @@ mod debugger_tests {
                 .as_any_mut()
                 .downcast_mut()
                 .unwrap();
-            tracing_callback.filter = filter;
+            tracing_callback.sbf_trace_filter = filter;
 
             let program_id_file = std::path::PathBuf::from(&tracing_callback.sbf_trace_dir)
                 .join("program_ids")

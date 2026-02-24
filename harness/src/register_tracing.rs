@@ -17,9 +17,9 @@ const DEFAULT_DEBUG_PORT: Option<u16> = None;
 pub struct DefaultRegisterTracingCallback {
     pub sbf_trace_dir: String,
     pub sbf_trace_disassemble: bool,
-    pub filter: String,
+    pub sbf_trace_filter: String,
     #[cfg(feature = "sbpf-debugger")]
-    pub debug_port: Option<u16>,
+    pub sbf_debug_port: Option<u16>,
 }
 
 impl Default for DefaultRegisterTracingCallback {
@@ -28,11 +28,11 @@ impl Default for DefaultRegisterTracingCallback {
             // User can override default path with `SBF_TRACE_DIR` environment variable.
             sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap_or(DEFAULT_PATH.to_string()),
             sbf_trace_disassemble: std::env::var("SBF_TRACE_DISASSEMBLE").is_ok(),
-            filter: std::env::var("SBF_TRACE_FILTER").unwrap_or_default(),
+            sbf_trace_filter: std::env::var("SBF_TRACE_FILTER").unwrap_or_default(),
             // The port that will be used for debugging.
             // Will invoke the debugger if set.
             #[cfg(feature = "sbpf-debugger")]
-            debug_port: std::env::var("SBF_DEBUG_PORT")
+            sbf_debug_port: std::env::var("SBF_DEBUG_PORT")
                 .map(|port| port.parse::<u16>().ok())
                 .unwrap_or(DEFAULT_DEBUG_PORT),
         }
@@ -62,7 +62,7 @@ impl DefaultRegisterTracingCallback {
     }
 
     pub fn match_filter(&self, program_ids: Vec<String>) -> bool {
-        let Ok((_, ast)) = expr(&self.filter) else {
+        let Ok((_, ast)) = expr(&self.sbf_trace_filter) else {
             return true;
         };
         let row = HashMap::from([("program_id", program_ids)]);
@@ -93,7 +93,7 @@ impl DefaultRegisterTracingCallback {
                     .iter()
                     .map(|program_id| program_id.to_string())
                     .collect();
-                if let Some(debug_port) = self.debug_port {
+                if let Some(debug_port) = self.sbf_debug_port {
                     if self.match_filter(program_ids) {
                         invoke_context.debug_port = Some(debug_port);
                     }
