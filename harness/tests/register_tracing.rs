@@ -470,7 +470,7 @@ mod debugger_tests {
 
             let program_id_file = std::path::PathBuf::from(&tracing_callback.sbf_trace_dir)
                 .join("program_ids")
-                .with_extension("exec.sha256");
+                .with_extension("map");
 
             // This is the expected program IDs <-> SHA-256 mapping.
             let expected_program_ids = format!(

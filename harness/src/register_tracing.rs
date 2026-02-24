@@ -186,7 +186,7 @@ impl DefaultRegisterTracingCallback {
         std::fs::create_dir_all(&sbf_trace_dir)?;
         let base_fname = sbf_trace_dir.join("program_ids");
         let mut program_ids = Vec::new();
-        let mut program_ids_file = File::create(base_fname.with_extension("exec.sha256"))?;
+        let mut program_ids_file = File::create(base_fname.with_extension("map"))?;
 
         let mut persist_elf_sha256 = |file: &mut File, pubkey: &Pubkey| {
             if let Some(elf_data) = mollusk.program_cache.get_program_elf_bytes(pubkey) {
