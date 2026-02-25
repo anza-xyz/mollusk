@@ -486,11 +486,8 @@ mod debugger_tests {
         let empty_filter = "";
         let filters = [
             empty_filter.into(),
-            format!(
-                "program_id == {} || program_id == {}",
-                program_id, cpi_target_program_id
-            ),
-            format!("program_id == {}", cpi_target_program_id),
+            format!("program_id == {program_id} || program_id == {cpi_target_program_id}",),
+            format!("program_id == {cpi_target_program_id}"),
         ];
         for filter in filters.into_iter() {
             let tracing_callback: &mut DefaultRegisterTracingCallback = mollusk
