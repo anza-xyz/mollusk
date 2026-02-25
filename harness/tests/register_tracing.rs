@@ -335,18 +335,12 @@ mod debugger_tests {
         writer.write_all(&cmd)?;
         writer.flush()?;
         let reply = read_reply(reader)?;
-        let parsed_reply = gdb_parse_packet(&reply).ok_or(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "Invalid data",
-        ))?;
+        let parsed_reply =
+            gdb_parse_packet(&reply).ok_or(std::io::Error::other("invalid packet"))?;
         let data = parsed_reply
-            .get(0..8)
-            .ok_or(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid data",
-            ))?
-            .try_into()
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid data"))?;
+            .get(..8)
+            .and_then(|s| s.try_into().ok())
+            .ok_or(std::io::Error::other("expected 8 bytes"))?;
         let reg_value = u64::from_le_bytes(data);
         Ok(reg_value)
     }
@@ -357,16 +351,17 @@ mod debugger_tests {
     ) -> std::io::Result<HashMap<String, u64>> {
         let mut map = HashMap::new();
         for reg_num in 0..=9 {
-            let reg_value = stub_read_register(writer, reader, reg_num)?;
-            map.insert(format!("r{}", reg_num), reg_value);
+            map.insert(
+                format!("r{}", reg_num),
+                stub_read_register(writer, reader, reg_num)?,
+            );
         }
-
-        let reg_value = stub_read_register(writer, reader, 10)?;
-        map.insert("fp".to_string(), reg_value);
-
-        let reg_value = stub_read_register(writer, reader, 12)?;
-        map.insert("pc".to_string(), reg_value);
-
+        map.insert("fp".to_string(), stub_read_register(writer, reader, 10)?);
+        map.insert("pc".to_string(), stub_read_register(writer, reader, 11)?);
+        map.insert(
+            "icount_remain".to_string(),
+            stub_read_register(writer, reader, 12)?,
+        );
         Ok(map)
     }
 
@@ -564,9 +559,7 @@ mod debugger_tests {
                     let data_len =
                         stub_read_memory_chunked(&mut writer, &mut reader, data_len_addr, 8, 1024)?
                             .try_into()
-                            .map_err(|_| {
-                                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid data")
-                            })?;
+                            .map_err(|_| std::io::Error::other("expected 8 bytes"))?;
                     let data_len = u64::from_le_bytes(data_len) as usize;
                     assert!(instruction_data_len == data_len);
                     let data = stub_read_memory_chunked(
