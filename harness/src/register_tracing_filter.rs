@@ -60,7 +60,7 @@ fn cond(input: &str) -> IResult<&str, Expr<'_>> {
 }
 
 fn factor(input: &str) -> IResult<&str, Expr<'_>> {
-    alt((delimited(ws(tag("(")), expr, ws(tag(")"))), cond)).parse(input)
+    alt((delimited(ws(tag("(")), expr_inner, ws(tag(")"))), cond)).parse(input)
 }
 
 fn and_expr(input: &str) -> IResult<&str, Expr<'_>> {
@@ -80,7 +80,7 @@ fn and_expr(input: &str) -> IResult<&str, Expr<'_>> {
 /// Supports syntax: `field == value`, `field != value`, `&&`, `||`, and `()`
 /// for grouping. Example: `program_id == abc123 || (program_id == def456 &&
 /// program_id != xyz789)`
-pub fn expr(input: &str) -> IResult<&str, Expr<'_>> {
+fn expr_inner(input: &str) -> IResult<&str, Expr<'_>> {
     let (rest, _) = multispace0(input)?;
     if rest.is_empty() {
         return Ok((rest, Expr::True));
@@ -94,6 +94,14 @@ pub fn expr(input: &str) -> IResult<&str, Expr<'_>> {
             }
         })
         .parse(input)
+}
+
+pub fn expr(input: &str) -> Result<Expr<'_>, String> {
+    match expr_inner(input) {
+        Ok(("", ast)) => Ok(ast),
+        Ok((rest, _)) => Err(format!("unexpected trailing input: '{}'", rest.trim())),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 // --- Evaluator (multi-value: field -> Vec<String>) ---
@@ -143,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_empty_filter_matches_all() {
-        let (_, ast) = expr("").unwrap();
+        let ast = expr("").unwrap();
         let row = HashMap::from([("program_id", vec![TOKEN_PROGRAM.to_string()])]);
         assert!(eval(&ast, &row));
     }
@@ -151,7 +159,7 @@ mod tests {
     #[test]
     fn test_simple_equality() {
         let filter = format!("program_id == {}", TOKEN_PROGRAM);
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row = HashMap::from([("program_id", vec![TOKEN_PROGRAM.to_string()])]);
         assert!(eval(&ast, &row));
 
@@ -162,7 +170,7 @@ mod tests {
     #[test]
     fn test_simple_inequality() {
         let filter = format!("program_id != {}", TOKEN_PROGRAM);
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row = HashMap::from([("program_id", vec![SYSTEM_PROGRAM.to_string()])]);
         assert!(eval(&ast, &row));
 
@@ -176,7 +184,7 @@ mod tests {
             "program_id == {} && program_id != {}",
             TOKEN_PROGRAM, SYSTEM_PROGRAM
         );
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row_match = HashMap::from([("program_id", vec![TOKEN_PROGRAM.to_string()])]);
         assert!(eval(&ast, &row_match));
 
@@ -190,7 +198,7 @@ mod tests {
             "program_id == {} && program_id == {}",
             TOKEN_PROGRAM, SYSTEM_PROGRAM
         );
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row_no_match = HashMap::from([(
             "program_id",
             vec![TOKEN_PROGRAM.to_string(), SYSTEM_PROGRAM.to_string()],
@@ -205,7 +213,7 @@ mod tests {
             "program_id == {} || program_id == {}",
             TOKEN_PROGRAM, SYSTEM_PROGRAM
         );
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row_match1 = HashMap::from([("program_id", vec![TOKEN_PROGRAM.to_string()])]);
         assert!(eval(&ast, &row_match1));
 
@@ -222,7 +230,7 @@ mod tests {
             "program_id == {} || (program_id == {} && program_id != {})",
             TOKEN_PROGRAM, SYSTEM_PROGRAM, SPL_MEMO
         );
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row_match1 = HashMap::from([("program_id", vec![TOKEN_PROGRAM.to_string()])]);
         assert!(eval(&ast, &row_match1));
 
@@ -236,7 +244,7 @@ mod tests {
     #[test]
     fn test_multi_value_equality() {
         let filter = format!("program_id == {}", TOKEN_PROGRAM);
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row = HashMap::from([(
             "program_id",
             vec![SYSTEM_PROGRAM.to_string(), TOKEN_PROGRAM.to_string()],
@@ -247,7 +255,7 @@ mod tests {
     #[test]
     fn test_multi_value_inequality() {
         let filter = format!("program_id != {}", TOKEN_PROGRAM);
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         // All values must be different from TOKEN_PROGRAM
         let row_match = HashMap::from([(
             "program_id",
@@ -266,7 +274,7 @@ mod tests {
     #[test]
     fn test_whitespace_handling() {
         let filter = format!("  program_id   ==   {}  ", TOKEN_PROGRAM);
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row = HashMap::from([("program_id", vec![TOKEN_PROGRAM.to_string()])]);
         assert!(eval(&ast, &row));
     }
@@ -274,7 +282,7 @@ mod tests {
     #[test]
     fn test_missing_field() {
         let filter = format!("program_id == {}", TOKEN_PROGRAM);
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row = HashMap::from([("other_field", vec![SYSTEM_PROGRAM.to_string()])]);
         assert!(!eval(&ast, &row));
     }
@@ -282,7 +290,7 @@ mod tests {
     #[test]
     fn test_nested_field() {
         let filter = format!("account.owner == {}", TOKEN_PROGRAM);
-        let (_, ast) = expr(&filter).unwrap();
+        let ast = expr(&filter).unwrap();
         let row = HashMap::from([("account.owner", vec![TOKEN_PROGRAM.to_string()])]);
         assert!(eval(&ast, &row));
 

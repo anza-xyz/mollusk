@@ -62,9 +62,11 @@ impl DefaultRegisterTracingCallback {
     }
 
     pub fn match_filter(&self, program_ids: Vec<String>) -> bool {
-        let Ok((_, ast)) = expr(&self.sbf_trace_filter) else {
+        let Ok(ast) = expr(&self.sbf_trace_filter) else {
+            // Garbage in tracing filter. Proceeding as if no filter present.
             return true;
         };
+
         let row = HashMap::from([("program_id", program_ids)]);
         eval(&ast, &row)
     }
