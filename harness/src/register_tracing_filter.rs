@@ -95,8 +95,8 @@ fn expr_inner(input: &str) -> IResult<&str, Expr<'_>> {
 /// Returns `Ok(Expr::True)` if the input is empty (matches everything).
 /// Returns `Err` if the input is malformed or has trailing garbage.
 /// Supports syntax: `field == value`, `field != value`, `&&`, `||`, and `()`
-/// for grouping. Example: `program_id == abc123 || (program_id == def456 &&
-/// program_id != xyz789)`
+/// for grouping.
+/// Example: `program_id == A || (program_id == B || program_id != C)`
 pub fn expr(input: &str) -> Result<Expr<'_>, String> {
     match expr_inner(input) {
         Ok(("", ast)) => Ok(ast),
