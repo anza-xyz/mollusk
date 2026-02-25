@@ -75,11 +75,6 @@ fn and_expr(input: &str) -> IResult<&str, Expr<'_>> {
         .parse(input)
 }
 
-/// Parses a filter expression string into an AST.
-/// Returns `Expr::True` if the input is empty (matches everything).
-/// Supports syntax: `field == value`, `field != value`, `&&`, `||`, and `()`
-/// for grouping. Example: `program_id == abc123 || (program_id == def456 &&
-/// program_id != xyz789)`
 fn expr_inner(input: &str) -> IResult<&str, Expr<'_>> {
     let (rest, _) = multispace0(input)?;
     if rest.is_empty() {
@@ -96,6 +91,12 @@ fn expr_inner(input: &str) -> IResult<&str, Expr<'_>> {
         .parse(input)
 }
 
+/// Parses a filter expression string into an AST.
+/// Returns `Ok(Expr::True)` if the input is empty (matches everything).
+/// Returns `Err` if the input is malformed or has trailing garbage.
+/// Supports syntax: `field == value`, `field != value`, `&&`, `||`, and `()`
+/// for grouping. Example: `program_id == abc123 || (program_id == def456 &&
+/// program_id != xyz789)`
 pub fn expr(input: &str) -> Result<Expr<'_>, String> {
     match expr_inner(input) {
         Ok(("", ast)) => Ok(ast),
@@ -110,6 +111,8 @@ pub fn expr(input: &str) -> Result<Expr<'_>, String> {
 /// Each field maps to a vector of string values (multi-value support).
 /// For `==`: returns true if the field contains the value.
 /// For `!=`: returns true if ALL field values are different from the value.
+/// For `&&`: detects contradictory `==` on the same field (e.g.
+/// `field == A && field == B` where A != B) and short-circuits to false.
 pub fn eval(expr: &Expr, row: &HashMap<&str, Vec<String>>) -> bool {
     match expr {
         Expr::True => true,
