@@ -112,7 +112,22 @@ pub fn eval(expr: &Expr, row: &HashMap<&str, Vec<String>>) -> bool {
                 Op::Neq => vals.iter().all(|v| *v != c.value),
             }
         }
-        Expr::And(xs) => xs.iter().all(|e| eval(e, row)),
+        Expr::And(xs) => {
+            let mut eq_by_field: HashMap<&str, &str> = HashMap::new();
+            for x in xs {
+                if let Expr::Cond(c) = x {
+                    if matches!(c.op, Op::Eq) {
+                        if let Some(prev) = eq_by_field.get(c.field) {
+                            if *prev != c.value {
+                                return false;
+                            }
+                        }
+                        eq_by_field.insert(c.field, c.value);
+                    }
+                }
+            }
+            xs.iter().all(|e| eval(e, row))
+        }
         Expr::Or(xs) => xs.iter().any(|e| eval(e, row)),
     }
 }
@@ -166,6 +181,21 @@ mod tests {
         assert!(eval(&ast, &row_match));
 
         let row_no_match = HashMap::from([("program_id", vec![SYSTEM_PROGRAM.to_string()])]);
+        assert!(!eval(&ast, &row_no_match));
+    }
+
+    #[test]
+    fn test_and_expression2() {
+        let filter = format!(
+            "program_id == {} && program_id == {}",
+            TOKEN_PROGRAM, SYSTEM_PROGRAM
+        );
+        let (_, ast) = expr(&filter).unwrap();
+        let row_no_match = HashMap::from([(
+            "program_id",
+            vec![TOKEN_PROGRAM.to_string(), SYSTEM_PROGRAM.to_string()],
+        )]);
+        // can't equal both in the same time
         assert!(!eval(&ast, &row_no_match));
     }
 
