@@ -345,26 +345,6 @@ mod debugger_tests {
         Ok(reg_value)
     }
 
-    fn stub_read_all_registers<R: BufRead, W: Write>(
-        writer: &mut W,
-        reader: &mut R,
-    ) -> std::io::Result<HashMap<String, u64>> {
-        let mut map = HashMap::new();
-        for reg_num in 0..=9 {
-            map.insert(
-                format!("r{}", reg_num),
-                stub_read_register(writer, reader, reg_num)?,
-            );
-        }
-        map.insert("fp".to_string(), stub_read_register(writer, reader, 10)?);
-        map.insert("pc".to_string(), stub_read_register(writer, reader, 11)?);
-        map.insert(
-            "icount_remain".to_string(),
-            stub_read_register(writer, reader, 12)?,
-        );
-        Ok(map)
-    }
-
     fn stub_fetch_debug_metadata<R: BufRead, W: Write>(
         mut reader: &mut R,
         writer: &mut W,
@@ -553,14 +533,12 @@ mod debugger_tests {
 
                     // Check r2 - it should point to the instruction data whereas the length is 8
                     // bytes prior to it.
-                    let registers = stub_read_all_registers(&mut writer, &mut reader)?;
-                    let data_addr = registers["r2"];
-                    let data_len_addr = data_addr - 8;
-                    let data_len =
-                        stub_read_memory_chunked(&mut writer, &mut reader, data_len_addr, 8, 1024)?
+                    let data_addr = stub_read_register(&mut writer, &mut reader, 2)?;
+                    let data_len = u64::from_le_bytes(
+                        stub_read_memory_chunked(&mut writer, &mut reader, data_addr - 8, 8, 1024)?
                             .try_into()
-                            .map_err(|_| std::io::Error::other("expected 8 bytes"))?;
-                    let data_len = u64::from_le_bytes(data_len) as usize;
+                            .map_err(|_| std::io::Error::other("expected 8 bytes"))?,
+                    ) as usize;
                     assert!(instruction_data_len == data_len);
                     let data = stub_read_memory_chunked(
                         &mut writer,
