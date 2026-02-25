@@ -291,10 +291,16 @@ mod debugger_tests {
         hex::decode(&hex_str).ok()
     }
 
+    fn gdb_read_register_cmd(reg_num: usize) -> Vec<u8> {
+        let payload = format!("p{reg_num:x}");
+        let checksum: u8 = payload.bytes().fold(0u8, |acc, b| acc.wrapping_add(b));
+        format!("${}#{:02x}", payload, checksum).into_bytes()
+    }
+
     #[allow(unused)]
-    fn gdb_read_memory_chunked(
-        writer: &mut impl std::io::Write,
-        reader: &mut impl std::io::BufRead,
+    fn stub_read_memory_chunked<R: BufRead, W: Write>(
+        writer: &mut W,
+        reader: &mut R,
         addr: u64,
         total_size: usize,
         chunk_size: usize,
@@ -318,6 +324,50 @@ mod debugger_tests {
         }
 
         Ok(result)
+    }
+
+    fn stub_read_register<R: BufRead, W: Write>(
+        writer: &mut W,
+        reader: &mut R,
+        reg_num: usize,
+    ) -> std::io::Result<u64> {
+        let cmd = gdb_read_register_cmd(reg_num);
+        writer.write_all(&cmd)?;
+        writer.flush()?;
+        let reply = read_reply(reader)?;
+        let parsed_reply = gdb_parse_packet(&reply).ok_or(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "Invalid data",
+        ))?;
+        let data = parsed_reply
+            .get(0..8)
+            .ok_or(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid data",
+            ))?
+            .try_into()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid data"))?;
+        let reg_value = u64::from_le_bytes(data);
+        Ok(reg_value)
+    }
+
+    fn stub_read_all_registers<R: BufRead, W: Write>(
+        writer: &mut W,
+        reader: &mut R,
+    ) -> std::io::Result<HashMap<String, u64>> {
+        let mut map = HashMap::new();
+        for reg_num in 0..=9 {
+            let reg_value = stub_read_register(writer, reader, reg_num)?;
+            map.insert(format!("r{}", reg_num), reg_value);
+        }
+
+        let reg_value = stub_read_register(writer, reader, 10)?;
+        map.insert("fp".to_string(), reg_value);
+
+        let reg_value = stub_read_register(writer, reader, 12)?;
+        map.insert("pc".to_string(), reg_value);
+
+        Ok(map)
     }
 
     fn stub_fetch_debug_metadata<R: BufRead, W: Write>(
@@ -404,6 +454,10 @@ mod debugger_tests {
             "test_program_cpi_target",
             &mollusk_svm::program::loader_keys::LOADER_V3,
         );
+        mollusk.feature_set.activate(
+            &agave_feature_set::provide_instruction_data_offset_in_vm_r2::id(),
+            0,
+        );
 
         // Phase 1 - test that debugger won't start (won't hang listening)
         // as we filter by *inexisting* program_id.
@@ -421,17 +475,20 @@ mod debugger_tests {
 
         let key = Pubkey::new_unique();
         let account = Account::new(lamports, space, &cpi_target_program_id);
-        let instruction = {
+        let (instruction, instruction_data_len) = {
             let mut instruction_data = vec![4];
             instruction_data.extend_from_slice(cpi_target_program_id.as_ref());
             instruction_data.extend_from_slice(data);
-            Instruction::new_with_bytes(
-                program_id,
-                &instruction_data,
-                vec![
-                    AccountMeta::new(key, true),
-                    AccountMeta::new_readonly(cpi_target_program_id, false),
-                ],
+            (
+                Instruction::new_with_bytes(
+                    program_id,
+                    &instruction_data,
+                    vec![
+                        AccountMeta::new(key, true),
+                        AccountMeta::new_readonly(cpi_target_program_id, false),
+                    ],
+                ),
+                instruction_data.len(),
             )
         };
 
@@ -499,10 +556,32 @@ mod debugger_tests {
                     // Connect to the debugger stub.
                     let (mut reader, mut writer) = stub_connect(STUB_ADDR, STUB_CONNECT_RETRIES)?;
 
+                    // Check r2 - it should point to the instruction data whereas the length is 8
+                    // bytes prior to it.
+                    let registers = stub_read_all_registers(&mut writer, &mut reader)?;
+                    let data_addr = registers["r2"];
+                    let data_len_addr = data_addr - 8;
+                    let data_len =
+                        stub_read_memory_chunked(&mut writer, &mut reader, data_len_addr, 8, 1024)?
+                            .try_into()
+                            .map_err(|_| {
+                                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid data")
+                            })?;
+                    let data_len = u64::from_le_bytes(data_len) as usize;
+                    assert!(instruction_data_len == data_len);
+                    let data = stub_read_memory_chunked(
+                        &mut writer,
+                        &mut reader,
+                        data_addr,
+                        data_len,
+                        1024,
+                    )?;
+                    assert!(instruction.data == data);
+
                     // Don't use this approach as it depends on the ABI.
                     // // Verify the program_id reported by the gdbstub matches the one we're
                     // // debugging.
-                    // let mut reply = gdb_read_memory_chunked(
+                    // let mut reply = stub_read_memory_chunked(
                     //     &mut writer,
                     //     &mut reader,
                     //     0x400000000,     // The input buffer of the program starts from here.
