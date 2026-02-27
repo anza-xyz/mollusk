@@ -35,6 +35,7 @@ pub enum Expr<'a> {
 
 // --- Parser ---
 
+/// Wraps a parser to strip leading and trailing whitespace.
 fn ws<'a, F, O>(inner: F) -> impl Parser<&'a str, Output = O, Error = nom::error::Error<&'a str>>
 where
     F: Parser<&'a str, Output = O, Error = nom::error::Error<&'a str>>,
@@ -42,6 +43,8 @@ where
     delimited(multispace0, inner, multispace0)
 }
 
+/// Parses a field name or value: alphanumeric, `_`, `-`, `.` (for example - dot
+/// for struct.field).
 fn ident(input: &str) -> IResult<&str, &str> {
     ws(take_while1(|c: char| {
         c.is_alphanumeric() || "_-.".contains(c)
@@ -49,20 +52,24 @@ fn ident(input: &str) -> IResult<&str, &str> {
     .parse(input)
 }
 
+/// Parses a comparison operator: `==` or `!=`.
 fn op(input: &str) -> IResult<&str, Op> {
     ws(alt((tag("!=").map(|_| Op::Neq), tag("==").map(|_| Op::Eq)))).parse(input)
 }
 
+/// Parses a single condition: `field op value`.
 fn cond(input: &str) -> IResult<&str, Expr<'_>> {
     (ident, op, ident)
         .map(|(field, op, value)| Expr::Cond(Cond { field, op, value }))
         .parse(input)
 }
 
+/// Parses an atomic expression: a parenthesized group or a single condition.
 fn factor(input: &str) -> IResult<&str, Expr<'_>> {
     alt((delimited(ws(tag("(")), expr_inner, ws(tag(")"))), cond)).parse(input)
 }
 
+/// Parses one or more factors joined by `&&`.
 fn and_expr(input: &str) -> IResult<&str, Expr<'_>> {
     separated_list1(ws(tag("&&")), factor)
         .map(|mut xs| {
@@ -75,11 +82,8 @@ fn and_expr(input: &str) -> IResult<&str, Expr<'_>> {
         .parse(input)
 }
 
-fn expr_inner(input: &str) -> IResult<&str, Expr<'_>> {
-    let (rest, _) = multispace0(input)?;
-    if rest.is_empty() {
-        return Ok((rest, Expr::True));
-    }
+/// Parses one or more and-expressions joined by `||`.
+fn or_expr(input: &str) -> IResult<&str, Expr<'_>> {
     separated_list1(ws(tag("||")), and_expr)
         .map(|mut xs| {
             if xs.len() == 1 {
@@ -89,6 +93,15 @@ fn expr_inner(input: &str) -> IResult<&str, Expr<'_>> {
             }
         })
         .parse(input)
+}
+
+/// Returns `Expr::True` on empty input, otherwise delegates to `or_expr`.
+fn expr_inner(input: &str) -> IResult<&str, Expr<'_>> {
+    let (rest, _) = multispace0(input)?;
+    if rest.is_empty() {
+        return Ok((rest, Expr::True));
+    }
+    or_expr(input)
 }
 
 /// Parses a filter expression string into an AST.
