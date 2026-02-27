@@ -611,6 +611,19 @@ SHA-256 identifier is that files may grow in number, and consumers need a
 deterministic way to evaluate which shared object should be used when
 analyzing the tracing data.
 
+The `SBF_TRACE_FILTER` environment variable allows filtering which programs
+produce register traces and trigger the debugger. It accepts boolean
+expressions such as `program_id == <pubkey>`, with support for `==`, `!=`,
+`&&`, `||`, and parenthesized grouping. When the filter is empty or unset,
+all programs match.
+
+When the `sbpf-debugger` feature is enabled and `SBF_DEBUG_PORT` is set, the
+VM will start a GDB remote stub on the specified TCP port whenever the filter
+matches. A debugger client can then connect to inspect registers, memory, set
+breakpoints, and step through SBPF execution. The `sbpf-debugger` feature is
+separate because the debugger forces the VM into interpreter mode, whereas
+register traces can be collected from both JIT and interpreter modes.
+
 Once enabled register tracing can't be changed afterwards because in nature
 it's baked into the program executables at load time. Yet a user may want a
 more fine-grained control over when register tracing data should be
@@ -640,5 +653,7 @@ mollusk.invocation_inspect_callback =
     Box::new(register_tracing::DefaultRegisterTracingCallback {
         sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap(),
         sbf_trace_disassemble: std::env::var("SBF_TRACE_DISASSEMBLE").is_ok(),
+        sbf_trace_filter: std::env::var("SBF_TRACE_FILTER").unwrap(),
+        sbf_debug_port: std::env::var("SBF_DEBUG_PORT").unwrap(),
     });
 ```

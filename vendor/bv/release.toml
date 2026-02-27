@@ -1,0 +1,9 @@
+upload-doc = true
+pre-release-replacements = [
+  {file="README.md",  search="Rust version [0-9.]* and newer", replace="Rust version 1.31 and newer"},
+  {file="src/lib.rs", search="Rust version [0-9.]* and newer", replace="Rust version 1.31 and newer"},
+  {file="README.md",  search="bv = \"[0-9.]*\"", replace="bv = \"{{version}}\""},
+  {file="src/lib.rs", search="bv = \"[0-9.]*\"", replace="bv = \"{{version}}\""},
+  {file="CHANGELOG.md", search="\\[Unreleased\\]", replace="[{{version}}] - {{date}}"},
+  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n\n## [Unreleased]"},
+]

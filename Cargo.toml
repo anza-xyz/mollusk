@@ -41,6 +41,7 @@ mollusk-svm-fuzz-fs = { path = "fuzz/fs", version = "0.10.3" }
 mollusk-svm-programs-memo = { path = "programs/memo", version = "0.10.3" }
 mollusk-svm-result = { path = "result", version = "0.10.3" }
 mollusk-svm-programs-token = { path = "programs/token", version = "0.10.3" }
+nom = "8.0.0"
 num-format = "0.4.4"
 openssl = "0.10.74"
 prost = "0.9"
@@ -106,3 +107,4 @@ spl-token-interface = "2.0.0"
 thiserror = "1.0.64"
 tokio = "1.37.0"
 which = "=4.4.0"
+solana-sbpf = { version = "0.13.1", features = ["debugger"] } # will remove it with 4.0.0

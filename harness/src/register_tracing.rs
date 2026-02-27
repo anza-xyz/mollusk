@@ -1,17 +1,25 @@
 use {
-    crate::{InvocationInspectCallback, Mollusk},
+    crate::{
+        register_tracing_filter::{eval, expr},
+        InvocationInspectCallback, Mollusk,
+    },
     sha2::{Digest, Sha256},
     solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
     solana_pubkey::Pubkey,
     solana_transaction_context::{InstructionAccount, InstructionContext},
-    std::{fs::File, io::Write},
+    std::{collections::HashMap, fs::File, io::Write},
 };
 
 const DEFAULT_PATH: &str = "target/sbf/trace";
+#[cfg(feature = "sbpf-debugger")]
+const DEFAULT_DEBUG_PORT: Option<u16> = None;
 
 pub struct DefaultRegisterTracingCallback {
     pub sbf_trace_dir: String,
     pub sbf_trace_disassemble: bool,
+    pub sbf_trace_filter: String,
+    #[cfg(feature = "sbpf-debugger")]
+    pub sbf_debug_port: Option<u16>,
 }
 
 impl Default for DefaultRegisterTracingCallback {
@@ -20,6 +28,13 @@ impl Default for DefaultRegisterTracingCallback {
             // User can override default path with `SBF_TRACE_DIR` environment variable.
             sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap_or(DEFAULT_PATH.to_string()),
             sbf_trace_disassemble: std::env::var("SBF_TRACE_DISASSEMBLE").is_ok(),
+            sbf_trace_filter: std::env::var("SBF_TRACE_FILTER").unwrap_or_default(),
+            // The port that will be used for debugging.
+            // Will invoke the debugger if set.
+            #[cfg(feature = "sbpf-debugger")]
+            sbf_debug_port: std::env::var("SBF_DEBUG_PORT")
+                .map(|port| port.parse::<u16>().ok())
+                .unwrap_or(DEFAULT_DEBUG_PORT),
         }
     }
 }
@@ -46,7 +61,50 @@ impl DefaultRegisterTracingCallback {
         }
     }
 
-    pub fn handler(
+    pub fn match_filter(&self, program_ids: Vec<String>) -> bool {
+        let Ok(ast) = expr(&self.sbf_trace_filter) else {
+            // Garbage in tracing filter. Proceeding as if no filter present.
+            return true;
+        };
+
+        let row = HashMap::from([("program_id", program_ids)]);
+        eval(&ast, &row)
+    }
+
+    pub fn pre_handler(
+        &self,
+        mollusk: &Mollusk,
+        program_id: &Pubkey,
+        _instruction_data: &[u8],
+        instruction_accounts: &[InstructionAccount],
+        invoke_context: &mut InvokeContext,
+    ) {
+        #[cfg(feature = "sbpf-debugger")]
+        {
+            // Persist SHA-256 mapping for every ELF account.
+            // We need them later to judge what symbol object to
+            // load in the debugger client.
+            if let Ok(program_ids) = self.elf_accounts_to_sha256(
+                mollusk,
+                program_id,
+                instruction_accounts,
+                invoke_context,
+            ) {
+                // Any program id that matches the filter should invoke the debugger.
+                let program_ids = program_ids
+                    .iter()
+                    .map(|program_id| program_id.to_string())
+                    .collect();
+                if let Some(debug_port) = self.sbf_debug_port {
+                    if self.match_filter(program_ids) {
+                        invoke_context.debug_port = Some(debug_port);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn post_handler(
         &self,
         mollusk: &Mollusk,
         instruction_context: InstructionContext,
@@ -55,6 +113,13 @@ impl DefaultRegisterTracingCallback {
     ) -> Result<(), Box<dyn std::error::Error>> {
         if register_trace.is_empty() {
             // Can't do much with an empty trace.
+            return Ok(());
+        }
+
+        // Get program_id.
+        let program_id = instruction_context.get_program_key()?;
+        if !self.match_filter(vec![program_id.to_string()]) {
+            // Skip this one since no filter has matched.
             return Ok(());
         }
 
@@ -67,9 +132,6 @@ impl DefaultRegisterTracingCallback {
         let mut regs_file = File::create(base_fname.with_extension("regs"))?;
         let mut insns_file = File::create(base_fname.with_extension("insns"))?;
         let mut program_id_file = File::create(base_fname.with_extension("program_id"))?;
-
-        // Get program_id.
-        let program_id = instruction_context.get_program_key()?;
 
         // Persist a full trace disassembly if requested.
         if self.sbf_trace_disassemble {
@@ -108,17 +170,79 @@ impl DefaultRegisterTracingCallback {
 
         Ok(())
     }
+
+    /// Persists a mapping of program IDs to SHA-256 hashes of their ELF bytes.
+    /// Includes the top-level program and any instruction accounts that are
+    /// programs in the cache. This allows a debugger client to resolve which
+    /// .so to load for symbol information. Returns the list of program IDs
+    /// for which an ELF was found in the cache.
+    pub fn elf_accounts_to_sha256(
+        &self,
+        mollusk: &Mollusk,
+        program_id: &Pubkey,
+        instruction_accounts: &[InstructionAccount],
+        invoke_context: &InvokeContext,
+    ) -> Result<Vec<Pubkey>, Box<dyn std::error::Error>> {
+        let current_dir = std::env::current_dir()?;
+        let sbf_trace_dir = current_dir.join(&self.sbf_trace_dir);
+        std::fs::create_dir_all(&sbf_trace_dir)?;
+        let base_fname = sbf_trace_dir.join("program_ids");
+        let mut program_ids = Vec::new();
+        let mut program_ids_file = File::create(base_fname.with_extension("map"))?;
+
+        let mut persist_elf_sha256 = |file: &mut File, pubkey: &Pubkey| {
+            if let Some(elf_data) = mollusk.program_cache.get_program_elf_bytes(pubkey) {
+                program_ids.push(*pubkey);
+                let _ = file.write(
+                    format!("{}={}\n", pubkey, compute_hash(elf_data.as_slice())).as_bytes(),
+                );
+            }
+        };
+
+        persist_elf_sha256(&mut program_ids_file, program_id);
+
+        instruction_accounts
+            .iter()
+            .flat_map(|ia| {
+                invoke_context
+                    .transaction_context
+                    .get_key_of_account_at_index(ia.index_in_transaction)
+            })
+            .for_each(|pubkey| {
+                persist_elf_sha256(&mut program_ids_file, pubkey);
+            });
+
+        Ok(program_ids)
+    }
 }
 
 impl InvocationInspectCallback for DefaultRegisterTracingCallback {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
     fn before_invocation(
         &self,
-        _: &Mollusk,
-        _: &Pubkey,
-        _: &[u8],
-        _: &[InstructionAccount],
-        _: &InvokeContext,
+        mollusk: &Mollusk,
+        program_id: &Pubkey,
+        instruction_data: &[u8],
+        instruction_accounts: &[InstructionAccount],
+        invoke_context: &mut InvokeContext,
+        register_tracing_enabled: bool,
     ) {
+        if register_tracing_enabled {
+            self.pre_handler(
+                mollusk,
+                program_id,
+                instruction_data,
+                instruction_accounts,
+                invoke_context,
+            );
+        }
     }
 
     fn after_invocation(
@@ -134,7 +258,7 @@ impl InvocationInspectCallback for DefaultRegisterTracingCallback {
                   executable: &Executable,
                   register_trace: RegisterTrace| {
                     if let Err(e) =
-                        self.handler(mollusk, instruction_context, executable, register_trace)
+                        self.post_handler(mollusk, instruction_context, executable, register_trace)
                     {
                         eprintln!("Error collecting the register tracing: {}", e);
                     }
@@ -148,6 +272,6 @@ pub(crate) fn as_bytes<T>(slice: &[T]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u8, std::mem::size_of_val(slice)) }
 }
 
-fn compute_hash(slice: &[u8]) -> String {
+pub fn compute_hash(slice: &[u8]) -> String {
     hex::encode(Sha256::digest(slice).as_slice())
 }
