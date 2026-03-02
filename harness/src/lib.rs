@@ -1792,35 +1792,37 @@ impl<AS: AccountStore> MolluskContext<AS> {
                 .program_cache
                 .get_all_keyed_program_accounts()
                 .into_iter()
-                .chain(self.mollusk.sysvars.get_all_keyed_sysvar_accounts())
                 .for_each(|(pubkey, account)| {
                     accounts.push((pubkey, account));
                 });
         }
+        let store = self.account_store.borrow();
+        self.mollusk
+            .sysvars
+            .get_all_keyed_sysvar_accounts()
+            .into_iter()
+            .for_each(|(pubkey, account)| {
+                if store.get_account(&pubkey).is_none() {
+                    accounts.push((pubkey, account));
+                }
+            });
 
         // Regardless of hydration, only add an account if the caller hasn't
         // already loaded it into the store.
-        let mut seen = HashSet::new();
-        let store = self.account_store.borrow();
+        let mut seen: HashSet<Pubkey> = accounts.iter().map(|(k, _)| *k).collect();
         instructions.for_each(|instruction| {
             instruction
                 .accounts
                 .iter()
                 .for_each(|AccountMeta { pubkey, .. }| {
                     if seen.insert(*pubkey) && pubkey != &solana_instructions_sysvar::id() {
-                        // First try to load theirs, then see if it's a sysvar,
-                        // then see if it's a cached program, then apply the
-                        // default.
+                        // First try to load theirs, then see if it's a cached program, then apply
+                        // the default.
                         let account = store.get_account(pubkey).unwrap_or_else(|| {
                             self.mollusk
-                                .sysvars
-                                .maybe_create_sysvar_account(pubkey)
-                                .unwrap_or_else(|| {
-                                    self.mollusk
-                                        .program_cache
-                                        .maybe_create_program_account(pubkey)
-                                        .unwrap_or_else(|| store.default_account(pubkey))
-                                })
+                                .program_cache
+                                .maybe_create_program_account(pubkey)
+                                .unwrap_or_else(|| store.default_account(pubkey))
                         });
                         accounts.push((*pubkey, account));
                     }
