@@ -165,7 +165,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
             let checks = if let Some(config_path) = config {
-                ConfigFile::try_load(&config_path)?.checks
+                let mut checks = ConfigFile::try_load(&config_path)?.checks;
+                if ignore_compute_units {
+                    checks.retain(|check| !matches!(check, Compare::ComputeUnits));
+                }
+                checks
             } else if ignore_compute_units {
                 Compare::everything_but_cus()
             } else {
@@ -207,7 +211,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             add_elf_to_mollusk(&mut mollusk_test, &elf_path_target, &program_id);
 
             let checks = if let Some(config_path) = config {
-                ConfigFile::try_load(&config_path)?.checks
+                let mut checks = ConfigFile::try_load(&config_path)?.checks;
+                if ignore_compute_units {
+                    checks.retain(|check| !matches!(check, Compare::ComputeUnits));
+                }
+                checks
             } else if ignore_compute_units {
                 Compare::everything_but_cus()
             } else {
