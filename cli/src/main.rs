@@ -145,6 +145,38 @@ fn add_elf_to_mollusk(mollusk: &mut Mollusk, elf_path: &str, program_id: &Pubkey
     );
 }
 
+fn resolve_checks(
+    checks_from_config: Option<Vec<Compare>>,
+    ignore_compute_units: bool,
+) -> Vec<Compare> {
+    let mut checks = if let Some(config_checks) = checks_from_config {
+        config_checks
+    } else if ignore_compute_units {
+        // Defaults to all checks except compute units when requested.
+        Compare::everything_but_cus()
+    } else {
+        // Defaults to all checks.
+        Compare::everything()
+    };
+
+    // Ditch ComputeUnits checks to reflect CU flag override.
+    if ignore_compute_units {
+        checks.retain(|check| !matches!(check, Compare::ComputeUnits));
+    }
+
+    checks
+}
+
+fn set_checks(
+    config: Option<String>,
+    ignore_compute_units: bool,
+) -> Result<Vec<Compare>, Box<dyn std::error::Error>> {
+    let checks_from_config = config
+        .map(|config_path| ConfigFile::try_load(&config_path).map(|config_file| config_file.checks))
+        .transpose()?;
+    Ok(resolve_checks(checks_from_config, ignore_compute_units))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match Cli::parse().command {
@@ -164,15 +196,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut mollusk = Mollusk::default();
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
-            let checks = if let Some(config_path) = config {
-                ConfigFile::try_load(&config_path)?.checks
-            } else if ignore_compute_units {
-                Compare::everything_but_cus()
-            } else {
-                // Defaults to all checks.
-                Compare::everything()
-            };
-
+            let checks = set_checks(config, ignore_compute_units)?;
             let fixtures = search_paths(&fixture, "fix")?;
 
             Runner::new(
@@ -206,15 +230,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut mollusk_test = Mollusk::default();
             add_elf_to_mollusk(&mut mollusk_test, &elf_path_target, &program_id);
 
-            let checks = if let Some(config_path) = config {
-                ConfigFile::try_load(&config_path)?.checks
-            } else if ignore_compute_units {
-                Compare::everything_but_cus()
-            } else {
-                // Defaults to all checks.
-                Compare::everything()
-            };
-
+            let checks = set_checks(config, ignore_compute_units)?;
             let fixtures = search_paths(&fixture, "fix")?;
 
             Runner::new(
@@ -229,4 +245,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_checks_removes_compute_units_from_config_when_ignored() {
+        let checks = vec![Compare::ComputeUnits, Compare::ProgramResult];
+        let resolved = resolve_checks(Some(checks), true);
+
+        assert!(resolved
+            .iter()
+            .any(|check| matches!(check, Compare::ProgramResult)));
+        assert!(
+            !resolved
+                .iter()
+                .any(|check| matches!(check, Compare::ComputeUnits)),
+            "ComputeUnits should be removed when ignore_compute_units=true"
+        );
+    }
 }
