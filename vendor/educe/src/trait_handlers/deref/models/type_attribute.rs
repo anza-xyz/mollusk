@@ -1,0 +1,87 @@
+use syn::{punctuated::Punctuated, Attribute, Meta, Token};
+
+use crate::{panic, Trait};
+
+pub(crate) struct TypeAttribute;
+
+#[derive(Debug)]
+pub(crate) struct TypeAttributeBuilder {
+    pub(crate) enable_flag: bool,
+}
+
+impl TypeAttributeBuilder {
+    pub(crate) fn build_from_deref_meta(&self, meta: &Meta) -> syn::Result<TypeAttribute> {
+        debug_assert!(meta.path().is_ident("Deref"));
+
+        let correct_usage_for_deref_attribute = {
+            let mut usage = vec![];
+
+            if self.enable_flag {
+                usage.push(stringify!(#[educe(Deref)]));
+            }
+
+            usage
+        };
+
+        match meta {
+            Meta::Path(_) => {
+                if !self.enable_flag {
+                    return Err(panic::attribute_incorrect_format(
+                        meta.path().get_ident().unwrap(),
+                        &correct_usage_for_deref_attribute,
+                    ));
+                }
+            },
+            Meta::NameValue(_) | Meta::List(_) => {
+                return Err(panic::attribute_incorrect_format(
+                    meta.path().get_ident().unwrap(),
+                    &correct_usage_for_deref_attribute,
+                ));
+            },
+        }
+
+        Ok(TypeAttribute)
+    }
+
+    pub(crate) fn build_from_attributes(
+        &self,
+        attributes: &[Attribute],
+        traits: &[Trait],
+    ) -> syn::Result<TypeAttribute> {
+        let mut output = None;
+
+        for attribute in attributes.iter() {
+            let path = attribute.path();
+
+            if path.is_ident("educe") {
+                if let Meta::List(list) = &attribute.meta {
+                    let result =
+                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+
+                    for meta in result {
+                        let path = meta.path();
+
+                        let t = match Trait::from_path(path) {
+                            Some(t) => t,
+                            None => return Err(panic::unsupported_trait(meta.path())),
+                        };
+
+                        if !traits.contains(&t) {
+                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                        }
+
+                        if t == Trait::Deref {
+                            if output.is_some() {
+                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
+                            }
+
+                            output = Some(self.build_from_deref_meta(&meta)?);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(output.unwrap_or(TypeAttribute))
+    }
+}
