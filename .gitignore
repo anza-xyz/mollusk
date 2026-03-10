@@ -12,3 +12,5 @@ target/
 .DS_Store
 
 harness/tests/test-vectors/
+
+.idea

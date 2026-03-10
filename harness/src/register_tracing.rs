@@ -3,7 +3,9 @@ use {
     sha2::{Digest, Sha256},
     solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
     solana_pubkey::Pubkey,
-    solana_transaction_context::{InstructionAccount, InstructionContext},
+    solana_transaction_context::{
+        instruction::InstructionContext, instruction_accounts::InstructionAccount,
+    },
     std::{fs::File, io::Write},
 };
 
