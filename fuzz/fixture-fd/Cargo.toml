@@ -9,7 +9,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-agave-feature-set = { workspace = true }
+agave-feature-set = { workspace = true, features = ["agave-unstable-api"] }
 mollusk-svm-fuzz-fs = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -17,7 +17,7 @@ serde_json = { workspace = true }
 solana-account = { workspace = true }
 solana-keccak-hasher = { workspace = true }
 solana-pubkey = { workspace = true }
-solana-transaction-context = { workspace = true }
+solana-transaction-context = { workspace = true, features = ["agave-unstable-api"] }
 
 [build-dependencies]
 prost-build = { workspace = true }
