@@ -9,7 +9,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-agave-feature-set = { workspace = true }
+agave-feature-set = { workspace = true, features = ["agave-unstable-api"] }
 mollusk-svm-fuzz-fs = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

@@ -56,6 +56,8 @@ mollusk-svm-fuzz-fs = { workspace = true, optional = true }
 mollusk-svm-result = { workspace = true }
 sha2 = { workspace = true, optional = true }
 solana-account = { workspace = true }
+# TODO: temporary until Agave packages are released.
+solana-account-legacy = { package = "solana-account", version = "3.4.0" }
 solana-bpf-loader-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-clock = { workspace = true }
 solana-compute-budget = { workspace = true, features = ["agave-unstable-api"] }
@@ -76,6 +78,8 @@ solana-program-error = { workspace = true }
 solana-program-runtime = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
+# TODO: temporary until Agave packages are released.
+solana-rent-legacy = { package = "solana-rent", version = "3.1.0" }
 solana-sdk-ids = { workspace = true }
 solana-slot-hashes = { workspace = true }
 solana-stake-interface = { workspace = true }
@@ -86,7 +90,7 @@ solana-svm-transaction = { workspace = true }
 solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }
-solana-transaction-context = { workspace = true, features = ["dev-context-only-utils"] }
+solana-transaction-context = { workspace = true, features = ["agave-unstable-api", "dev-context-only-utils"] }
 solana-transaction-error = { workspace = true }
 solana-transaction-status-client-types = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-vote-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
@@ -104,7 +108,7 @@ solana-ed25519-program = { workspace = true }
 solana-native-token = { workspace = true }
 solana-secp256k1-program = { workspace = true, features = ["bincode"] }
 solana-secp256r1-program = { workspace = true }
-solana-system-interface = { workspace = true }
+solana-system-interface = { workspace = true, features = ["bincode"] }
 
 [[bench]]
 name = "ips"

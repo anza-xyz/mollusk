@@ -115,8 +115,13 @@ fn test_single_instruction() {
         .is_none());
 }
 
-#[test]
-fn test_instruction_chain() {
+fn build_instruction_chain_case() -> (
+    Pubkey,
+    Mollusk,
+    Pubkey,
+    Vec<Instruction>,
+    Vec<(Pubkey, Account)>,
+) {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
 
     let program_id = Pubkey::new_unique();
@@ -181,17 +186,69 @@ fn test_instruction_chain() {
     )];
     accounts.extend(extra_accounts);
 
+    (
+        program_id,
+        mollusk,
+        output_pubkey,
+        vec![instruction1, instruction2, instruction3],
+        accounts,
+    )
+}
+
+#[test]
+fn test_instruction_chain() {
+    let (program_id, mollusk, output_pubkey, instructions, accounts) =
+        build_instruction_chain_case();
+
     let result = mollusk.process_and_validate_instruction_chain(
         &[
-            (&instruction1, &[Check::success()]),
-            (&instruction2, &[Check::success()]),
-            (&instruction3, &[Check::success()]),
+            (&instructions[0], &[Check::success()]),
+            (&instructions[1], &[Check::success()]),
+            (&instructions[2], &[Check::success()]),
         ],
         &accounts,
     );
 
-    // Verify entries were written for each instruction.
     let output_account = result.get_account(&output_pubkey).unwrap();
+
+    let (pid0, idx0, exec0) = parse_entry(&output_account.data, 0);
+    assert_eq!(pid0, program_id);
+    assert_eq!(idx0, 0);
+    assert!(!exec0);
+
+    let (pid1, idx1, exec1) = parse_entry(&output_account.data, 1);
+    assert_eq!(pid1, Pubkey::default());
+    assert_eq!(idx1, 0);
+    assert!(!exec1);
+
+    let (pid2, idx2, exec2) = parse_entry(&output_account.data, 2);
+    assert_eq!(pid2, Pubkey::default());
+    assert_eq!(idx2, 0);
+    assert!(!exec2);
+
+    assert!(result
+        .get_account(&solana_instructions_sysvar::ID)
+        .is_none());
+}
+
+#[test]
+fn test_transaction_instruction_chain() {
+    let (program_id, mollusk, output_pubkey, instructions, accounts) =
+        build_instruction_chain_case();
+
+    let result = mollusk.process_and_validate_transaction_instructions(
+        &instructions,
+        &accounts,
+        &[Check::success()],
+    );
+
+    // Verify entries were written for each instruction.
+    let output_account = result
+        .resulting_accounts
+        .iter()
+        .find(|(k, _)| k == &output_pubkey)
+        .map(|(_, a)| a)
+        .unwrap();
 
     // Entry 0: index=0, executed=true (marked by instruction 1)
     let (pid0, idx0, exec0) = parse_entry(&output_account.data, 0);
@@ -211,10 +268,10 @@ fn test_instruction_chain() {
     assert_eq!(idx2, 2);
     assert!(!exec2); // Last instruction not marked as executed.
 
-    // Since no account was provided for the ix sysvar, it should not be returned.
-    assert!(result
-        .get_account(&solana_instructions_sysvar::ID)
-        .is_none());
+    assert!(!result
+        .resulting_accounts
+        .iter()
+        .any(|(pubkey, _)| pubkey == &solana_instructions_sysvar::ID));
 }
 
 #[test]
