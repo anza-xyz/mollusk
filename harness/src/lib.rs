@@ -523,6 +523,11 @@ pub struct Mollusk {
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
 
+    /// Cached program runtime environments, built from the current
+    /// feature set and compute budget. Avoids expensive syscall registry
+    /// reconstruction on every instruction execution.
+    program_runtime_environments: ProgramRuntimeEnvironments,
+
     /// The callback which can be used to inspect invoke_context
     /// and extract low-level information such as bpf traces, transaction
     /// context, detailed timings, etc.
@@ -709,6 +714,51 @@ impl MessageResult {
 }
 
 impl Mollusk {
+    fn build_program_runtime_environments(
+        feature_set: &FeatureSet,
+        compute_budget: &ComputeBudget,
+        #[allow(unused)] enable_register_tracing: bool,
+    ) -> ProgramRuntimeEnvironments {
+        let _enable_register_tracing = false;
+        #[cfg(feature = "register-tracing")]
+        let _enable_register_tracing = enable_register_tracing;
+
+        let execution_budget = compute_budget.to_budget();
+        let runtime_features = feature_set.runtime_features();
+
+        ProgramRuntimeEnvironments {
+            program_runtime_v1: Arc::new(
+                create_program_runtime_environment_v1(
+                    &runtime_features,
+                    &execution_budget,
+                    /* reject_deployment_of_broken_elfs */ false,
+                    /* debugging_features */ _enable_register_tracing,
+                )
+                .unwrap(),
+            ),
+            program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
+                &execution_budget,
+                /* debugging_features */ _enable_register_tracing,
+            )),
+        }
+    }
+
+    /// Rebuild the cached program runtime environments.
+    ///
+    /// Call this after modifying `compute_budget` or `feature_set` to ensure
+    /// the cached environments reflect the current configuration.
+    pub fn rebuild_program_runtime_environments(&mut self) {
+        let _enable_register_tracing = false;
+        #[cfg(feature = "invocation-inspect-callback")]
+        let _enable_register_tracing = self.enable_register_tracing;
+
+        self.program_runtime_environments = Self::build_program_runtime_environments(
+            &self.feature_set,
+            &self.compute_budget,
+            _enable_register_tracing,
+        );
+    }
+
     fn new_inner(#[allow(unused)] enable_register_tracing: bool) -> Self {
         #[rustfmt::skip]
         solana_logger::setup_with_default(
@@ -734,6 +784,9 @@ impl Mollusk {
         let program_cache =
             ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
 
+        let program_runtime_environments =
+            Self::build_program_runtime_environments(&feature_set, &compute_budget, enable_register_tracing);
+
         #[allow(unused_mut)]
         let mut me = Self {
             config: Config::default(),
@@ -743,6 +796,7 @@ impl Mollusk {
             logger: None,
             program_cache,
             sysvars: Sysvars::default(),
+            program_runtime_environments,
 
             #[cfg(feature = "invocation-inspect-callback")]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
@@ -978,28 +1032,7 @@ impl Mollusk {
             epoch_stake: &self.epoch_stake,
             feature_set: &self.feature_set,
         };
-        let execution_budget = self.compute_budget.to_budget();
         let runtime_features = self.feature_set.runtime_features();
-
-        let _enable_register_tracing = false;
-        #[cfg(feature = "register-tracing")]
-        let _enable_register_tracing = self.enable_register_tracing;
-
-        let program_runtime_environments: ProgramRuntimeEnvironments = ProgramRuntimeEnvironments {
-            program_runtime_v1: Arc::new(
-                create_program_runtime_environment_v1(
-                    &runtime_features,
-                    &execution_budget,
-                    /* reject_deployment_of_broken_elfs */ false,
-                    /* debugging_features */ _enable_register_tracing,
-                )
-                .unwrap(),
-            ),
-            program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
-                &execution_budget,
-                /* debugging_features */ _enable_register_tracing,
-            )),
-        };
 
         let mut invoke_context = InvokeContext::new(
             transaction_context,
@@ -1009,8 +1042,8 @@ impl Mollusk {
                 /* blockhash_lamports_per_signature */ 5000, // The default value
                 &callback,
                 &runtime_features,
-                &program_runtime_environments,
-                &program_runtime_environments,
+                &self.program_runtime_environments,
+                &self.program_runtime_environments,
                 sysvar_cache,
             ),
             self.logger.clone(),
@@ -1528,6 +1561,7 @@ impl Mollusk {
         self.compute_budget = compute_budget;
         self.feature_set = feature_set;
         self.sysvars = sysvars;
+        self.rebuild_program_runtime_environments();
         self.process_instruction(&instruction, &accounts)
     }
 
@@ -1630,6 +1664,7 @@ impl Mollusk {
         self.compute_budget = compute_budget;
         self.feature_set = feature_set;
         self.slot = slot;
+        self.rebuild_program_runtime_environments();
         self.process_instruction(&instruction, &accounts)
     }
 
@@ -1667,6 +1702,7 @@ impl Mollusk {
         self.compute_budget = compute_budget;
         self.feature_set = feature_set;
         self.slot = slot;
+        self.rebuild_program_runtime_environments();
 
         let result = self.process_instruction(&instruction, &accounts);
         let expected_result = fuzz::firedancer::parse_fixture_effects(
@@ -1717,6 +1753,7 @@ impl Mollusk {
         self.compute_budget = compute_budget;
         self.feature_set = feature_set;
         self.slot = slot;
+        self.rebuild_program_runtime_environments();
 
         let result = self.process_instruction(&instruction, &accounts);
         let expected = fuzz::firedancer::parse_fixture_effects(
