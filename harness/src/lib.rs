@@ -784,8 +784,11 @@ impl Mollusk {
         let program_cache =
             ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
 
-        let program_runtime_environments =
-            Self::build_program_runtime_environments(&feature_set, &compute_budget, enable_register_tracing);
+        let program_runtime_environments = Self::build_program_runtime_environments(
+            &feature_set,
+            &compute_budget,
+            enable_register_tracing,
+        );
 
         #[allow(unused_mut)]
         let mut me = Self {
