@@ -490,7 +490,7 @@ use {
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
-    solana_svm_timings::ExecuteTimings,
+    solana_svm_timings::{ExecuteDetailsTimings, ExecuteTimings},
     solana_svm_transaction::instruction::SVMInstruction,
     solana_transaction_context::{IndexOfAccount, TransactionContext},
     solana_transaction_error::TransactionError,
@@ -1062,6 +1062,11 @@ impl Mollusk {
                     .process_instruction(&mut compute_units_consumed_instruction, &mut timings)
             };
             compute_units_consumed += compute_units_consumed_instruction;
+
+            invoke_context.timings = {
+                timings.details.accumulate(&invoke_context.timings);
+                ExecuteDetailsTimings::default()
+            };
 
             #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.after_invocation(
