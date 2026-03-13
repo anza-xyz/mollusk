@@ -490,7 +490,7 @@ use {
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
     solana_svm_log_collector::LogCollector,
-    solana_svm_timings::{ExecuteDetailsTimings, ExecuteTimings},
+    solana_svm_timings::ExecuteTimings,
     solana_svm_transaction::instruction::SVMInstruction,
     solana_transaction_context::{IndexOfAccount, TransactionContext},
     solana_transaction_error::TransactionError,
@@ -1051,6 +1051,7 @@ impl Mollusk {
             }
 
             let mut compute_units_consumed_instruction = 0u64;
+            let execute_start = std::time::Instant::now();
             let invoke_result = if invoke_context.is_precompile(program_id) {
                 invoke_context.process_precompile(
                     program_id,
@@ -1061,12 +1062,10 @@ impl Mollusk {
                 invoke_context
                     .process_instruction(&mut compute_units_consumed_instruction, &mut timings)
             };
+            let execute_us = execute_start.elapsed().as_micros() as u64;
             compute_units_consumed += compute_units_consumed_instruction;
 
-            invoke_context.timings = {
-                timings.details.accumulate(&invoke_context.timings);
-                ExecuteDetailsTimings::default()
-            };
+            timings.details.execute_us += execute_us;
 
             #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.after_invocation(
