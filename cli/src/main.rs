@@ -1,10 +1,14 @@
 //! Mollusk CLI.
 
+mod add_program;
 mod config;
 mod runner;
 
 use {
-    crate::runner::{ProtoLayout, Runner},
+    crate::{
+        add_program::{apply_program_load_args, ProgramLoadArgs},
+        runner::{ProtoLayout, Runner},
+    },
     clap::{Parser, Subcommand},
     config::ConfigFile,
     mollusk_svm::{result::Compare, Mollusk},
@@ -59,6 +63,9 @@ enum SubCommand {
         /// logs. Disabled by default.
         #[arg(short, long)]
         verbose: bool,
+        /// Flags for preloading extra programs into the Mollusk runtime.
+        #[command(flatten)]
+        program_load_args: ProgramLoadArgs,
     },
     /// Execute a fixture across two Mollusk instances to compare the results
     /// of two versions of a program.
@@ -106,6 +113,9 @@ enum SubCommand {
         /// logs. Disabled by default.
         #[arg(short, long)]
         verbose: bool,
+        /// Flags for preloading extra programs into the Mollusk runtime.
+        #[command(flatten)]
+        program_load_args: ProgramLoadArgs,
     },
 }
 
@@ -153,6 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fixture,
             program_id,
             config,
+            program_load_args,
             cus_report,
             cus_report_table_header,
             ignore_compute_units,
@@ -162,6 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             verbose,
         } => {
             let mut mollusk = Mollusk::default();
+            apply_program_load_args(&mut mollusk, &program_load_args);
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
             let checks = if let Some(config_path) = config {
@@ -195,6 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fixture,
             program_id,
             config,
+            program_load_args,
             cus_report,
             cus_report_table_header,
             ignore_compute_units,
@@ -204,10 +217,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => {
             // First, set up a Mollusk instance with the ground truth program.
             let mut mollusk_ground = Mollusk::default();
+            apply_program_load_args(&mut mollusk_ground, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_ground, &elf_path_source, &program_id);
 
             // Next, set up a Mollusk instance with the test program.
             let mut mollusk_test = Mollusk::default();
+            apply_program_load_args(&mut mollusk_test, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_test, &elf_path_target, &program_id);
 
             let checks = if let Some(config_path) = config {
