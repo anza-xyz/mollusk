@@ -73,7 +73,7 @@ jobs:
         with:
           cache: true
           version: ${{ steps.solana.outputs.version }}
-      - uses: rust-lang/crates-io-auth-action@v1
+      - uses: rust-lang/crates-io-auth-action@b7e9a28eded4986ec6b1fa40eeee8f8f165559ec  # v1.0.3
         id: auth
       - name: Publish
         shell: bash
@@ -82,6 +82,6 @@ jobs:
           ARGS: "--locked"
         run: make publish
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4.1.0
         with:
           subject-path: target/package/*.crate
