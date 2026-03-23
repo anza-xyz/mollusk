@@ -3,11 +3,15 @@ name: Publish
 on:
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   pre_publish:
     name: Prepublish
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -43,8 +47,14 @@ jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
+    environment: prod
     needs: pre_publish
     if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -63,9 +73,15 @@ jobs:
         with:
           cache: true
           version: ${{ steps.solana.outputs.version }}
+      - uses: rust-lang/crates-io-auth-action@b7e9a28eded4986ec6b1fa40eeee8f8f165559ec  # v1.0.3
+        id: auth
       - name: Publish
         shell: bash
         env:
-          TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+          TOKEN: ${{ steps.auth.outputs.token }}
           ARGS: "--locked"
         run: make publish
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4.1.0
+        with:
+          subject-path: target/package/*.crate
