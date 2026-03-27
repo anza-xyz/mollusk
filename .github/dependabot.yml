@@ -11,7 +11,7 @@ updates:
           - "solana-*"
           - "agave-*"
           - "spl-*"
-      all-dependencies:
+      third-party:
         patterns:
           - "*"
 
