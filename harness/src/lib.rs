@@ -761,6 +761,17 @@ impl Mollusk {
             me.invocation_inspect_callback = Box::new(DefaultRegisterTracingCallback::default());
         }
 
+        // SIMD-0194: Deprecate rent exemption threshold.
+        if me
+            .feature_set
+            .is_active(&agave_feature_set::deprecate_rent_exemption_threshold::id())
+        {
+            me.sysvars.rent.lamports_per_byte_year = (me.sysvars.rent.lamports_per_byte_year as f64
+                * me.sysvars.rent.exemption_threshold)
+                as u64;
+            me.sysvars.rent.exemption_threshold = 1.0;
+        }
+
         me
     }
 
@@ -1888,5 +1899,60 @@ impl<AS: AccountStore> MolluskContext<AS> {
             .process_and_validate_instruction_chain(instructions, &accounts);
         self.consume_mollusk_result(&result);
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        solana_rent::{Rent, DEFAULT_EXEMPTION_THRESHOLD, DEFAULT_LAMPORTS_PER_BYTE_YEAR},
+    };
+
+    #[test]
+    fn test_rent_exemption_threshold_deprecation() {
+        // Default Mollusk has all features enabled, including
+        // SIMD-0194: deprecate_rent_exemption_threshold.
+        let mollusk = Mollusk::default();
+
+        let expected_lamports_per_byte_year =
+            (DEFAULT_LAMPORTS_PER_BYTE_YEAR as f64 * DEFAULT_EXEMPTION_THRESHOLD) as u64;
+
+        assert_eq!(
+            mollusk.sysvars.rent.lamports_per_byte_year,
+            expected_lamports_per_byte_year
+        );
+        assert_eq!(mollusk.sysvars.rent.exemption_threshold, 1.0);
+
+        // minimum_balance should produce the same result regardless
+        // of whether the feature is active.
+        let pre_simd0194_rent = Rent::default();
+        let post_simd0194_rent = mollusk.sysvars.rent.clone();
+
+        for data_len in [0, 1, 128, 1024, 10 * 1024 * 1024] {
+            assert_eq!(
+                pre_simd0194_rent.minimum_balance(data_len),
+                post_simd0194_rent.minimum_balance(data_len),
+            );
+        }
+
+        // With the feature deactivated, rent should use the legacy
+        // defaults.
+        let mut mollusk = Mollusk::default();
+        mollusk
+            .feature_set
+            .active_mut()
+            .remove(&agave_feature_set::deprecate_rent_exemption_threshold::id());
+        // Reconstruct to pick up the feature change.
+        mollusk.sysvars.rent = Rent::default();
+
+        assert_eq!(
+            mollusk.sysvars.rent.lamports_per_byte_year,
+            DEFAULT_LAMPORTS_PER_BYTE_YEAR
+        );
+        assert_eq!(
+            mollusk.sysvars.rent.exemption_threshold,
+            DEFAULT_EXEMPTION_THRESHOLD
+        );
     }
 }
