@@ -14,6 +14,16 @@ updates:
       third-party:
         patterns:
           - "*"
+    ignore:
+      # Must stay on 1.x to match Solana SDK wire format
+      - dependency-name: "bincode"
+        versions: [">= 1.4"]
+      # Must stay on 0.10.x to match SDK crypto stack
+      - dependency-name: "sha2"
+        versions: [">= 0.10.10"]
+      # Must stay on 2.x to match SDK
+      - dependency-name: "serial_test"
+        versions: [">= 2.1"]
 
   - package-ecosystem: github-actions
     directory: /
