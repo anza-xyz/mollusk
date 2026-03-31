@@ -30,4 +30,3 @@ solana-sysvar.workspace = true
 
 [build-dependencies]
 prost-build = { workspace = true }
-which = { workspace = true }
