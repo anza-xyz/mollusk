@@ -1,6 +1,6 @@
 use {
     mollusk_svm::{result::Check, Mollusk},
-    rand0_7::thread_rng,
+    rand0_7::{thread_rng, Rng},
     solana_account::{Account, WritableAccount},
     solana_pubkey::Pubkey,
 };
@@ -14,7 +14,7 @@ fn precompile_account() -> Account {
 #[test]
 fn test_secp256k1() {
     let mollusk = Mollusk::default();
-    let secret_key = libsecp256k1::SecretKey::random(&mut thread_rng());
+    let secret_key = libsecp256k1::SecretKey::parse(&thread_rng().gen()).unwrap();
 
     let msg = b"hello";
     let sk_bytes = secret_key.serialize();
@@ -48,11 +48,11 @@ fn test_secp256k1() {
 fn test_ed25519() {
     use ed25519_dalek::Signer;
     let mollusk = Mollusk::default();
-    let keypair = ed25519_dalek::Keypair::generate(&mut thread_rng());
+    let signing_key = ed25519_dalek::SigningKey::from_bytes(&thread_rng().gen());
 
     let msg = b"hello";
-    let signature = keypair.sign(msg).to_bytes();
-    let pubkey_bytes = keypair.public.to_bytes();
+    let signature = signing_key.sign(msg).to_bytes();
+    let pubkey_bytes = signing_key.verifying_key().to_bytes();
 
     let instr = solana_ed25519_program::new_ed25519_instruction_with_signature(
         msg,
