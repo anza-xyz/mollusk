@@ -23,6 +23,8 @@ jobs:
           key: cargo-build-sbf-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-build-sbf-
+      - name: Install protoc
+        run: sudo apt-get install -y protobuf-compiler
       - name: Get nightly toolchain version
         id: nightly
         run: echo "version=$(make nightly-version)" >> $GITHUB_OUTPUT
@@ -66,6 +68,8 @@ jobs:
           key: cargo-build-sbf-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-build-sbf-
+      - name: Install protoc
+        run: sudo apt-get install -y protobuf-compiler
       - name: Get Solana version
         id: solana
         run: echo "version=$(make solana-version)" >> $GITHUB_OUTPUT
