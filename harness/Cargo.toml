@@ -109,3 +109,7 @@ solana-system-interface = { workspace = true }
 [[bench]]
 name = "ips"
 harness = false
+
+[[bench]]
+name = "perf"
+harness = false

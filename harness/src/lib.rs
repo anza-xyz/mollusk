@@ -523,6 +523,15 @@ pub struct Mollusk {
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
 
+    /// Cached program runtime environments, built from `compute_budget` and
+    /// `feature_set`. Call `rebuild_runtime_environments()` after mutating
+    /// either of those fields.
+    program_runtime_environments: ProgramRuntimeEnvironments,
+
+    /// Cached base sysvar cache, built from `sysvars`. Call
+    /// `rebuild_sysvar_cache()` after mutating `sysvars`.
+    sysvar_cache: SysvarCache,
+
     /// The callback which can be used to inspect invoke_context
     /// and extract low-level information such as bpf traces, transaction
     /// context, detailed timings, etc.
@@ -709,6 +718,53 @@ impl MessageResult {
 }
 
 impl Mollusk {
+    fn build_program_runtime_environments(
+        feature_set: &FeatureSet,
+        compute_budget: &ComputeBudget,
+        #[allow(unused)] enable_register_tracing: bool,
+    ) -> ProgramRuntimeEnvironments {
+        let execution_budget = compute_budget.to_budget();
+        let runtime_features = feature_set.runtime_features();
+        ProgramRuntimeEnvironments {
+            program_runtime_v1: Arc::new(
+                create_program_runtime_environment_v1(
+                    &runtime_features,
+                    &execution_budget,
+                    /* reject_deployment_of_broken_elfs */ false,
+                    /* debugging_features */ enable_register_tracing,
+                )
+                .unwrap(),
+            ),
+            program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
+                &execution_budget,
+                /* debugging_features */ enable_register_tracing,
+            )),
+        }
+    }
+
+    /// Rebuild the cached sysvar cache.
+    ///
+    /// Call this after directly mutating `sysvars` to ensure the cached
+    /// sysvar cache reflects the updated configuration.
+    pub fn rebuild_sysvar_cache(&mut self) {
+        self.sysvar_cache = self.sysvars.build_sysvar_cache();
+    }
+
+    /// Rebuild the cached program runtime environments.
+    ///
+    /// Call this after directly mutating `compute_budget` or `feature_set`
+    /// to ensure the execution environments reflect the updated configuration.
+    pub fn rebuild_runtime_environments(&mut self) {
+        let _enable_register_tracing = false;
+        #[cfg(feature = "register-tracing")]
+        let _enable_register_tracing = self.enable_register_tracing;
+        self.program_runtime_environments = Self::build_program_runtime_environments(
+            &self.feature_set,
+            &self.compute_budget,
+            _enable_register_tracing,
+        );
+    }
+
     fn new_inner(#[allow(unused)] enable_register_tracing: bool) -> Self {
         #[rustfmt::skip]
         solana_logger::setup_with_default(
@@ -734,6 +790,15 @@ impl Mollusk {
         let program_cache =
             ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
 
+        let program_runtime_environments = Self::build_program_runtime_environments(
+            &feature_set,
+            &compute_budget,
+            enable_register_tracing,
+        );
+
+        let sysvars = Sysvars::default();
+        let sysvar_cache = sysvars.build_sysvar_cache();
+
         #[allow(unused_mut)]
         let mut me = Self {
             config: Config::default(),
@@ -742,7 +807,9 @@ impl Mollusk {
             feature_set,
             logger: None,
             program_cache,
-            sysvars: Sysvars::default(),
+            sysvars,
+            program_runtime_environments,
+            sysvar_cache,
 
             #[cfg(feature = "invocation-inspect-callback")]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
@@ -841,7 +908,8 @@ impl Mollusk {
 
     /// Warp the test environment to a slot by updating sysvars.
     pub fn warp_to_slot(&mut self, slot: u64) {
-        self.sysvars.warp_to_slot(slot)
+        self.sysvars.warp_to_slot(slot);
+        self.rebuild_sysvar_cache();
     }
 
     fn get_loader_key(&self, program_id: &Pubkey) -> Pubkey {
@@ -943,12 +1011,23 @@ impl Mollusk {
         transaction_context: &TransactionContext,
         original_accounts: &[(Pubkey, Account)],
     ) -> Vec<(Pubkey, Account)> {
+        // Pre-build index map to avoid repeated O(n) linear scans in
+        // find_index_of_account for each original account.
+        let index_map: HashMap<&Pubkey, IndexOfAccount> = original_accounts
+            .iter()
+            .filter_map(|(pubkey, _)| {
+                transaction_context
+                    .find_index_of_account(pubkey)
+                    .map(|index| (pubkey, index))
+            })
+            .collect();
+
         original_accounts
             .iter()
             .map(|(pubkey, account)| {
-                transaction_context
-                    .find_index_of_account(pubkey)
-                    .map(|index| {
+                index_map
+                    .get(pubkey)
+                    .map(|&index| {
                         let account_ref = transaction_context.accounts().try_borrow(index).unwrap();
                         let resulting_account = Account {
                             lamports: account_ref.lamports(),
@@ -978,28 +1057,8 @@ impl Mollusk {
             epoch_stake: &self.epoch_stake,
             feature_set: &self.feature_set,
         };
-        let execution_budget = self.compute_budget.to_budget();
         let runtime_features = self.feature_set.runtime_features();
-
-        let _enable_register_tracing = false;
-        #[cfg(feature = "register-tracing")]
-        let _enable_register_tracing = self.enable_register_tracing;
-
-        let program_runtime_environments: ProgramRuntimeEnvironments = ProgramRuntimeEnvironments {
-            program_runtime_v1: Arc::new(
-                create_program_runtime_environment_v1(
-                    &runtime_features,
-                    &execution_budget,
-                    /* reject_deployment_of_broken_elfs */ false,
-                    /* debugging_features */ _enable_register_tracing,
-                )
-                .unwrap(),
-            ),
-            program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
-                &execution_budget,
-                /* debugging_features */ _enable_register_tracing,
-            )),
-        };
+        let program_runtime_environments = &self.program_runtime_environments;
 
         let mut invoke_context = InvokeContext::new(
             transaction_context,
@@ -1009,8 +1068,8 @@ impl Mollusk {
                 /* blockhash_lamports_per_signature */ 5000, // The default value
                 &callback,
                 &runtime_features,
-                &program_runtime_environments,
-                &program_runtime_environments,
+                program_runtime_environments,
+                program_runtime_environments,
                 sysvar_cache,
             ),
             self.logger.clone(),
@@ -1106,7 +1165,7 @@ impl Mollusk {
     ) -> InstructionResult {
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             std::slice::from_ref(instruction),
-            accounts.iter(),
+            accounts,
             fallback_accounts,
         );
 
@@ -1186,12 +1245,13 @@ impl Mollusk {
 
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             std::slice::from_ref(instruction),
-            accounts.iter(),
+            accounts,
             &fallback_accounts,
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts);
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+        let sysvar_cache_override = self.sysvars.maybe_override_sysvar_cache(accounts);
+        let sysvar_cache = sysvar_cache_override.as_ref().unwrap_or(&self.sysvar_cache);
 
         let message_result = self.process_transaction_message(
             &sanitized_message,
@@ -1284,7 +1344,8 @@ impl Mollusk {
             accounts,
         );
 
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+        let sysvar_cache_override = self.sysvars.maybe_override_sysvar_cache(accounts);
+        let sysvar_cache = sysvar_cache_override.as_ref().unwrap_or(&self.sysvar_cache);
 
         for (index, instruction) in instructions.iter().enumerate() {
             let this_result = self.process_instruction_chain_element(
@@ -1334,12 +1395,13 @@ impl Mollusk {
 
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             instructions,
-            accounts.iter(),
+            accounts,
             &fallback_accounts,
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts);
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+        let sysvar_cache_override = self.sysvars.maybe_override_sysvar_cache(accounts);
+        let sysvar_cache = sysvar_cache_override.as_ref().unwrap_or(&self.sysvar_cache);
 
         let message_result = self.process_transaction_message(
             &sanitized_message,
@@ -1448,7 +1510,8 @@ impl Mollusk {
             accounts,
         );
 
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+        let sysvar_cache_override = self.sysvars.maybe_override_sysvar_cache(accounts);
+        let sysvar_cache = sysvar_cache_override.as_ref().unwrap_or(&self.sysvar_cache);
 
         for (index, (instruction, checks)) in instructions.iter().enumerate() {
             let this_result = self.process_instruction_chain_element(
@@ -1528,6 +1591,8 @@ impl Mollusk {
         self.compute_budget = compute_budget;
         self.feature_set = feature_set;
         self.sysvars = sysvars;
+        self.rebuild_sysvar_cache();
+        self.rebuild_runtime_environments();
         self.process_instruction(&instruction, &accounts)
     }
 
@@ -1630,6 +1695,7 @@ impl Mollusk {
         self.compute_budget = compute_budget;
         self.feature_set = feature_set;
         self.slot = slot;
+        self.rebuild_runtime_environments();
         self.process_instruction(&instruction, &accounts)
     }
 
@@ -1667,6 +1733,7 @@ impl Mollusk {
         self.compute_budget = compute_budget;
         self.feature_set = feature_set;
         self.slot = slot;
+        self.rebuild_runtime_environments();
 
         let result = self.process_instruction(&instruction, &accounts);
         let expected_result = fuzz::firedancer::parse_fixture_effects(
@@ -1717,6 +1784,7 @@ impl Mollusk {
         self.compute_budget = compute_budget;
         self.feature_set = feature_set;
         self.slot = slot;
+        self.rebuild_runtime_environments();
 
         let result = self.process_instruction(&instruction, &accounts);
         let expected = fuzz::firedancer::parse_fixture_effects(

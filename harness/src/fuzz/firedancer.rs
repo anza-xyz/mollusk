@@ -81,7 +81,7 @@ fn build_fixture_context(
 
     let (sanitized_message, _transaction_accounts) = compile_accounts(
         std::slice::from_ref(instruction),
-        accounts.iter(),
+        accounts,
         &fallbacks,
     );
 

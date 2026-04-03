@@ -192,17 +192,43 @@ impl Sysvars {
         }
     }
 
-    pub(crate) fn setup_sysvar_cache(&self, accounts: &[(Pubkey, Account)]) -> SysvarCache {
+    /// Build the base sysvar cache from this instance's sysvar fields.
+    /// This can be cached and reused across invocations.
+    pub(crate) fn build_sysvar_cache(&self) -> SysvarCache {
+        SysvarCache::from(self)
+    }
+
+    /// Returns `None` if the base cache can be used directly (no sysvar
+    /// overrides in accounts), or `Some(cache)` with overrides applied.
+    pub(crate) fn maybe_override_sysvar_cache(
+        &self,
+        accounts: &[(Pubkey, Account)],
+    ) -> Option<SysvarCache> {
+        // Check if any provided accounts are sysvar overrides.
+        let has_sysvar_override = accounts.iter().any(|(key, _)| {
+            key.eq(&Clock::id())
+                || key.eq(&EpochRewards::id())
+                || key.eq(&EpochSchedule::id())
+                || key.eq(&LastRestartSlot::id())
+                || key.eq(&Rent::id())
+                || key.eq(&SlotHashes::id())
+                || key.eq(&StakeHistory::id())
+                || key.eq(&RecentBlockhashes::id())
+        });
+
+        if !has_sysvar_override {
+            return None;
+        }
+
+        // Slow path: build a fresh cache with account overrides first.
         let mut sysvar_cache = SysvarCache::default();
 
-        // First fill any sysvar cache entries from the provided accounts.
         sysvar_cache.fill_missing_entries(|pubkey, set_sysvar| {
             if let Some((_, account)) = accounts.iter().find(|(key, _)| key == pubkey) {
                 set_sysvar(account.data())
             }
         });
 
-        // Then fill the rest with the entries from `self`.
         sysvar_cache.fill_missing_entries(|pubkey, set_sysvar| {
             if pubkey.eq(&Clock::id()) {
                 set_sysvar(&bincode::serialize(&self.clock).unwrap());
@@ -230,7 +256,7 @@ impl Sysvars {
             }
         });
 
-        sysvar_cache
+        Some(sysvar_cache)
     }
 }
 

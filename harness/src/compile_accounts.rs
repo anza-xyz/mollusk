@@ -10,18 +10,21 @@ use {
     std::collections::{HashMap, HashSet},
 };
 
-pub fn compile_accounts<'a>(
+// Static empty HashSet for message sanitization — avoids allocation per call.
+static EMPTY_HASHSET: std::sync::LazyLock<HashSet<Pubkey>> =
+    std::sync::LazyLock::new(HashSet::new);
+
+pub fn compile_accounts(
     instructions: &[Instruction],
-    accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
+    accounts: &[(Pubkey, Account)],
     fallback_accounts: &HashMap<Pubkey, Account>,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
     let message = Message::new(instructions, None);
-    let sanitized_message = SanitizedMessage::Legacy(LegacyMessage::new(message, &HashSet::new()));
+    let sanitized_message = SanitizedMessage::Legacy(LegacyMessage::new(message, &EMPTY_HASHSET));
 
-    let accounts: Vec<_> = accounts.collect();
     let transaction_accounts = build_transaction_accounts(
         &sanitized_message,
-        &accounts,
+        accounts,
         instructions,
         fallback_accounts,
     );
@@ -31,19 +34,23 @@ pub fn compile_accounts<'a>(
 
 fn build_transaction_accounts(
     message: &SanitizedMessage,
-    accounts: &[&(Pubkey, Account)],
+    accounts: &[(Pubkey, Account)],
     all_instructions: &[Instruction],
     fallback_accounts: &HashMap<Pubkey, Account>,
 ) -> Vec<(Pubkey, AccountSharedData)> {
     let program_ids: HashSet<Pubkey> = all_instructions.iter().map(|ix| ix.program_id).collect();
+
+    // Pre-index accounts by pubkey for O(1) lookups instead of O(n) linear scans.
+    let account_map: HashMap<&Pubkey, &Account> =
+        accounts.iter().map(|(k, a)| (k, a)).collect();
 
     message
         .account_keys()
         .iter()
         .map(|key| {
             if program_ids.contains(key) {
-                if let Some(provided_account) = accounts.iter().find(|(k, _)| k == key) {
-                    return (*key, AccountSharedData::from(provided_account.1.clone()));
+                if let Some(provided_account) = account_map.get(key) {
+                    return (*key, AccountSharedData::from((*provided_account).clone()));
                 }
                 if let Some(fallback) = fallback_accounts.get(key) {
                     return (*key, AccountSharedData::from(fallback.clone()));
@@ -55,8 +62,8 @@ fn build_transaction_accounts(
             }
 
             if *key == solana_instructions_sysvar::ID {
-                if let Some((_, provided_account)) = accounts.iter().find(|(k, _)| k == key) {
-                    return (*key, AccountSharedData::from(provided_account.clone()));
+                if let Some(provided_account) = account_map.get(key) {
+                    return (*key, AccountSharedData::from((*provided_account).clone()));
                 }
                 if let Some(fallback) = fallback_accounts.get(key) {
                     return (*key, AccountSharedData::from(fallback.clone()));
@@ -66,10 +73,9 @@ fn build_transaction_accounts(
                 return (*key, account.into());
             }
 
-            let account = accounts
-                .iter()
-                .find(|(k, _)| k == key)
-                .map(|(_, a)| AccountSharedData::from(a.clone()))
+            let account = account_map
+                .get(key)
+                .map(|a| AccountSharedData::from((*a).clone()))
                 .or_else(|| {
                     fallback_accounts
                         .get(key)
