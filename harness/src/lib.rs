@@ -1839,6 +1839,15 @@ impl<AS: AccountStore> MolluskContext<AS> {
         }
     }
 
+    fn consume_transaction_result(&self, result: &TransactionResult) {
+        if result.program_result.is_ok() {
+            let mut store = self.account_store.borrow_mut();
+            for (pubkey, account) in result.resulting_accounts.iter() {
+                store.store_account(*pubkey, account.clone());
+            }
+        }
+    }
+
     /// Process an instruction using the minified Solana Virtual Machine (SVM)
     /// environment. Simply returns the result.
     pub fn process_instruction(&self, instruction: &Instruction) -> InstructionResult {
@@ -1887,6 +1896,42 @@ impl<AS: AccountStore> MolluskContext<AS> {
             .mollusk
             .process_and_validate_instruction_chain(instructions, &accounts);
         self.consume_mollusk_result(&result);
+        result
+    }
+
+    /// Process multiple instructions as a single transaction using the
+    /// minified Solana Virtual Machine (SVM) environment, simply
+    /// returning the result as `TransactionResult`.
+    ///
+    /// Unlike `process_instruction_chain`, this compiles all instructions
+    /// into one transaction message and processes in one SVM invocation.
+    pub fn process_transaction_instructions(
+        &self,
+        instructions: &[Instruction],
+    ) -> TransactionResult {
+        let accounts = self.load_accounts_for_instructions(instructions.iter());
+        let result = self
+            .mollusk
+            .process_transaction_instructions(instructions, &accounts);
+        self.consume_transaction_result(&result);
+        result
+    }
+
+    /// Process multiple instructions as a single transaction using the
+    /// minified Solana Virtual Machine (SVM) environment, then perform
+    /// checks on the result.
+    pub fn process_and_validate_transaction_instructions(
+        &self,
+        instructions: &[Instruction],
+        checks: &[Check],
+    ) -> TransactionResult {
+        let accounts = self.load_accounts_for_instructions(instructions.iter());
+        let result = self.mollusk.process_and_validate_transaction_instructions(
+            instructions,
+            &accounts,
+            checks,
+        );
+        self.consume_transaction_result(&result);
         result
     }
 }
