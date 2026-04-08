@@ -80,13 +80,13 @@ solana-rent = { workspace = true }
 solana-rent-legacy = { package = "solana-rent", version = "3.1.0" }
 solana-sdk-ids = { workspace = true }
 solana-slot-hashes = { workspace = true }
-solana-stake-interface = { workspace = true }
+solana-stake-interface = { workspace = true, features = ["bincode", "sysvar"] }
 solana-svm-callback = { workspace = true }
 solana-svm-log-collector = { workspace = true }
 solana-svm-timings = { workspace = true }
 solana-svm-transaction = { workspace = true }
 solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
-solana-sysvar = { workspace = true }
+solana-sysvar = { workspace = true, features = ["bincode"] }
 solana-sysvar-id = { workspace = true }
 solana-transaction-context = { workspace = true, features = ["agave-unstable-api", "dev-context-only-utils"] }
 solana-transaction-error = { workspace = true }
