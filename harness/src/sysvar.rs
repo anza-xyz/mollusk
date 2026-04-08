@@ -320,7 +320,7 @@ mod tests {
             last_restart_slot: 6,
         };
         let rent = Rent {
-            lamports_per_byte_year: 7,
+            lamports_per_byte: 7,
             ..Default::default()
         };
         let slot_hashes = SlotHashes::new(&[(8, Hash::default())]);
@@ -355,14 +355,47 @@ mod tests {
             sysvar_cache.get_last_restart_slot().unwrap().deref(),
             &sysvars.last_restart_slot
         );
-        assert_eq!(sysvar_cache.get_rent().unwrap().deref(), &sysvars.rent);
+        let runtime_rent = sysvar_cache.get_rent().unwrap();
+        #[allow(deprecated)]
+        {
+            assert_eq!(
+                runtime_rent.lamports_per_byte_year,
+                sysvars.rent.lamports_per_byte
+            );
+            assert_eq!(
+                runtime_rent.exemption_threshold.to_le_bytes(),
+                sysvars.rent.exemption_threshold
+            );
+            assert_eq!(runtime_rent.burn_percent, sysvars.rent.burn_percent);
+        }
         assert_eq!(
             sysvar_cache.get_slot_hashes().unwrap().deref(),
             &sysvars.slot_hashes
         );
-        assert_eq!(
-            sysvar_cache.get_stake_history().unwrap().deref(),
-            &sysvars.stake_history
-        );
+        let runtime_stake_history = sysvar_cache.get_stake_history().unwrap();
+        let runtime_entries = runtime_stake_history
+            .iter()
+            .map(|(epoch, entry)| {
+                (
+                    *epoch,
+                    entry.effective,
+                    entry.activating,
+                    entry.deactivating,
+                )
+            })
+            .collect::<Vec<_>>();
+        let public_entries = sysvars
+            .stake_history
+            .iter()
+            .map(|(epoch, entry)| {
+                (
+                    *epoch,
+                    entry.effective,
+                    entry.activating,
+                    entry.deactivating,
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(runtime_entries, public_entries);
     }
 }

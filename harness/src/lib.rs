@@ -460,7 +460,7 @@ use mollusk_svm_result::Compare;
 #[cfg(feature = "precompiles")]
 use solana_precompile_error::PrecompileError;
 #[cfg(feature = "invocation-inspect-callback")]
-use solana_transaction_context::InstructionAccount;
+use solana_transaction_context::instruction_accounts::InstructionAccount;
 use {
     crate::{
         account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
@@ -475,7 +475,8 @@ use {
         types::{TransactionProgramResult, TransactionResult},
         Check, CheckContext, Config, InstructionResult,
     },
-    solana_account::{Account, AccountSharedData, ReadableAccount},
+    solana_account::{Account, AccountSharedData},
+    solana_account_legacy::ReadableAccount as LegacyReadableAccount,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
@@ -492,7 +493,7 @@ use {
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
     solana_svm_transaction::instruction::SVMInstruction,
-    solana_transaction_context::{IndexOfAccount, TransactionContext},
+    solana_transaction_context::{transaction::TransactionContext, IndexOfAccount},
     solana_transaction_error::TransactionError,
     std::{
         cell::RefCell,
@@ -896,36 +897,95 @@ impl Mollusk {
     fn create_transaction_context(
         &self,
         transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
+        number_of_top_level_instructions: usize,
     ) -> TransactionContext<'_> {
         TransactionContext::new(
-            transaction_accounts,
-            self.sysvars.rent.clone(),
+            self.to_legacy_transaction_accounts(transaction_accounts),
+            self.to_legacy_rent(),
             self.compute_budget.max_instruction_stack_depth,
             self.compute_budget.max_instruction_trace_length,
+            number_of_top_level_instructions,
         )
+    }
+
+    // TODO: Replace with `InvokeContext::prepare_top_level_instructions` once
+    // available in a published crate. See: https://github.com/anza-xyz/agave/blob/bf440752b/program-runtime/src/invoke_context.rs#L504
+    fn seed_top_level_instruction_index(
+        &self,
+        transaction_context: &mut TransactionContext<'_>,
+        program_index: IndexOfAccount,
+        target_index: usize,
+    ) {
+        while transaction_context.next_top_level_instruction_index() < target_index {
+            transaction_context
+                .configure_top_level_instruction_for_tests(program_index, Vec::new(), Vec::new())
+                .expect("failed to seed top-level instruction index");
+            transaction_context
+                .push()
+                .expect("failed to advance top-level instruction index");
+            transaction_context
+                .pop()
+                .expect("failed to reset seeded instruction frame");
+        }
+    }
+
+    // TODO: Agave 4's transaction context still consumes the older account/rent
+    fn to_legacy_transaction_accounts(
+        &self,
+        transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
+    ) -> Vec<(Pubkey, solana_account_legacy::AccountSharedData)> {
+        transaction_accounts
+            .into_iter()
+            .map(|(pubkey, account)| {
+                let account = Account::from(account);
+                (
+                    pubkey,
+                    solana_account_legacy::Account {
+                        lamports: account.lamports,
+                        data: account.data,
+                        owner: account.owner,
+                        executable: account.executable,
+                        rent_epoch: account.rent_epoch,
+                    }
+                    .into(),
+                )
+            })
+            .collect()
+    }
+
+    fn to_legacy_rent(&self) -> solana_rent_legacy::Rent {
+        #[allow(deprecated)]
+        solana_rent_legacy::Rent {
+            lamports_per_byte_year: self.sysvars.rent.lamports_per_byte,
+            exemption_threshold: f64::from_le_bytes(self.sysvars.rent.exemption_threshold),
+            burn_percent: self.sysvars.rent.burn_percent,
+        }
     }
 
     #[cfg(feature = "inner-instructions")]
     fn deconstruct_inner_instructions(
         transaction_context: &mut TransactionContext,
     ) -> Vec<Vec<InnerInstruction>> {
-        let ix_trace = transaction_context.take_instruction_trace();
+        let (frames, accounts, data) = transaction_context.take_instruction_trace();
+        debug_assert_eq!(frames.len(), accounts.len());
+        debug_assert_eq!(frames.len(), data.len());
         let mut all_inner_instructions: Vec<Vec<InnerInstruction>> = Vec::new();
 
-        for ix_in_trace in ix_trace {
-            let stack_height = ix_in_trace.nesting_level.saturating_add(1);
+        for (i, frame) in frames.iter().enumerate() {
+            let stack_height = (frame.nesting_level as usize).saturating_add(1);
 
             if stack_height == 1 {
                 // Top-level instruction: start a new empty group for its inner instructions.
                 all_inner_instructions.push(Vec::new());
             } else if let Some(last_group) = all_inner_instructions.last_mut() {
                 // Inner instruction (CPI): add to the current group.
+                let ix_accounts = accounts.get(i).map(|a| a.as_ref()).unwrap_or_default();
+                let ix_data = data.get(i).map(|d| d.as_ref()).unwrap_or_default();
                 let inner_instruction = InnerInstruction {
                     instruction: CompiledInstruction::new_from_raw_parts(
-                        ix_in_trace.program_account_index_in_tx as u8,
-                        ix_in_trace.instruction_data.to_vec(),
-                        ix_in_trace
-                            .instruction_accounts
+                        frame.program_account_index_in_tx as u8,
+                        ix_data.to_vec(),
+                        ix_accounts
                             .iter()
                             .map(|acc| acc.index_in_transaction as u8)
                             .collect(),
@@ -1110,8 +1170,11 @@ impl Mollusk {
             fallback_accounts,
         );
 
-        let mut transaction_context = self.create_transaction_context(transaction_accounts);
-        transaction_context.set_top_level_instruction_index(index);
+        let mut transaction_context = self.create_transaction_context(transaction_accounts, 1);
+        let program_index = transaction_context
+            .find_index_of_account(&instruction.program_id)
+            .expect("instruction program missing from transaction context");
+        self.seed_top_level_instruction_index(&mut transaction_context, program_index, index);
 
         let message_result = self.process_transaction_message(
             &sanitized_message,
@@ -1190,7 +1253,7 @@ impl Mollusk {
             &fallback_accounts,
         );
 
-        let mut transaction_context = self.create_transaction_context(transaction_accounts);
+        let mut transaction_context = self.create_transaction_context(transaction_accounts, 1);
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         let message_result = self.process_transaction_message(
@@ -1283,7 +1346,6 @@ impl Mollusk {
             instructions.iter(),
             accounts,
         );
-
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         for (index, instruction) in instructions.iter().enumerate() {
@@ -1338,7 +1400,8 @@ impl Mollusk {
             &fallback_accounts,
         );
 
-        let mut transaction_context = self.create_transaction_context(transaction_accounts);
+        let mut transaction_context =
+            self.create_transaction_context(transaction_accounts, instructions.len());
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         let message_result = self.process_transaction_message(

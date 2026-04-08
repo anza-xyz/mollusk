@@ -147,8 +147,8 @@ impl From<ProtoRent> for Rent {
         let burn_percent =
             u8::try_from(value.burn_percent).expect("Invalid integer for burn percent");
         Self {
-            lamports_per_byte_year: value.lamports_per_byte_year,
-            exemption_threshold: value.exemption_threshold,
+            lamports_per_byte: value.lamports_per_byte_year,
+            exemption_threshold: value.exemption_threshold.to_le_bytes(),
             burn_percent,
         }
     }
@@ -156,8 +156,8 @@ impl From<ProtoRent> for Rent {
 impl From<Rent> for ProtoRent {
     fn from(value: Rent) -> Self {
         Self {
-            lamports_per_byte_year: value.lamports_per_byte_year,
-            exemption_threshold: value.exemption_threshold,
+            lamports_per_byte_year: value.lamports_per_byte,
+            exemption_threshold: f64::from_le_bytes(value.exemption_threshold),
             burn_percent: value.burn_percent.into(),
         }
     }
