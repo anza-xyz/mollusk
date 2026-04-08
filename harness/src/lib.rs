@@ -908,8 +908,8 @@ impl Mollusk {
         )
     }
 
-    // TODO: Agave v4 beta removed the old direct setter, so we advance the
-    // instructions sysvar index by seeding empty top-level frames.
+    // TODO: Replace with `InvokeContext::prepare_top_level_instructions` once
+    // available in a published crate. See: https://github.com/anza-xyz/agave/blob/bf440752b/program-runtime/src/invoke_context.rs#L504
     fn seed_top_level_instruction_index(
         &self,
         transaction_context: &mut TransactionContext<'_>,
