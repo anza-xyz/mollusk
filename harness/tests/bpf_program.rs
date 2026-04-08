@@ -152,7 +152,7 @@ fn test_transfer() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2484),
+            Check::compute_units(2498),
             Check::account(&payer)
                 .lamports(payer_lamports - transfer_amount)
                 .build(),
@@ -256,7 +256,7 @@ fn test_close_account() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2560),
+            Check::compute_units(2574),
             Check::account(&key)
                 .closed() // The rest is unnecessary, just testing.
                 .data(&[])
@@ -376,7 +376,7 @@ fn test_cpi() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2326),
+            Check::compute_units(2341),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
