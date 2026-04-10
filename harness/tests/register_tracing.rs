@@ -7,9 +7,7 @@ fn test_custom_register_tracing_callback() {
         solana_instruction::{AccountMeta, Instruction},
         solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
         solana_pubkey::Pubkey,
-        solana_transaction_context::{
-            instruction::InstructionContext, instruction_accounts::InstructionAccount,
-        },
+        solana_transaction_context::{InstructionAccount, InstructionContext},
         std::{cell::RefCell, collections::HashMap, rc::Rc},
     };
 
@@ -45,7 +43,7 @@ fn test_custom_register_tracing_callback() {
                     )
                 })
                 .filter(|(_registers, insn)| {
-                    insn.opc & 7 == solana_program_runtime::solana_sbpf::ebpf::BPF_JMP64
+                    insn.opc & 7 == solana_program_runtime::solana_sbpf::ebpf::BPF_JMP
                         && insn.opc != solana_program_runtime::solana_sbpf::ebpf::BPF_JA
                 })
                 .count();

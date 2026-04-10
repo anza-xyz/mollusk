@@ -12,7 +12,7 @@ use {
     rayon::prelude::*,
     solana_account::Account,
     solana_pubkey::Pubkey,
-    solana_transaction_context::instruction_accounts::InstructionAccount,
+    solana_transaction_context::InstructionAccount,
     std::{assert_eq, fs, path::Path, process::Command},
 };
 

@@ -8,7 +8,7 @@ use {
     solana_account::Account,
     solana_keccak_hasher::Hasher,
     solana_pubkey::Pubkey,
-    solana_transaction_context::instruction_accounts::InstructionAccount,
+    solana_transaction_context::InstructionAccount,
 };
 
 #[derive(Clone, Debug, Default, PartialEq)]

@@ -2,7 +2,7 @@
 
 use {
     super::proto::InstrAcct as ProtoInstrAccount, solana_keccak_hasher::Hasher,
-    solana_transaction_context::instruction_accounts::InstructionAccount,
+    solana_transaction_context::InstructionAccount,
 };
 
 impl From<ProtoInstrAccount> for InstructionAccount {

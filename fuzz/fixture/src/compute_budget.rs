@@ -39,8 +39,8 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             heap_size,
             heap_cost,
             mem_op_base_cost,
-            alt_bn128_g1_addition_cost,
-            alt_bn128_g1_multiplication_cost,
+            alt_bn128_addition_cost,
+            alt_bn128_multiplication_cost,
             alt_bn128_pairing_one_pair_cost_first,
             alt_bn128_pairing_one_pair_cost_other,
             big_modular_exponentiation_base_cost,
@@ -52,20 +52,6 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             alt_bn128_g1_decompress,
             alt_bn128_g2_compress,
             alt_bn128_g2_decompress,
-            alt_bn128_g2_addition_cost,
-            alt_bn128_g2_multiplication_cost,
-            bls12_381_g1_add_cost,
-            bls12_381_g2_add_cost,
-            bls12_381_g1_subtract_cost,
-            bls12_381_g2_subtract_cost,
-            bls12_381_g1_multiply_cost,
-            bls12_381_g2_multiply_cost,
-            bls12_381_g1_decompress_cost,
-            bls12_381_g2_decompress_cost,
-            bls12_381_g1_validate_cost,
-            bls12_381_g2_validate_cost,
-            bls12_381_one_pair_cost,
-            bls12_381_additional_pair_cost,
         } = value;
 
         Self {
@@ -100,8 +86,8 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             heap_size,
             heap_cost,
             mem_op_base_cost,
-            alt_bn128_g1_addition_cost,
-            alt_bn128_g1_multiplication_cost,
+            alt_bn128_addition_cost,
+            alt_bn128_multiplication_cost,
             alt_bn128_pairing_one_pair_cost_first,
             alt_bn128_pairing_one_pair_cost_other,
             big_modular_exponentiation_base_cost,
@@ -113,20 +99,6 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             alt_bn128_g1_decompress,
             alt_bn128_g2_compress,
             alt_bn128_g2_decompress,
-            alt_bn128_g2_addition_cost,
-            alt_bn128_g2_multiplication_cost,
-            bls12_381_g1_add_cost,
-            bls12_381_g2_add_cost,
-            bls12_381_g1_subtract_cost,
-            bls12_381_g2_subtract_cost,
-            bls12_381_g1_multiply_cost,
-            bls12_381_g2_multiply_cost,
-            bls12_381_g1_decompress_cost,
-            bls12_381_g2_decompress_cost,
-            bls12_381_g1_validate_cost,
-            bls12_381_g2_validate_cost,
-            bls12_381_one_pair_cost,
-            bls12_381_additional_pair_cost,
         }
     }
 }
@@ -165,8 +137,8 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             heap_size,
             heap_cost,
             mem_op_base_cost,
-            alt_bn128_g1_addition_cost,
-            alt_bn128_g1_multiplication_cost,
+            alt_bn128_addition_cost,
+            alt_bn128_multiplication_cost,
             alt_bn128_pairing_one_pair_cost_first,
             alt_bn128_pairing_one_pair_cost_other,
             big_modular_exponentiation_base_cost,
@@ -178,20 +150,6 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             alt_bn128_g1_decompress,
             alt_bn128_g2_compress,
             alt_bn128_g2_decompress,
-            alt_bn128_g2_addition_cost,
-            alt_bn128_g2_multiplication_cost,
-            bls12_381_g1_add_cost,
-            bls12_381_g2_add_cost,
-            bls12_381_g1_subtract_cost,
-            bls12_381_g2_subtract_cost,
-            bls12_381_g1_multiply_cost,
-            bls12_381_g2_multiply_cost,
-            bls12_381_g1_decompress_cost,
-            bls12_381_g2_decompress_cost,
-            bls12_381_g1_validate_cost,
-            bls12_381_g2_validate_cost,
-            bls12_381_one_pair_cost,
-            bls12_381_additional_pair_cost,
         } = value;
 
         Self {
@@ -226,8 +184,8 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             heap_size,
             heap_cost,
             mem_op_base_cost,
-            alt_bn128_g1_addition_cost,
-            alt_bn128_g1_multiplication_cost,
+            alt_bn128_addition_cost,
+            alt_bn128_multiplication_cost,
             alt_bn128_pairing_one_pair_cost_first,
             alt_bn128_pairing_one_pair_cost_other,
             big_modular_exponentiation_base_cost,
@@ -239,20 +197,6 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             alt_bn128_g1_decompress,
             alt_bn128_g2_compress,
             alt_bn128_g2_decompress,
-            alt_bn128_g2_addition_cost,
-            alt_bn128_g2_multiplication_cost,
-            bls12_381_g1_add_cost,
-            bls12_381_g2_add_cost,
-            bls12_381_g1_subtract_cost,
-            bls12_381_g2_subtract_cost,
-            bls12_381_g1_multiply_cost,
-            bls12_381_g2_multiply_cost,
-            bls12_381_g1_decompress_cost,
-            bls12_381_g2_decompress_cost,
-            bls12_381_g1_validate_cost,
-            bls12_381_g2_validate_cost,
-            bls12_381_one_pair_cost,
-            bls12_381_additional_pair_cost,
         }
     }
 }
@@ -329,12 +273,8 @@ pub(crate) fn hash_proto_compute_budget(hasher: &mut Hasher, compute_budget: &Pr
     hasher.hash(&compute_budget.heap_size.to_le_bytes());
     hasher.hash(&compute_budget.heap_cost.to_le_bytes());
     hasher.hash(&compute_budget.mem_op_base_cost.to_le_bytes());
-    hasher.hash(&compute_budget.alt_bn128_g1_addition_cost.to_le_bytes());
-    hasher.hash(
-        &compute_budget
-            .alt_bn128_g1_multiplication_cost
-            .to_le_bytes(),
-    );
+    hasher.hash(&compute_budget.alt_bn128_addition_cost.to_le_bytes());
+    hasher.hash(&compute_budget.alt_bn128_multiplication_cost.to_le_bytes());
     hasher.hash(
         &compute_budget
             .alt_bn128_pairing_one_pair_cost_first
@@ -366,22 +306,4 @@ pub(crate) fn hash_proto_compute_budget(hasher: &mut Hasher, compute_budget: &Pr
     hasher.hash(&compute_budget.alt_bn128_g1_decompress.to_le_bytes());
     hasher.hash(&compute_budget.alt_bn128_g2_compress.to_le_bytes());
     hasher.hash(&compute_budget.alt_bn128_g2_decompress.to_le_bytes());
-    hasher.hash(&compute_budget.alt_bn128_g2_addition_cost.to_le_bytes());
-    hasher.hash(
-        &compute_budget
-            .alt_bn128_g2_multiplication_cost
-            .to_le_bytes(),
-    );
-    hasher.hash(&compute_budget.bls12_381_g1_add_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g2_add_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g1_subtract_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g2_subtract_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g1_multiply_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g2_multiply_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g1_decompress_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g2_decompress_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g1_validate_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_g2_validate_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_one_pair_cost.to_le_bytes());
-    hasher.hash(&compute_budget.bls12_381_additional_pair_cost.to_le_bytes());
 }

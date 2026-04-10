@@ -116,7 +116,7 @@ mod tests {
         solana_account::Account,
         solana_keccak_hasher::Hash,
         solana_pubkey::Pubkey,
-        solana_transaction_context::instruction_accounts::InstructionAccount,
+        solana_transaction_context::InstructionAccount,
     };
 
     fn produce_hash(fixture: &Fixture) -> Hash {

@@ -9,7 +9,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-agave-feature-set = { workspace = true, features = ["agave-unstable-api"] }
+agave-feature-set = { workspace = true }
 mollusk-svm-fuzz-fs = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -25,8 +25,8 @@ solana-keccak-hasher = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-slot-hashes = { workspace = true }
-solana-stake-interface = { workspace = true, features = ["bincode", "sysvar"] }
-solana-sysvar = { workspace = true, features = ["bincode"] }
+solana-stake-interface = { workspace = true }
+solana-sysvar.workspace = true
 
 [build-dependencies]
 prost-build = { workspace = true }

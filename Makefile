@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 NIGHTLY_TOOLCHAIN := nightly-2025-10-07
-SOLANA_VERSION := 4.0.0-beta.6
+SOLANA_VERSION := 3.1.11
 
 .PHONY: audit build-test-programs build-test-elfs prepublish publish format \
 	format-check clippy test check-features all-checks nightly-version \
