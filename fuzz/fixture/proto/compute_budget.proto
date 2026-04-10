@@ -34,8 +34,7 @@ message ComputeBudget {
     uint32 heap_size = 29;
     uint64 heap_cost = 30;
     uint64 mem_op_base_cost = 31;
-    uint64 alt_bn128_addition_cost = 32;
-    uint64 alt_bn128_multiplication_cost = 33;
+    reserved 32, 33;
     uint64 alt_bn128_pairing_one_pair_cost_first = 34;
     uint64 alt_bn128_pairing_one_pair_cost_other = 35;
     uint64 big_modular_exponentiation_base_cost = 36;
@@ -47,4 +46,20 @@ message ComputeBudget {
     uint64 alt_bn128_g1_decompress = 42;
     uint64 alt_bn128_g2_compress = 43;
     uint64 alt_bn128_g2_decompress = 44;
+    uint64 alt_bn128_g1_addition_cost = 45;
+    uint64 alt_bn128_g2_addition_cost = 46;
+    uint64 alt_bn128_g1_multiplication_cost = 47;
+    uint64 alt_bn128_g2_multiplication_cost = 48;
+    uint64 bls12_381_g1_add_cost = 49;
+    uint64 bls12_381_g2_add_cost = 50;
+    uint64 bls12_381_g1_subtract_cost = 51;
+    uint64 bls12_381_g2_subtract_cost = 52;
+    uint64 bls12_381_g1_multiply_cost = 53;
+    uint64 bls12_381_g2_multiply_cost = 54;
+    uint64 bls12_381_g1_decompress_cost = 55;
+    uint64 bls12_381_g2_decompress_cost = 56;
+    uint64 bls12_381_g1_validate_cost = 57;
+    uint64 bls12_381_g2_validate_cost = 58;
+    uint64 bls12_381_one_pair_cost = 59;
+    uint64 bls12_381_additional_pair_cost = 60;
 }
