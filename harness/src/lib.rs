@@ -460,7 +460,7 @@ use mollusk_svm_result::Compare;
 #[cfg(feature = "precompiles")]
 use solana_precompile_error::PrecompileError;
 #[cfg(feature = "invocation-inspect-callback")]
-use solana_transaction_context::InstructionAccount;
+use solana_transaction_context::instruction_accounts::InstructionAccount;
 use {
     crate::{
         account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
@@ -492,7 +492,7 @@ use {
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
     solana_svm_transaction::instruction::SVMInstruction,
-    solana_transaction_context::{IndexOfAccount, TransactionContext},
+    solana_transaction_context::{transaction::TransactionContext, IndexOfAccount},
     solana_transaction_error::TransactionError,
     std::{
         cell::RefCell,
@@ -896,12 +896,14 @@ impl Mollusk {
     fn create_transaction_context(
         &self,
         transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
+        number_of_top_level_instructions: usize,
     ) -> TransactionContext<'_> {
         TransactionContext::new(
             transaction_accounts,
             self.sysvars.rent.clone(),
             self.compute_budget.max_instruction_stack_depth,
             self.compute_budget.max_instruction_trace_length,
+            number_of_top_level_instructions,
         )
     }
 
@@ -909,11 +911,11 @@ impl Mollusk {
     fn deconstruct_inner_instructions(
         transaction_context: &mut TransactionContext,
     ) -> Vec<Vec<InnerInstruction>> {
-        let ix_trace = transaction_context.take_instruction_trace();
+        let (frames, accounts, data) = transaction_context.take_instruction_trace();
         let mut all_inner_instructions: Vec<Vec<InnerInstruction>> = Vec::new();
 
-        for ix_in_trace in ix_trace {
-            let stack_height = ix_in_trace.nesting_level.saturating_add(1);
+        for (i, frame) in frames.iter().enumerate() {
+            let stack_height = frame.nesting_level.saturating_add(1);
 
             if stack_height == 1 {
                 // Top-level instruction: start a new empty group for its inner instructions.
@@ -922,15 +924,14 @@ impl Mollusk {
                 // Inner instruction (CPI): add to the current group.
                 let inner_instruction = InnerInstruction {
                     instruction: CompiledInstruction::new_from_raw_parts(
-                        ix_in_trace.program_account_index_in_tx as u8,
-                        ix_in_trace.instruction_data.to_vec(),
-                        ix_in_trace
-                            .instruction_accounts
+                        frame.program_account_index_in_tx as u8,
+                        data[i].to_vec(),
+                        accounts[i]
                             .iter()
                             .map(|acc| acc.index_in_transaction as u8)
                             .collect(),
                     ),
-                    stack_height: u32::try_from(stack_height).ok(),
+                    stack_height: Some(u32::from(stack_height)),
                 };
                 last_group.push(inner_instruction);
             }
@@ -1098,7 +1099,6 @@ impl Mollusk {
 
     fn process_instruction_chain_element(
         &self,
-        index: usize,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
         fallback_accounts: &HashMap<Pubkey, Account>,
@@ -1110,8 +1110,7 @@ impl Mollusk {
             fallback_accounts,
         );
 
-        let mut transaction_context = self.create_transaction_context(transaction_accounts);
-        transaction_context.set_top_level_instruction_index(index);
+        let mut transaction_context = self.create_transaction_context(transaction_accounts, 1);
 
         let message_result = self.process_transaction_message(
             &sanitized_message,
@@ -1140,7 +1139,7 @@ impl Mollusk {
             inner_instructions: message_result
                 .inner_instructions
                 .into_iter()
-                .nth(index)
+                .next()
                 .unwrap_or_default(),
             #[cfg(feature = "inner-instructions")]
             message: message_result.message,
@@ -1190,7 +1189,7 @@ impl Mollusk {
             &fallback_accounts,
         );
 
-        let mut transaction_context = self.create_transaction_context(transaction_accounts);
+        let mut transaction_context = self.create_transaction_context(transaction_accounts, 1);
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         let message_result = self.process_transaction_message(
@@ -1243,6 +1242,18 @@ impl Mollusk {
     /// * `resulting_accounts`: The resulting accounts after the _last_
     ///   instruction.
     ///
+    /// ### Instructions Sysvar Limitations
+    ///
+    /// The instructions sysvar will only reflect the current instruction
+    /// for each instruction in the chain. Instruction chains are semantically
+    /// just chained invocations of `Self::process_instruction`, so each
+    /// invocation gets its own transaction context.
+    ///
+    /// If you need to use the instructions sysvar over multiple instructions,
+    /// use `Self::process_transaction_instructions`.
+    ///
+    /// ### Fuzz Fixtures
+    ///
     /// For `fuzz` feature only:
     ///
     /// Similar to `process_instruction`, if the `EJECT_FUZZ_FIXTURES`
@@ -1286,9 +1297,8 @@ impl Mollusk {
 
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
-        for (index, instruction) in instructions.iter().enumerate() {
+        for instruction in instructions.iter() {
             let this_result = self.process_instruction_chain_element(
-                index,
                 instruction,
                 &composite_result.resulting_accounts,
                 &fallback_accounts,
@@ -1338,7 +1348,8 @@ impl Mollusk {
             &fallback_accounts,
         );
 
-        let mut transaction_context = self.create_transaction_context(transaction_accounts);
+        let mut transaction_context =
+            self.create_transaction_context(transaction_accounts, instructions.len());
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         let message_result = self.process_transaction_message(
@@ -1406,6 +1417,18 @@ impl Mollusk {
     /// Machine (SVM) environment, then perform checks on the result.
     /// Panics if any checks fail.
     ///
+    /// ### Instructions Sysvar Limitations
+    ///
+    /// The instructions sysvar will only reflect the current instruction
+    /// for each instruction in the chain. Instruction chains are semantically
+    /// just chained invocations of `Self::process_instruction`, so each
+    /// invocation gets its own transaction context.
+    ///
+    /// If you need to use the instructions sysvar over multiple instructions,
+    /// use `Self::process_and_validate_transaction_instructions`.
+    ///
+    /// ### Fuzz Fixtures
+    ///
     /// For `fuzz` feature only:
     ///
     /// Similar to `process_and_validate_instruction`, if the
@@ -1450,9 +1473,8 @@ impl Mollusk {
 
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
-        for (index, (instruction, checks)) in instructions.iter().enumerate() {
+        for (instruction, checks) in instructions.iter() {
             let this_result = self.process_instruction_chain_element(
-                index,
                 instruction,
                 &composite_result.resulting_accounts,
                 &fallback_accounts,
