@@ -2,8 +2,9 @@ SHELL := /usr/bin/env bash
 NIGHTLY_TOOLCHAIN := nightly-2025-10-07
 SOLANA_VERSION := 4.0.0-beta.6
 
-.PHONY: audit build-test-programs prepublish publish format format-check \
-	clippy test check-features all-checks nightly-version solana-version
+.PHONY: audit build-test-programs build-test-elfs prepublish publish format \
+	format-check clippy test check-features all-checks nightly-version \
+	solana-version
 
 # Print the nightly toolchain version for CI
 nightly-version:
@@ -33,6 +34,18 @@ build-test-programs:
 	@cargo build-sbf --manifest-path test-programs/instructions-sysvar/Cargo.toml
 	@cargo build-sbf --manifest-path test-programs/noop-log/Cargo.toml
 	@cargo build-sbf --manifest-path test-programs/primary/Cargo.toml
+
+build-test-elfs:
+	@set -e; \
+	OUT_DIR=target/deploy; \
+	TMP_DIR=target/tmp; \
+	mkdir -p $$OUT_DIR $$TMP_DIR; \
+	for ARCH in v0 v1 v2 v3; do \
+		echo "Building test_program_cpi_target ($$ARCH)..."; \
+		cargo build-sbf --manifest-path test-programs/cpi-target/Cargo.toml --arch $$ARCH --sbf-out-dir $$TMP_DIR; \
+		mv $$TMP_DIR/test_program_cpi_target.so $$OUT_DIR/test_program_cpi_target_$${ARCH}.so; \
+	done; \
+	rm -rf $$TMP_DIR
 
 # Pre-publish checks
 prepublish:
@@ -85,10 +98,12 @@ check-features:
 
 build:
 	@$(MAKE) build-test-programs
+	@$(MAKE) build-test-elfs
 	@cargo build
 
 test:
 	@$(MAKE) build-test-programs
+	@$(MAKE) build-test-elfs
 	@cargo test --all-features
 
 # Run all checks in sequence
