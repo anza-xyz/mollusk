@@ -45,7 +45,7 @@ serde = [
 [dependencies]
 agave-feature-set = { workspace = true, features = ["agave-unstable-api"] }
 agave-precompiles = { workspace = true, features = ["agave-unstable-api"], optional = true }
-agave-syscalls = { workspace = true }
+agave-syscalls = { workspace = true, features = ["agave-unstable-api"] }
 bincode = { workspace = true }
 hex = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
@@ -73,20 +73,20 @@ solana-logger = { workspace = true }
 solana-message = { workspace = true }
 solana-precompile-error = { workspace = true }
 solana-program-error = { workspace = true }
-solana-program-runtime = { workspace = true }
+solana-program-runtime = { workspace = true, features = ["agave-unstable-api"] }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-sdk-ids = { workspace = true }
 solana-slot-hashes = { workspace = true }
 solana-stake-interface = { workspace = true }
-solana-svm-callback = { workspace = true }
-solana-svm-log-collector = { workspace = true }
-solana-svm-timings = { workspace = true }
-solana-svm-transaction = { workspace = true }
+solana-svm-callback = { workspace = true, features = ["agave-unstable-api"] }
+solana-svm-log-collector = { workspace = true, features = ["agave-unstable-api"] }
+solana-svm-timings = { workspace = true, features = ["agave-unstable-api"] }
+solana-svm-transaction = { workspace = true, features = ["agave-unstable-api"] }
 solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }
-solana-transaction-context = { workspace = true, features = ["dev-context-only-utils"] }
+solana-transaction-context = { workspace = true, features = ["agave-unstable-api", "dev-context-only-utils"] }
 solana-transaction-error = { workspace = true }
 solana-transaction-status-client-types = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-vote-program = { workspace = true, features = ["agave-unstable-api"], optional = true }

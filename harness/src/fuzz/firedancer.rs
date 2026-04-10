@@ -21,7 +21,7 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_pubkey::Pubkey,
-    solana_transaction_context::InstructionAccount,
+    solana_transaction_context::instruction_accounts::InstructionAccount,
     std::collections::HashMap,
 };
 

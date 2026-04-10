@@ -116,7 +116,7 @@ fn test_single_instruction() {
 }
 
 #[test]
-fn test_instruction_chain() {
+fn test_transaction_instructions() {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
 
     let program_id = Pubkey::new_unique();
@@ -181,13 +181,10 @@ fn test_instruction_chain() {
     )];
     accounts.extend(extra_accounts);
 
-    let result = mollusk.process_and_validate_instruction_chain(
-        &[
-            (&instruction1, &[Check::success()]),
-            (&instruction2, &[Check::success()]),
-            (&instruction3, &[Check::success()]),
-        ],
+    let result = mollusk.process_and_validate_transaction_instructions(
+        &[instruction1, instruction2, instruction3],
         &accounts,
+        &[Check::success()],
     );
 
     // Verify entries were written for each instruction.
