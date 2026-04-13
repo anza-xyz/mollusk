@@ -83,6 +83,7 @@ fn build_fixture_context(
         std::slice::from_ref(instruction),
         accounts,
         &fallbacks,
+        crate::InstructionAccountPrivilegeOverrides::default(),
     );
 
     let compiled_ix = sanitized_message.instructions().first().unwrap();

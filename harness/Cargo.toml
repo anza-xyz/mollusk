@@ -93,12 +93,15 @@ solana-vote-program = { workspace = true, features = ["agave-unstable-api"], opt
 solana-zk-elgamal-proof-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 
 [dev-dependencies]
+base64 = "0.22"
 criterion = { workspace = true }
 ed25519-dalek = { workspace = true }
 libsecp256k1 = { workspace = true }
 openssl = { workspace = true }
 rand0-7 = { workspace = true }
 rayon = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0"
 serial_test = { workspace = true }
 solana-ed25519-program = { workspace = true }
 solana-native-token = { workspace = true }
@@ -112,4 +115,8 @@ harness = false
 
 [[bench]]
 name = "perf"
+harness = false
+
+[[bench]]
+name = "dlmm"
 harness = false

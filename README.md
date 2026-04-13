@@ -126,6 +126,30 @@ adding any provided BPF programs. It will still contain a subset of the
 default builtin programs. For more builtin programs, you can add them
 yourself or use the `all-builtins` feature.
 
+For a quick operator note on CU estimation and privilege overrides, see
+[`docs/mollusk-simulation-notes.md`](docs/mollusk-simulation-notes.md).
+
+### Relaxing Instruction Meta Privileges
+
+Mollusk normally compiles instruction metas with standard Solana signer and
+writable semantics. If you need to bypass those checks for a simulation, you
+can opt in to privilege overrides before processing the instruction:
+
+```rust
+use mollusk_svm::Mollusk;
+
+let mut mollusk = Mollusk::default();
+mollusk
+    .instruction_account_privilege_overrides
+    .force_signer = true;
+// Or:
+// mollusk.instruction_account_privilege_overrides.force_writable = true;
+```
+
+This changes the compiled transaction message, not the original
+`Instruction`. It is intentionally non-standard and should only be used for
+targeted simulation scenarios.
+
 ## Instruction Chains
 
 Both `process_instruction_chain` and

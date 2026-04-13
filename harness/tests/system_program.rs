@@ -136,3 +136,89 @@ fn test_transfer_swap_program_account() {
     // provided one. Now it uses the provided account if available.
     let _result = Mollusk::default().process_instruction(&instruction, &accounts);
 }
+
+#[test]
+fn test_transfer_with_forced_signer_privilege() {
+    let sender = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
+
+    let base_lamports = 100_000_000u64;
+    let transfer_amount = 42_000u64;
+
+    let mut instruction =
+        solana_system_interface::instruction::transfer(&sender, &recipient, transfer_amount);
+    instruction.accounts[0].is_signer = false;
+
+    let accounts = [
+        (
+            sender,
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+        ),
+        (
+            recipient,
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+        ),
+    ];
+
+    let strict_result = Mollusk::default().process_instruction(&instruction, &accounts);
+    assert!(strict_result.program_result.is_err());
+
+    let checks = vec![
+        Check::success(),
+        Check::compute_units(DEFAULT_COMPUTE_UNITS),
+        Check::account(&sender)
+            .lamports(base_lamports - transfer_amount)
+            .build(),
+        Check::account(&recipient)
+            .lamports(base_lamports + transfer_amount)
+            .build(),
+    ];
+
+    let mut mollusk = Mollusk::default();
+    mollusk.instruction_account_privilege_overrides.force_signer = true;
+    mollusk.process_and_validate_instruction(&instruction, &accounts, &checks);
+}
+
+#[test]
+fn test_transfer_with_forced_writable_privilege() {
+    let sender = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
+
+    let base_lamports = 100_000_000u64;
+    let transfer_amount = 42_000u64;
+
+    let mut instruction =
+        solana_system_interface::instruction::transfer(&sender, &recipient, transfer_amount);
+    instruction.accounts[1].is_writable = false;
+
+    let accounts = [
+        (
+            sender,
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+        ),
+        (
+            recipient,
+            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+        ),
+    ];
+
+    let strict_result = Mollusk::default().process_instruction(&instruction, &accounts);
+    assert!(strict_result.program_result.is_err());
+
+    let checks = vec![
+        Check::success(),
+        Check::compute_units(DEFAULT_COMPUTE_UNITS),
+        Check::account(&sender)
+            .lamports(base_lamports - transfer_amount)
+            .build(),
+        Check::account(&recipient)
+            .lamports(base_lamports + transfer_amount)
+            .build(),
+    ];
+
+    let mut mollusk = Mollusk::default();
+    mollusk
+        .instruction_account_privilege_overrides
+        .force_writable = true;
+    mollusk.process_and_validate_instruction(&instruction, &accounts, &checks);
+}

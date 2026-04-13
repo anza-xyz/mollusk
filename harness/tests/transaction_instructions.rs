@@ -228,3 +228,57 @@ fn test_many_instructions_in_transaction() {
         Some(initial_balance - (transfer_amount * 10))
     );
 }
+
+#[test]
+fn test_missing_signers_can_be_forced_for_transaction() {
+    let mut mollusk = Mollusk::default();
+
+    let sender = Pubkey::new_unique();
+    let intermediary = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
+
+    let initial_balance = 100_000_000u64;
+    let transfer_amount = 50_000_000u64;
+
+    let mut instructions = vec![
+        solana_system_interface::instruction::transfer(&sender, &intermediary, transfer_amount),
+        solana_system_interface::instruction::transfer(&intermediary, &recipient, transfer_amount),
+    ];
+    instructions[0].accounts[0].is_signer = false;
+    instructions[1].accounts[0].is_signer = false;
+
+    let accounts = [
+        (sender, system_account_with_lamports(initial_balance)),
+        (intermediary, system_account_with_lamports(0)),
+        (recipient, system_account_with_lamports(0)),
+    ];
+
+    let strict_result =
+        Mollusk::default().process_transaction_instructions(&instructions, &accounts);
+    assert!(strict_result.program_result.is_err());
+
+    mollusk.instruction_account_privilege_overrides.force_signer = true;
+
+    let result = mollusk.process_transaction_instructions(&instructions, &accounts);
+    assert!(result.program_result.is_ok());
+
+    let sender_account = result
+        .resulting_accounts
+        .iter()
+        .find(|(pk, _)| pk == &sender)
+        .map(|(_, acc)| acc.lamports);
+    let intermediary_account = result
+        .resulting_accounts
+        .iter()
+        .find(|(pk, _)| pk == &intermediary)
+        .map(|(_, acc)| acc.lamports);
+    let recipient_account = result
+        .resulting_accounts
+        .iter()
+        .find(|(pk, _)| pk == &recipient)
+        .map(|(_, acc)| acc.lamports);
+
+    assert_eq!(sender_account, Some(initial_balance - transfer_amount));
+    assert_eq!(intermediary_account, Some(0));
+    assert_eq!(recipient_account, Some(transfer_amount));
+}

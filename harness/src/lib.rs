@@ -510,6 +510,21 @@ use {
 
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
 
+/// Opt-in overrides for signer and writable privilege compilation.
+///
+/// These flags change how Mollusk compiles instruction account metas into the
+/// transaction message that the SVM executes. They do not reflect normal
+/// Solana transaction semantics.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct InstructionAccountPrivilegeOverrides {
+    /// Treat every instruction account meta as a signer during message
+    /// compilation.
+    pub force_signer: bool,
+    /// Treat every instruction account meta as writable during message
+    /// compilation.
+    pub force_writable: bool,
+}
+
 /// The Mollusk API, providing a simple interface for testing Solana programs.
 ///
 /// All fields can be manipulated through a handful of helper methods, but
@@ -519,6 +534,9 @@ pub struct Mollusk {
     pub compute_budget: ComputeBudget,
     pub epoch_stake: EpochStake,
     pub feature_set: FeatureSet,
+    /// Unsafe privilege overrides applied when compiling instruction metas
+    /// into the transaction message.
+    pub instruction_account_privilege_overrides: InstructionAccountPrivilegeOverrides,
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
@@ -805,6 +823,8 @@ impl Mollusk {
             compute_budget,
             epoch_stake: EpochStake::default(),
             feature_set,
+            instruction_account_privilege_overrides: InstructionAccountPrivilegeOverrides::default(
+            ),
             logger: None,
             program_cache,
             sysvars,
@@ -1167,6 +1187,7 @@ impl Mollusk {
             std::slice::from_ref(instruction),
             accounts,
             fallback_accounts,
+            self.instruction_account_privilege_overrides,
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts);
@@ -1247,6 +1268,7 @@ impl Mollusk {
             std::slice::from_ref(instruction),
             accounts,
             &fallback_accounts,
+            self.instruction_account_privilege_overrides,
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts);
@@ -1397,6 +1419,7 @@ impl Mollusk {
             instructions,
             accounts,
             &fallback_accounts,
+            self.instruction_account_privilege_overrides,
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts);
