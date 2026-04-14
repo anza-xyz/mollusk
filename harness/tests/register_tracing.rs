@@ -233,7 +233,7 @@ fn test_debugger() {
     const STUB_ADDR: SocketAddr =
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), SBF_DEBUG_PORT);
     const STUB_CONNECT_RETRIES: usize = 30;
-    const SBF_TRACE_DIR: &'static str = "target/sbf/trace";
+    const SBF_TRACE_DIR: &str = "target/sbf/trace";
 
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
 
