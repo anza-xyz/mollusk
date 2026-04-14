@@ -9,11 +9,11 @@ use {
     solana_program_runtime::sysvar_cache::SysvarCache,
     solana_pubkey::Pubkey,
     solana_rent::Rent,
+    solana_sdk_ids::sysvar::stake_history,
     solana_slot_hashes::{SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
     solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
     solana_sysvar::{
         self, last_restart_slot::LastRestartSlot, recent_blockhashes::RecentBlockhashes,
-        SysvarSerialize,
     },
     solana_sysvar_id::SysvarId,
 };
@@ -63,8 +63,7 @@ impl Default for Sysvars {
 }
 
 impl Sysvars {
-    fn sysvar_account<T: SysvarSerialize>(&self, sysvar: &T) -> (Pubkey, Account) {
-        let data = bincode::serialize::<T>(sysvar).unwrap();
+    fn sysvar_account(&self, pubkey: Pubkey, data: Vec<u8>) -> (Pubkey, Account) {
         let space = data.len();
         let lamports = self.rent.minimum_balance(space);
         let account = Account {
@@ -74,26 +73,68 @@ impl Sysvars {
             executable: false,
             ..Default::default()
         };
-        (T::id(), account)
+        (pubkey, account)
     }
 
     pub(crate) fn maybe_create_sysvar_account(&self, pubkey: &Pubkey) -> Option<Account> {
         if pubkey.eq(&Clock::id()) {
-            Some(self.sysvar_account(&self.clock).1)
+            Some(
+                self.sysvar_account(Clock::id(), bincode::serialize(&self.clock).unwrap())
+                    .1,
+            )
         } else if pubkey.eq(&EpochRewards::id()) {
-            Some(self.sysvar_account(&self.epoch_rewards).1)
+            Some(
+                self.sysvar_account(
+                    EpochRewards::id(),
+                    bincode::serialize(&self.epoch_rewards).unwrap(),
+                )
+                .1,
+            )
         } else if pubkey.eq(&EpochSchedule::id()) {
-            Some(self.sysvar_account(&self.epoch_schedule).1)
+            Some(
+                self.sysvar_account(
+                    EpochSchedule::id(),
+                    bincode::serialize(&self.epoch_schedule).unwrap(),
+                )
+                .1,
+            )
         } else if pubkey.eq(&LastRestartSlot::id()) {
-            Some(self.sysvar_account(&self.last_restart_slot).1)
+            Some(
+                self.sysvar_account(
+                    LastRestartSlot::id(),
+                    bincode::serialize(&self.last_restart_slot).unwrap(),
+                )
+                .1,
+            )
         } else if pubkey.eq(&Rent::id()) {
-            Some(self.sysvar_account(&self.rent).1)
+            Some(
+                self.sysvar_account(Rent::id(), bincode::serialize(&self.rent).unwrap())
+                    .1,
+            )
         } else if pubkey.eq(&SlotHashes::id()) {
-            Some(self.sysvar_account(&self.slot_hashes).1)
-        } else if pubkey.eq(&StakeHistory::id()) {
-            Some(self.sysvar_account(&self.stake_history).1)
+            Some(
+                self.sysvar_account(
+                    SlotHashes::id(),
+                    bincode::serialize(&self.slot_hashes).unwrap(),
+                )
+                .1,
+            )
+        } else if pubkey.eq(&stake_history::id()) {
+            Some(
+                self.sysvar_account(
+                    stake_history::id(),
+                    bincode::serialize(&self.stake_history).unwrap(),
+                )
+                .1,
+            )
         } else if pubkey.eq(&RecentBlockhashes::id()) {
-            Some(self.sysvar_account(&self.recent_blockhashes).1)
+            Some(
+                self.sysvar_account(
+                    RecentBlockhashes::id(),
+                    bincode::serialize(&self.recent_blockhashes).unwrap(),
+                )
+                .1,
+            )
         } else {
             None
         }
@@ -101,42 +142,60 @@ impl Sysvars {
 
     /// Get the key and account for the clock sysvar.
     pub fn keyed_account_for_clock_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.clock)
+        self.sysvar_account(Clock::id(), bincode::serialize(&self.clock).unwrap())
     }
 
     /// Get the key and account for the epoch rewards sysvar.
     pub fn keyed_account_for_epoch_rewards_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.epoch_rewards)
+        self.sysvar_account(
+            EpochRewards::id(),
+            bincode::serialize(&self.epoch_rewards).unwrap(),
+        )
     }
 
     /// Get the key and account for the epoch schedule sysvar.
     pub fn keyed_account_for_epoch_schedule_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.epoch_schedule)
+        self.sysvar_account(
+            EpochSchedule::id(),
+            bincode::serialize(&self.epoch_schedule).unwrap(),
+        )
     }
 
     /// Get the key and account for the last restart slot sysvar.
     pub fn keyed_account_for_last_restart_slot_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.last_restart_slot)
+        self.sysvar_account(
+            LastRestartSlot::id(),
+            bincode::serialize(&self.last_restart_slot).unwrap(),
+        )
     }
 
     /// Get the key and account for the rent sysvar.
     pub fn keyed_account_for_rent_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.rent)
+        self.sysvar_account(Rent::id(), bincode::serialize(&self.rent).unwrap())
     }
 
     /// Get the key and account for the slot hashes sysvar.
     pub fn keyed_account_for_slot_hashes_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.slot_hashes)
+        self.sysvar_account(
+            SlotHashes::id(),
+            bincode::serialize(&self.slot_hashes).unwrap(),
+        )
     }
 
     /// Get the key and account for the stake history sysvar.
     pub fn keyed_account_for_stake_history_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.stake_history)
+        self.sysvar_account(
+            stake_history::id(),
+            bincode::serialize(&self.stake_history).unwrap(),
+        )
     }
 
     /// Get the key and account for the recent blockhashes sysvar.
     pub fn keyed_account_for_recent_blockhashes_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(&self.recent_blockhashes)
+        self.sysvar_account(
+            RecentBlockhashes::id(),
+            bincode::serialize(&self.recent_blockhashes).unwrap(),
+        )
     }
 
     pub fn get_all_keyed_sysvar_accounts(&self) -> Vec<(Pubkey, Account)> {
@@ -222,7 +281,7 @@ impl Sysvars {
             if pubkey.eq(&SlotHashes::id()) {
                 set_sysvar(&bincode::serialize(&self.slot_hashes).unwrap());
             }
-            if pubkey.eq(&StakeHistory::id()) {
+            if pubkey.eq(&stake_history::id()) {
                 set_sysvar(&bincode::serialize(&self.stake_history).unwrap());
             }
             if pubkey.eq(&RecentBlockhashes::id()) {
@@ -256,7 +315,7 @@ impl From<&Sysvars> for SysvarCache {
             if pubkey.eq(&SlotHashes::id()) {
                 set_sysvar(&bincode::serialize(&mollusk_cache.slot_hashes).unwrap());
             }
-            if pubkey.eq(&StakeHistory::id()) {
+            if pubkey.eq(&stake_history::id()) {
                 set_sysvar(&bincode::serialize(&mollusk_cache.stake_history).unwrap());
             }
             if pubkey.eq(&RecentBlockhashes::id()) {
