@@ -6,7 +6,7 @@ use {
             stub_send_continue_command,
         },
         program::create_program_account_loader_v3,
-        register_tracing::compute_hash,
+        register_tracing::{compute_hash, DefaultRegisterTracingCallback},
     },
     std::net::{IpAddr, Ipv4Addr, SocketAddr},
 };
@@ -235,9 +235,7 @@ fn test_debugger() {
     const STUB_CONNECT_RETRIES: usize = 30;
     const SBF_TRACE_DIR: &'static str = "target/sbf/trace";
 
-    std::env::set_var("SBF_TRACE_DIR", SBF_TRACE_DIR.to_string());
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
-    std::env::set_var("SBF_DEBUG_PORT", SBF_DEBUG_PORT.to_string());
 
     let program_id = Pubkey::new_unique();
     let cpi_target_program_id = Pubkey::new_unique();
@@ -247,6 +245,11 @@ fn test_debugger() {
         "test_program_primary",
         /* enable_register_tracing */ true,
     );
+    mollusk.invocation_inspect_callback = Box::new(DefaultRegisterTracingCallback {
+        sbf_trace_dir: SBF_TRACE_DIR.into(),
+        sbf_trace_disassemble: false,
+        sbf_debug_port: SBF_DEBUG_PORT.into(),
+    });
 
     mollusk.add_program_with_loader(
         &cpi_target_program_id,
