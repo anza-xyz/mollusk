@@ -10,8 +10,6 @@ use {
 };
 
 const DEFAULT_PATH: &str = "target/sbf/trace";
-#[cfg(feature = "sbpf-debugger")]
-const DEFAULT_DEBUG_PORT: Option<u16> = None;
 
 pub struct DefaultRegisterTracingCallback {
     pub sbf_trace_dir: String,
@@ -31,7 +29,7 @@ impl Default for DefaultRegisterTracingCallback {
             #[cfg(feature = "sbpf-debugger")]
             sbf_debug_port: std::env::var("SBF_DEBUG_PORT")
                 .map(|port| port.parse::<u16>().ok())
-                .unwrap_or(DEFAULT_DEBUG_PORT),
+                .unwrap_or_default(),
         }
     }
 }
@@ -72,12 +70,14 @@ impl DefaultRegisterTracingCallback {
                 // Persist SHA-256 mapping for every ELF account.
                 // We need them later to judge what symbol object to
                 // load in the debugger client.
-                let _ = self.elf_accounts_to_sha256(
+                if let Err(e) = self.elf_accounts_to_sha256(
                     _mollusk,
                     _program_id,
                     _instruction_accounts,
                     _invoke_context,
-                );
+                ) {
+                    eprintln!("Failed to persist the ELF SHA-256 mappings: {e}");
+                }
                 _invoke_context.debug_port = Some(debug_port);
             }
         }
@@ -204,14 +204,6 @@ impl DefaultRegisterTracingCallback {
 }
 
 impl InvocationInspectCallback for DefaultRegisterTracingCallback {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
     fn before_invocation(
         &self,
         mollusk: &Mollusk,

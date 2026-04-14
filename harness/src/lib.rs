@@ -564,9 +564,6 @@ pub trait InvocationInspectCallback {
         invoke_context: &InvokeContext,
         register_tracing_enabled: bool,
     );
-
-    fn as_any(&self) -> &dyn std::any::Any;
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -574,14 +571,6 @@ pub struct EmptyInvocationInspectCallback;
 
 #[cfg(feature = "invocation-inspect-callback")]
 impl InvocationInspectCallback for EmptyInvocationInspectCallback {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
     fn before_invocation(
         &self,
         _: &Mollusk,

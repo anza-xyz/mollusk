@@ -177,12 +177,12 @@ pub fn stub_connect<A: ToSocketAddrs>(
     mut retries: usize,
 ) -> Result<(BufReader<TcpStream>, TcpStream), std::io::Error> {
     let (reader, writer) = loop {
-        retries -= 1;
         match std::net::TcpStream::connect(&stub_addr) {
             Err(e) => {
                 if retries == 0 {
                     return Err(e);
                 }
+                retries -= 1;
                 std::thread::sleep(Duration::from_millis(100));
                 continue;
             }
