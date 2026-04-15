@@ -1,7 +1,9 @@
 #![cfg(feature = "fuzz-fd")]
 
+mod common;
+
 use {
-    agave_feature_set::FeatureSet,
+    common::compare_svm_feature_sets,
     mollusk_svm::{
         fuzz::firedancer::{
             build_fixture_from_mollusk_test, load_firedancer_fixture, ParsedFixtureContext,
@@ -92,11 +94,17 @@ fn test_load_firedancer_fixtures() {
                         loaded_fixture.input.slot_context,
                         generated_fixture.input.slot_context,
                     );
-                    // Feature set is not always ordered the same as a side effect
-                    // of `HashMap`.
-                    compare_feature_sets(
-                        &loaded_fixture.input.epoch_context.feature_set,
-                        &generated_fixture.input.epoch_context.feature_set,
+                    compare_svm_feature_sets(
+                        &loaded_fixture
+                            .input
+                            .epoch_context
+                            .feature_set
+                            .runtime_features(),
+                        &generated_fixture
+                            .input
+                            .epoch_context
+                            .feature_set
+                            .runtime_features(),
                     );
                     assert_eq!(
                         loaded_fixture.output.program_result,
@@ -163,12 +171,4 @@ fn compare_instruction_accounts(a: &[InstructionAccount], b: &[InstructionAccoun
                 && a_item.is_signer() == b_item.is_signer()
                 && a_item.is_writable() == b_item.is_writable()
         })
-}
-
-fn compare_feature_sets(from_fixture: &FeatureSet, from_mollusk: &FeatureSet) {
-    assert_eq!(from_fixture.active().len(), from_mollusk.active().len());
-    assert_eq!(from_fixture.inactive().len(), from_mollusk.inactive().len());
-    for f in from_fixture.active().keys() {
-        assert!(from_mollusk.active().contains_key(f));
-    }
 }

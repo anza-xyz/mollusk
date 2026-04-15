@@ -18,11 +18,13 @@ all-builtins = [
     "dep:solana-zk-elgamal-proof-program",
 ]
 fuzz = [
+    "dep:agave-feature-set",
     "dep:mollusk-svm-fuzz-fixture",
     "dep:mollusk-svm-fuzz-fs",
     "mollusk-svm-result/fuzz",
 ]
 fuzz-fd = [
+    "dep:agave-feature-set",
     "dep:mollusk-svm-fuzz-fixture-firedancer",
     "dep:mollusk-svm-fuzz-fs",
 ]
@@ -31,7 +33,10 @@ inner-instructions = [
     "dep:solana-transaction-status-client-types",
 ]
 invocation-inspect-callback = []
-precompiles = ["dep:agave-precompiles"]
+precompiles = [
+    "dep:agave-feature-set",
+    "dep:agave-precompiles",
+]
 register-tracing = [
     "invocation-inspect-callback",
     "dep:hex",
@@ -43,7 +48,7 @@ serde = [
 ]
 
 [dependencies]
-agave-feature-set = { workspace = true, features = ["agave-unstable-api"] }
+agave-feature-set = { workspace = true, features = ["agave-unstable-api"], optional = true }
 agave-precompiles = { workspace = true, features = ["agave-unstable-api"], optional = true }
 agave-syscalls = { workspace = true }
 bincode = { workspace = true }
@@ -80,6 +85,7 @@ solana-sdk-ids = { workspace = true }
 solana-slot-hashes = { workspace = true }
 solana-stake-interface = { workspace = true }
 solana-svm-callback = { workspace = true }
+solana-svm-feature-set = { workspace = true, features = ["agave-unstable-api"] }
 solana-svm-log-collector = { workspace = true }
 solana-svm-timings = { workspace = true }
 solana-svm-transaction = { workspace = true }
