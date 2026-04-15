@@ -441,6 +441,8 @@
 
 pub mod account_store;
 mod compile_accounts;
+#[cfg(feature = "sbpf-debugger")]
+pub mod debugger;
 pub mod epoch_stake;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
@@ -552,7 +554,8 @@ pub trait InvocationInspectCallback {
         program_id: &Pubkey,
         instruction_data: &[u8],
         instruction_accounts: &[InstructionAccount],
-        invoke_context: &InvokeContext,
+        invoke_context: &mut InvokeContext,
+        register_tracing_enabled: bool,
     );
 
     fn after_invocation(
@@ -574,7 +577,8 @@ impl InvocationInspectCallback for EmptyInvocationInspectCallback {
         _: &Pubkey,
         _: &[u8],
         _: &[InstructionAccount],
-        _: &InvokeContext,
+        _: &mut InvokeContext,
+        _register_tracing_enabled: bool,
     ) {
     }
 
@@ -1047,7 +1051,8 @@ impl Mollusk {
                     program_id,
                     &compiled_ix.data,
                     &instruction_accounts,
-                    &invoke_context,
+                    &mut invoke_context,
+                    self.enable_register_tracing,
                 );
             }
 

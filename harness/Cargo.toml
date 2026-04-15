@@ -37,6 +37,7 @@ register-tracing = [
     "dep:hex",
     "dep:sha2"
 ]
+sbpf-debugger = ["register-tracing", "solana-program-runtime/sbpf-debugger"]
 serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
