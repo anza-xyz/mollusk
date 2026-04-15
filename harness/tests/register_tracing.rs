@@ -337,19 +337,6 @@ fn test_debugger() {
                 stub_read_memory_chunked(&mut writer, &mut reader, data_addr, data_len, 1024)?;
             assert!(instruction.data == data);
 
-            // Don't use this approach as it depends on the ABI.
-            // // Verify the program_id reported by the gdbstub matches the one we're
-            // // debugging.
-            // let mut reply = stub_read_memory_chunked(
-            //     &mut writer,
-            //     &mut reader,
-            //     0x400000000,     // The input buffer of the program starts from here.
-            //     1 * 1024 * 1024, // Read 1MB just in case.
-            //     1024,            // Read in chunks of 1024 bytes.
-            // )?;
-            // let (deserialized_program_id, _, _) =
-            //     unsafe { solana_program_entrypoint::deserialize(reply.as_mut_ptr()) };
-            // assert_eq!(program_id, *deserialized_program_id);
             let parsed_map = stub_fetch_debug_metadata(&mut reader, &mut writer)?;
 
             // After parsing the reply check the runtime has passed to us the

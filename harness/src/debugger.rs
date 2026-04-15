@@ -25,7 +25,7 @@ pub fn read_reply<R: BufRead>(reader: &mut R) -> std::io::Result<String> {
     let _ = reader.read(&mut cbuf)?;
     let _ = buf.write(&cbuf)?;
     let reply = String::from_utf8_lossy(&buf).to_string();
-    // eprintln!("gdbstub reply: {}", reply);
+
     Ok(reply)
 }
 

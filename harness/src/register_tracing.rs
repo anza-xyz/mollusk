@@ -56,13 +56,13 @@ impl DefaultRegisterTracingCallback {
         }
     }
 
+    #[cfg_attr(not(feature = "sbpf-debugger"), expect(unused_variables))]
     pub fn pre_handler(
         &self,
-        _mollusk: &Mollusk,
-        _program_id: &Pubkey,
-        _instruction_data: &[u8],
-        _instruction_accounts: &[InstructionAccount],
-        _invoke_context: &mut InvokeContext,
+        mollusk: &Mollusk,
+        program_id: &Pubkey,
+        instruction_accounts: &[InstructionAccount],
+        invoke_context: &mut InvokeContext,
     ) {
         #[cfg(feature = "sbpf-debugger")]
         {
@@ -71,14 +71,14 @@ impl DefaultRegisterTracingCallback {
                 // We need them later to judge what symbol object to
                 // load in the debugger client.
                 if let Err(e) = self.elf_accounts_to_sha256(
-                    _mollusk,
-                    _program_id,
-                    _instruction_accounts,
-                    _invoke_context,
+                    mollusk,
+                    program_id,
+                    instruction_accounts,
+                    invoke_context,
                 ) {
                     eprintln!("Failed to persist the ELF SHA-256 mappings: {e}");
                 }
-                _invoke_context.debug_port = Some(debug_port);
+                invoke_context.debug_port = Some(debug_port);
             }
         }
     }
@@ -208,19 +208,13 @@ impl InvocationInspectCallback for DefaultRegisterTracingCallback {
         &self,
         mollusk: &Mollusk,
         program_id: &Pubkey,
-        instruction_data: &[u8],
+        _instruction_data: &[u8],
         instruction_accounts: &[InstructionAccount],
         invoke_context: &mut InvokeContext,
         register_tracing_enabled: bool,
     ) {
         if register_tracing_enabled {
-            self.pre_handler(
-                mollusk,
-                program_id,
-                instruction_data,
-                instruction_accounts,
-                invoke_context,
-            );
+            self.pre_handler(mollusk, program_id, instruction_accounts, invoke_context);
         }
     }
 
