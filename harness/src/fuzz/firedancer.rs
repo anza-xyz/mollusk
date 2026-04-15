@@ -5,8 +5,10 @@
 //! Only available when the `fuzz-fd` feature is enabled.
 
 use {
-    crate::{compile_accounts::compile_accounts, Mollusk, DEFAULT_LOADER_KEY},
-    agave_feature_set::FeatureSet,
+    crate::{
+        compile_accounts::compile_accounts, feature_set::svm_feature_set_to_feature_set, Mollusk,
+        DEFAULT_LOADER_KEY,
+    },
     mollusk_svm_fuzz_fixture_firedancer::{
         context::{
             Context as FuzzContext, EpochContext as FuzzEpochContext,
@@ -21,6 +23,7 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_pubkey::Pubkey,
+    solana_svm_feature_set::SVMFeatureSet,
     solana_transaction_context::InstructionAccount,
     std::collections::HashMap,
 };
@@ -58,7 +61,7 @@ fn num_to_instr_err(num: i32, custom_code: u32) -> InstructionError {
 fn build_fixture_context(
     accounts: &[(Pubkey, Account)],
     compute_budget: &ComputeBudget,
-    feature_set: &FeatureSet,
+    feature_set: &SVMFeatureSet,
     instruction: &Instruction,
     slot: u64,
 ) -> FuzzContext {
@@ -114,7 +117,7 @@ fn build_fixture_context(
         compute_units_available: compute_budget.compute_unit_limit,
         slot_context: FuzzSlotContext { slot },
         epoch_context: FuzzEpochContext {
-            feature_set: feature_set.clone(),
+            feature_set: svm_feature_set_to_feature_set(feature_set),
         },
     }
 }
@@ -122,7 +125,7 @@ fn build_fixture_context(
 pub struct ParsedFixtureContext {
     pub accounts: Vec<(Pubkey, Account)>,
     pub compute_budget: ComputeBudget,
-    pub feature_set: FeatureSet,
+    pub feature_set: SVMFeatureSet,
     pub instruction: Instruction,
     pub slot: u64,
 }
@@ -168,7 +171,7 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
     ParsedFixtureContext {
         accounts,
         compute_budget,
-        feature_set: epoch_context.feature_set.clone(),
+        feature_set: epoch_context.feature_set.runtime_features(),
         instruction,
         slot: slot_context.slot,
     }
