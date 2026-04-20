@@ -1,7 +1,9 @@
 #![cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 
+mod common;
+
 use {
-    agave_feature_set::FeatureSet,
+    common::compare_svm_feature_sets,
     mollusk_svm::{result::Check, Mollusk},
     serial_test::serial,
     solana_account::Account,
@@ -50,14 +52,6 @@ fn find_fixture(dir: &str, file_type: &FileType) -> Option<String> {
 
 fn clear(dir: &str) {
     let _ = std::fs::remove_dir_all(dir);
-}
-
-fn compare_feature_sets(from_fixture: &FeatureSet, from_mollusk: &FeatureSet) {
-    assert_eq!(from_fixture.active().len(), from_mollusk.active().len());
-    assert_eq!(from_fixture.inactive().len(), from_mollusk.inactive().len());
-    for f in from_fixture.active().keys() {
-        assert!(from_mollusk.active().contains_key(f));
-    }
 }
 
 fn assert_filenames_match(a: &str, b: &str) {
@@ -114,8 +108,10 @@ impl<'a> TestSetup<'a> {
     #[cfg(feature = "fuzz")]
     fn check_fixture_mollusk(&self, fixture: mollusk_svm_fuzz_fixture::Fixture) {
         assert_eq!(fixture.input.compute_budget, self.mollusk.compute_budget);
-        // Feature set matches, but it can't guarantee sorting.
-        compare_feature_sets(&fixture.input.feature_set, &self.mollusk.feature_set);
+        compare_svm_feature_sets(
+            &fixture.input.feature_set.runtime_features(),
+            &self.mollusk.feature_set,
+        );
         assert_eq!(fixture.input.sysvars.clock, self.mollusk.sysvars.clock);
         assert_eq!(fixture.input.sysvars.rent, self.mollusk.sysvars.rent);
         assert_eq!(fixture.input.program_id, self.instruction.program_id);
@@ -145,9 +141,8 @@ impl<'a> TestSetup<'a> {
             fixture.input.slot_context.slot,
             self.mollusk.sysvars.clock.slot,
         );
-        // Feature set matches, but it can't guarantee sorting.
-        compare_feature_sets(
-            &fixture.input.epoch_context.feature_set,
+        compare_svm_feature_sets(
+            &fixture.input.epoch_context.feature_set.runtime_features(),
             &self.mollusk.feature_set,
         );
         // Outputs:

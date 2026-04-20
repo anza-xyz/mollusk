@@ -5,8 +5,7 @@
 //! Only available when the `fuzz` feature is enabled.
 
 use {
-    crate::{sysvar::Sysvars, Mollusk},
-    agave_feature_set::FeatureSet,
+    crate::{feature_set::svm_feature_set_to_feature_set, sysvar::Sysvars, Mollusk},
     mollusk_svm_fuzz_fixture::{
         context::Context as FuzzContext, effects::Effects as FuzzEffects,
         sysvars::Sysvars as FuzzSysvars, Fixture as FuzzFixture,
@@ -17,6 +16,7 @@ use {
     solana_instruction::Instruction,
     solana_pubkey::Pubkey,
     solana_slot_hashes::SlotHashes,
+    solana_svm_feature_set::SVMFeatureSet,
     solana_sysvar::last_restart_slot::LastRestartSlot,
 };
 
@@ -54,7 +54,7 @@ impl From<&FuzzSysvars> for Sysvars {
 pub struct ParsedFixtureContext {
     pub accounts: Vec<(Pubkey, Account)>,
     pub compute_budget: ComputeBudget,
-    pub feature_set: FeatureSet,
+    pub feature_set: SVMFeatureSet,
     pub instruction: Instruction,
     pub sysvars: Sysvars,
 }
@@ -62,7 +62,7 @@ pub struct ParsedFixtureContext {
 fn build_fixture_context(
     accounts: &[(Pubkey, Account)],
     compute_budget: &ComputeBudget,
-    feature_set: &FeatureSet,
+    feature_set: &SVMFeatureSet,
     instruction: &Instruction,
     sysvars: &Sysvars,
 ) -> FuzzContext {
@@ -72,7 +72,7 @@ fn build_fixture_context(
 
     FuzzContext {
         compute_budget: *compute_budget,
-        feature_set: feature_set.clone(),
+        feature_set: svm_feature_set_to_feature_set(feature_set),
         sysvars: sysvars.into(),
         program_id: instruction.program_id,
         instruction_accounts,
@@ -98,7 +98,7 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
     ParsedFixtureContext {
         accounts: accounts.clone(),
         compute_budget: *compute_budget,
-        feature_set: feature_set.clone(),
+        feature_set: feature_set.runtime_features(),
         instruction,
         sysvars: sysvars.into(),
     }

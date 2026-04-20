@@ -35,9 +35,7 @@ fn test_sbpf_v2_elf_loads() {
 #[test]
 fn test_sbpf_v3_feature_is_active_by_default() {
     let mollusk = Mollusk::default();
-    assert!(mollusk
-        .feature_set
-        .is_active(&agave_feature_set::enable_sbpf_v3_deployment_and_execution::id()));
+    assert!(mollusk.feature_set.enable_sbpf_v3_deployment_and_execution);
 }
 
 #[test]
@@ -55,9 +53,7 @@ fn test_sbpf_v3_elf_fails_without_feature() {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
 
     let mut mollusk = Mollusk::default();
-    mollusk
-        .feature_set
-        .deactivate(&agave_feature_set::enable_sbpf_v3_deployment_and_execution::id());
+    mollusk.feature_set.enable_sbpf_v3_deployment_and_execution = false;
 
     // Rebuild the program cache with the updated feature set so that
     // the runtime environment no longer includes V3 in

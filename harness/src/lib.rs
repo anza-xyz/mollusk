@@ -385,7 +385,7 @@
 //!     /// The compute budget to use for the simulation.
 //!     pub compute_budget: ComputeBudget,
 //!     /// The feature set to use for the simulation.
-//!     pub feature_set: FeatureSet,
+//!     pub feature_set: SVMFeatureSet,
 //!     /// The runtime sysvars to use for the simulation.
 //!     pub sysvars: Sysvars,
 //!     /// The program ID of the program being invoked.
@@ -444,6 +444,8 @@ mod compile_accounts;
 #[cfg(feature = "sbpf-debugger")]
 pub mod debugger;
 pub mod epoch_stake;
+#[cfg(any(feature = "fuzz", feature = "fuzz-fd", feature = "precompiles"))]
+mod feature_set;
 pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
@@ -468,7 +470,6 @@ use {
         account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
         sysvar::Sysvars,
     },
-    agave_feature_set::FeatureSet,
     agave_syscalls::{
         create_program_runtime_environment_v1, create_program_runtime_environment_v2,
     },
@@ -491,6 +492,7 @@ use {
     },
     solana_pubkey::Pubkey,
     solana_svm_callback::InvokeContextCallback,
+    solana_svm_feature_set::SVMFeatureSet,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
     solana_svm_transaction::instruction::SVMInstruction,
@@ -520,7 +522,7 @@ pub struct Mollusk {
     pub config: Config,
     pub compute_budget: ComputeBudget,
     pub epoch_stake: EpochStake,
-    pub feature_set: FeatureSet,
+    pub feature_set: SVMFeatureSet,
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
@@ -607,7 +609,7 @@ impl CheckContext for Mollusk {
 
 struct MolluskInvokeContextCallback<'a> {
     #[cfg_attr(not(feature = "precompiles"), allow(dead_code))]
-    feature_set: &'a FeatureSet,
+    feature_set: &'a SVMFeatureSet,
     epoch_stake: &'a EpochStake,
 }
 
@@ -622,9 +624,10 @@ impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
 
     #[cfg(feature = "precompiles")]
     fn is_precompile(&self, program_id: &Pubkey) -> bool {
-        agave_precompiles::is_precompile(program_id, |feature_id| {
-            self.feature_set.is_active(feature_id)
-        })
+        // `agave-precompiles` only gates `secp256r1` behind a feature, and
+        // Mollusk exposes no way to toggle it off, so treat every precompile
+        // as enabled.
+        agave_precompiles::is_precompile(program_id, |_feature_id| true)
     }
 
     #[cfg(not(feature = "precompiles"))]
@@ -639,10 +642,14 @@ impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
         data: &[u8],
         instruction_datas: Vec<&[u8]>,
     ) -> Result<(), PrecompileError> {
-        if let Some(precompile) = agave_precompiles::get_precompile(program_id, |feature_id| {
-            self.feature_set.is_active(feature_id)
-        }) {
-            precompile.verify(data, &instruction_datas, self.feature_set)
+        // `agave-precompiles` only gates `secp256r1` behind a feature, and
+        // Mollusk exposes no way to toggle it off, so treat every precompile
+        // as enabled.
+        if let Some(precompile) = agave_precompiles::get_precompile(program_id, |_feature_id| true)
+        {
+            // However, the Agave FeatureSet is still required as an arg here.
+            let feature_set = crate::feature_set::svm_feature_set_to_feature_set(self.feature_set);
+            precompile.verify(data, &instruction_datas, &feature_set)
         } else {
             Err(PrecompileError::InvalidPublicKey)
         }
@@ -725,15 +732,13 @@ impl Mollusk {
         #[cfg(feature = "fuzz")]
         let feature_set = {
             // Omit "test features" (they have the same u64 ID).
-            let mut fs = FeatureSet::all_enabled();
-            fs.active_mut()
-                .remove(&agave_feature_set::disable_sbpf_v0_execution::id());
-            fs.active_mut()
-                .remove(&agave_feature_set::reenable_sbpf_v0_execution::id());
+            let mut fs = SVMFeatureSet::all_enabled();
+            fs.disable_sbpf_v0_execution = false;
+            fs.reenable_sbpf_v0_execution = false;
             fs
         };
         #[cfg(not(feature = "fuzz"))]
-        let feature_set = FeatureSet::all_enabled();
+        let feature_set = SVMFeatureSet::all_enabled();
 
         let program_cache =
             ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
@@ -984,7 +989,6 @@ impl Mollusk {
             feature_set: &self.feature_set,
         };
         let execution_budget = self.compute_budget.to_budget();
-        let runtime_features = self.feature_set.runtime_features();
 
         let _enable_register_tracing = false;
         #[cfg(feature = "register-tracing")]
@@ -993,7 +997,7 @@ impl Mollusk {
         let program_runtime_environments: ProgramRuntimeEnvironments = ProgramRuntimeEnvironments {
             program_runtime_v1: Arc::new(
                 create_program_runtime_environment_v1(
-                    &runtime_features,
+                    &self.feature_set,
                     &execution_budget,
                     /* reject_deployment_of_broken_elfs */ false,
                     /* debugging_features */ _enable_register_tracing,
@@ -1013,7 +1017,7 @@ impl Mollusk {
                 Hash::default(),
                 /* blockhash_lamports_per_signature */ 5000, // The default value
                 &callback,
-                &runtime_features,
+                &self.feature_set,
                 &program_runtime_environments,
                 &program_runtime_environments,
                 sysvar_cache,

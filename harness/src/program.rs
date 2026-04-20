@@ -1,7 +1,6 @@
 //! Module for working with Solana programs.
 
 use {
-    agave_feature_set::FeatureSet,
     agave_syscalls::create_program_runtime_environment_v1,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
@@ -14,6 +13,7 @@ use {
     },
     solana_pubkey::Pubkey,
     solana_rent::Rent,
+    solana_svm_feature_set::SVMFeatureSet,
     std::{
         cell::{RefCell, RefMut},
         collections::HashMap,
@@ -80,7 +80,7 @@ pub struct ProgramCache {
 
 impl ProgramCache {
     pub fn new(
-        feature_set: &FeatureSet,
+        feature_set: &SVMFeatureSet,
         compute_budget: &ComputeBudget,
         enable_register_tracing: bool,
     ) -> Self {
@@ -88,7 +88,7 @@ impl ProgramCache {
             cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::default())),
             entries_cache: Rc::new(RefCell::new(HashMap::new())),
             program_runtime_environment: create_program_runtime_environment_v1(
-                &feature_set.runtime_features(),
+                feature_set,
                 &compute_budget.to_budget(),
                 /* reject_deployment_of_broken_elfs */ false,
                 /* debugging_features */ enable_register_tracing,
