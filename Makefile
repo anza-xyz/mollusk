@@ -2,8 +2,21 @@ SHELL := /usr/bin/env bash
 NIGHTLY_TOOLCHAIN := nightly-2025-10-07
 SOLANA_VERSION := 3.1.11
 
-.PHONY: audit build-test-programs prepublish publish format format-check \
+.PHONY: audit build-test-programs prepublish package publish format format-check \
 	clippy test check-features all-checks nightly-version solana-version
+
+# Crates to publish, in dependency order
+PUBLISH_CRATES := \
+	mollusk-svm-error \
+	mollusk-svm-fuzz-fs \
+	mollusk-svm-fuzz-fixture \
+	mollusk-svm-fuzz-fixture-firedancer \
+	mollusk-svm-result \
+	mollusk-svm \
+	mollusk-svm-bencher \
+	mollusk-svm-programs-memo \
+	mollusk-svm-programs-token \
+	mollusk-svm-cli
 
 # Print the nightly toolchain version for CI
 nightly-version:
@@ -45,22 +58,15 @@ prepublish:
 	@$(MAKE) check-features
 	@$(MAKE) test
 
-# Publish crates in order
+# Package crates into target/package/*.crate (so attestation can sign them
+# before publish). Uses multi-package mode to resolve workspace inter-deps.
+package:
+	@cargo package $(addprefix -p ,$(PUBLISH_CRATES)) $(ARGS)
+
+# Publish crates in dependency order
 publish:
 	@set -e && set -u && set -o pipefail && \
-	CRATES=( \
-		"mollusk-svm-error" \
-		"mollusk-svm-fuzz-fs" \
-		"mollusk-svm-fuzz-fixture" \
-		"mollusk-svm-fuzz-fixture-firedancer" \
-		"mollusk-svm-result" \
-		"mollusk-svm" \
-		"mollusk-svm-bencher" \
-		"mollusk-svm-programs-memo" \
-		"mollusk-svm-programs-token" \
-		"mollusk-svm-cli" \
-	) && \
-	for crate in "$${CRATES[@]}"; do \
+	for crate in $(PUBLISH_CRATES); do \
 		echo "Publishing $$crate..." && \
 		cargo publish -p $$crate --token $$TOKEN $(ARGS) && \
 		echo "$$crate published successfully!" && \
