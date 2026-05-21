@@ -19,7 +19,7 @@ solana-program-error = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-transaction-error = { workspace = true }
-solana-transaction-status-client-types = { workspace = true, optional = true }
+solana-transaction-status-client-types = { workspace = true, features = ["agave-unstable-api"], optional = true }
 
 [features]
 default = []

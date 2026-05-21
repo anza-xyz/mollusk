@@ -9,7 +9,7 @@ jobs:
   pre_publish:
     name: Prepublish
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/agave-4.0'
     permissions:
       contents: read
 
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     needs: pre_publish
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/agave-4.0'
     permissions:
       id-token: write
       attestations: write

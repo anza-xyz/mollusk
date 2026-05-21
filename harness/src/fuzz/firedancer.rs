@@ -24,7 +24,7 @@ use {
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_pubkey::Pubkey,
     solana_svm_feature_set::SVMFeatureSet,
-    solana_transaction_context::InstructionAccount,
+    solana_transaction_context::instruction_accounts::InstructionAccount,
     std::collections::HashMap,
 };
 
