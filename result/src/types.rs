@@ -183,3 +183,13 @@ pub struct TransactionResult {
     #[cfg(feature = "inner-instructions")]
     pub message: Option<SanitizedMessage>,
 }
+
+impl TransactionResult {
+    /// Get an account from the resulting accounts by its pubkey.
+    pub fn get_account(&self, pubkey: &Pubkey) -> Option<&Account> {
+        self.resulting_accounts
+            .iter()
+            .find(|(k, _)| k == pubkey)
+            .map(|(_, a)| a)
+    }
+}

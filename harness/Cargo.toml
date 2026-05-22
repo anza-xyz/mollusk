@@ -42,6 +42,7 @@ register-tracing = [
     "dep:hex",
     "dep:sha2"
 ]
+sbpf-debugger = ["register-tracing", "solana-program-runtime/sbpf-debugger"]
 serde = [
     "dep:serde",
     "mollusk-svm-result/serde",
@@ -50,7 +51,7 @@ serde = [
 [dependencies]
 agave-feature-set = { workspace = true, features = ["agave-unstable-api"], optional = true }
 agave-precompiles = { workspace = true, features = ["agave-unstable-api"], optional = true }
-agave-syscalls = { workspace = true }
+agave-syscalls = { workspace = true, features = ["agave-unstable-api"] }
 bincode = { workspace = true }
 hex = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
@@ -92,7 +93,7 @@ solana-svm-transaction = { workspace = true, features = ["agave-unstable-api"] }
 solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-sysvar = { workspace = true }
 solana-sysvar-id = { workspace = true }
-solana-transaction-context = { workspace = true, features = ["dev-context-only-utils"] }
+solana-transaction-context = { workspace = true, features = ["agave-unstable-api", "dev-context-only-utils"] }
 solana-transaction-error = { workspace = true }
 solana-transaction-status-client-types = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-vote-program = { workspace = true, features = ["agave-unstable-api"], optional = true }

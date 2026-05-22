@@ -611,6 +611,11 @@ SHA-256 identifier is that files may grow in number, and consumers need a
 deterministic way to evaluate which shared object should be used when
 analyzing the tracing data.
 
+When the `sbpf-debugger` feature is enabled and `SBF_DEBUG_PORT` is set, the
+VM will start a GDB remote stub on the specified TCP port. A debugger client
+can then connect to inspect registers, memory, set
+breakpoints, and step through SBPF execution.
+
 Once enabled register tracing can't be changed afterwards because in nature
 it's baked into the program executables at load time. Yet a user may want a
 more fine-grained control over when register tracing data should be
@@ -640,5 +645,8 @@ mollusk.invocation_inspect_callback =
     Box::new(register_tracing::DefaultRegisterTracingCallback {
         sbf_trace_dir: std::env::var("SBF_TRACE_DIR").unwrap(),
         sbf_trace_disassemble: std::env::var("SBF_TRACE_DISASSEMBLE").is_ok(),
+        sbf_debug_port: std::env::var("SBF_DEBUG_PORT")
+            .map(|port| port.parse::<u16>().ok())
+            .unwrap_or_default(),
     });
 ```

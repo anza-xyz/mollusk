@@ -18,7 +18,8 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
     }
     gate! {
         move_precompile_verification_to_svm,
-        stricter_abi_and_runtime_constraints,
+        syscall_parameter_address_restrictions,
+        virtual_address_space_adjustments,
         account_data_direct_mapping,
         enable_bpf_loader_set_authority_checked_ix,
         enable_loader_v4,
@@ -43,9 +44,7 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
         remaining_compute_units_syscall_enabled,
         remove_bpf_loader_incorrect_program_id,
         move_stake_and_move_lamports_ixs,
-        stake_raise_minimum_delegation_to_1_sol,
         deprecate_legacy_vote_ixs,
-        mask_out_rent_epoch_in_vm_serialization,
         simplify_alt_bn128_syscall_error_codes,
         fix_alt_bn128_multiplication_input_length,
         increase_tx_account_lock_limit,
@@ -53,12 +52,23 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
         formalize_loaded_transaction_data_size,
         disable_zk_elgamal_proof_program,
         reenable_zk_elgamal_proof_program,
+        delay_commission_updates,
         raise_cpi_nesting_limit_to_8,
         provide_instruction_data_offset_in_vm_r2,
         increase_cpi_account_info_limit,
         vote_state_v4,
         poseidon_enforce_padding,
         fix_alt_bn128_pairing_length_check,
+        alt_bn128_little_endian,
+        create_account_allow_prefund,
+        bls_pubkey_management_in_vote_account,
+        enable_alt_bn128_g2_syscalls,
+        commission_rate_in_basis_points,
+        custom_commission_collector,
+        enable_bls12_381_syscall,
+        block_revenue_sharing,
+        vote_account_initialize_v2,
+        direct_account_pointers_in_program_input,
     }
     fs
 }
