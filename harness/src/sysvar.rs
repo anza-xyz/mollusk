@@ -8,7 +8,7 @@ use {
     solana_hash::Hash,
     solana_program_runtime::sysvar_cache::SysvarCache,
     solana_pubkey::Pubkey,
-    solana_rent::Rent,
+    solana_rent::{Rent, DEFAULT_LAMPORTS_PER_BYTE},
     solana_sdk_ids::sysvar::stake_history,
     solana_slot_hashes::{SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
     solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
@@ -38,7 +38,7 @@ impl Default for Sysvars {
         let epoch_rewards = EpochRewards::default();
         let epoch_schedule = EpochSchedule::without_warmup();
         let last_restart_slot = LastRestartSlot::default();
-        let rent = Rent::default();
+        let rent = Rent::with_lamports_per_byte(DEFAULT_LAMPORTS_PER_BYTE);
 
         let slot_hashes = {
             let mut default_slot_hashes = vec![(0, Hash::default()); SLOT_HASHES_MAX_ENTRIES];
