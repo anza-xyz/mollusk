@@ -470,9 +470,6 @@ use {
         account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
         sysvar::Sysvars,
     },
-    agave_syscalls::{
-        create_program_runtime_environment_v1, create_program_runtime_environment_v2,
-    },
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{
         types::{TransactionProgramResult, TransactionResult},
@@ -495,15 +492,14 @@ use {
     solana_svm_feature_set::SVMFeatureSet,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
-    solana_svm_transaction::instruction::SVMInstruction,
-    solana_transaction_context::{transaction::TransactionContext, IndexOfAccount},
+    solana_syscalls::create_program_runtime_environment,
+    solana_transaction_context::transaction::TransactionContext,
     solana_transaction_error::TransactionError,
     std::{
         cell::RefCell,
         collections::{HashMap, HashSet},
         iter::once,
         rc::Rc,
-        sync::Arc,
     },
 };
 #[cfg(feature = "inner-instructions")]
@@ -727,7 +723,7 @@ impl Mollusk {
              solana_runtime::message_processor=debug,\
              solana_runtime::system_instruction_processor=trace",
         );
-        let compute_budget = ComputeBudget::new_with_defaults(true, true);
+        let compute_budget = ComputeBudget::new_with_defaults(true);
 
         #[cfg(feature = "fuzz")]
         let feature_set = {
@@ -921,29 +917,40 @@ impl Mollusk {
         transaction_context: &mut TransactionContext,
     ) -> Vec<Vec<InnerInstruction>> {
         let (frames, accounts, data) = transaction_context.take_instruction_trace();
-        let mut all_inner_instructions: Vec<Vec<InnerInstruction>> = Vec::new();
 
-        for (i, frame) in frames.iter().enumerate() {
+        // The instruction trace lays out all top-level frames first
+        // (preallocated at indices `0..N`), followed by CPI frames in the
+        // chronological order they were invoked across the whole transaction.
+        // Group each CPI frame under its top-level ancestor by walking the
+        // caller chain.
+        let num_top_level = frames
+            .iter()
+            .take_while(|frame| frame.index_of_caller_instruction == u16::MAX)
+            .count();
+
+        let mut all_inner_instructions: Vec<Vec<InnerInstruction>> =
+            (0..num_top_level).map(|_| Vec::new()).collect();
+
+        for (i, frame) in frames.iter().enumerate().skip(num_top_level) {
             let stack_height = frame.nesting_level.saturating_add(1);
 
-            if stack_height == 1 {
-                // Top-level instruction: start a new empty group for its inner instructions.
-                all_inner_instructions.push(Vec::new());
-            } else if let Some(last_group) = all_inner_instructions.last_mut() {
-                // Inner instruction (CPI): add to the current group.
-                let inner_instruction = InnerInstruction {
-                    instruction: CompiledInstruction::new_from_raw_parts(
-                        frame.program_account_index_in_tx as u8,
-                        data[i].to_vec(),
-                        accounts[i]
-                            .iter()
-                            .map(|acc| acc.index_in_transaction as u8)
-                            .collect(),
-                    ),
-                    stack_height: Some(u32::from(stack_height)),
-                };
-                last_group.push(inner_instruction);
+            let mut ancestor = i;
+            while ancestor >= num_top_level {
+                ancestor = frames[ancestor].index_of_caller_instruction as usize;
             }
+
+            let inner_instruction = InnerInstruction {
+                instruction: CompiledInstruction::new_from_raw_parts(
+                    frame.program_account_index_in_tx as u8,
+                    data[i].to_vec(),
+                    accounts[i]
+                        .iter()
+                        .map(|acc| acc.index_in_transaction as u8)
+                        .collect(),
+                ),
+                stack_height: Some(u32::from(stack_height)),
+            };
+            all_inner_instructions[ancestor].push(inner_instruction);
         }
 
         all_inner_instructions
@@ -994,21 +1001,17 @@ impl Mollusk {
         #[cfg(feature = "register-tracing")]
         let _enable_register_tracing = self.enable_register_tracing;
 
-        let program_runtime_environments: ProgramRuntimeEnvironments = ProgramRuntimeEnvironments {
-            program_runtime_v1: Arc::new(
-                create_program_runtime_environment_v1(
-                    &self.feature_set,
-                    &execution_budget,
-                    /* reject_deployment_of_broken_elfs */ false,
-                    /* debugging_features */ _enable_register_tracing,
-                )
-                .unwrap(),
-            ),
-            program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
-                &execution_budget,
-                /* debugging_features */ _enable_register_tracing,
-            )),
-        };
+        let program_runtime_environment = create_program_runtime_environment(
+            &self.feature_set,
+            &execution_budget,
+            /* reject_deployment_of_broken_elfs */ false,
+            /* debugging_features */ _enable_register_tracing,
+        )
+        .unwrap();
+        let program_runtime_environments = ProgramRuntimeEnvironments::new(
+            /* execution */ program_runtime_environment.clone(),
+            /* deployment */ program_runtime_environment,
+        );
 
         let mut invoke_context = InvokeContext::new(
             transaction_context,
@@ -1016,9 +1019,13 @@ impl Mollusk {
             EnvironmentConfig::new(
                 Hash::default(),
                 /* blockhash_lamports_per_signature */ 5000, // The default value
+                // Mollusk has no notion of cluster consensus state; vote
+                // program behavior is controlled via `SVMFeatureSet` instead
+                // (e.g. `deprecate_legacy_vote_ixs`).
+                /* alpenglow_migration_succeeded */
+                false,
                 &callback,
                 &self.feature_set,
-                &program_runtime_environments,
                 &program_runtime_environments,
                 sysvar_cache,
             ),
@@ -1027,22 +1034,15 @@ impl Mollusk {
             self.compute_budget.to_cost(),
         );
 
+        invoke_context
+            .prepare_top_level_instructions(sanitized_message)
+            .expect("failed to prepare instructions");
+
         let mut raw_result = Ok(());
 
         for (instruction_index, (program_id, compiled_ix)) in
             sanitized_message.program_instructions_iter().enumerate()
         {
-            let program_id_index = compiled_ix.program_id_index as IndexOfAccount;
-
-            invoke_context
-                .prepare_next_top_level_instruction(
-                    sanitized_message,
-                    &SVMInstruction::from(compiled_ix),
-                    program_id_index,
-                    &compiled_ix.data,
-                )
-                .expect("failed to prepare instruction");
-
             #[cfg(feature = "invocation-inspect-callback")]
             {
                 let instruction_context = invoke_context

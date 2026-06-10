@@ -91,6 +91,59 @@ fn test_multi_program_transaction() {
 }
 
 #[test]
+#[cfg(feature = "inner-instructions")]
+fn test_inner_instructions_attributed_to_instruction() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+
+    let program_id = Pubkey::new_unique();
+    let mollusk = Mollusk::new(&program_id, "test_program_primary");
+
+    let payer = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
+    let transfer_amount = 2_000_000_u64;
+
+    // Instruction 0 CPIs to the system program; instruction 1 is a direct
+    // system transfer (no CPI). The CPI must be attributed to instruction 0.
+    let ix_cpi_transfer = {
+        let mut instruction_data = vec![2];
+        instruction_data.extend_from_slice(&transfer_amount.to_le_bytes());
+        Instruction::new_with_bytes(
+            program_id,
+            &instruction_data,
+            vec![
+                AccountMeta::new(payer, true),
+                AccountMeta::new(recipient, false),
+                AccountMeta::new_readonly(solana_sdk_ids::system_program::id(), false),
+            ],
+        )
+    };
+    let ix_direct_transfer =
+        solana_system_interface::instruction::transfer(&payer, &recipient, transfer_amount);
+
+    let result = mollusk.process_transaction_instructions(
+        &[ix_cpi_transfer, ix_direct_transfer],
+        &[
+            (payer, system_account_with_lamports(100_000_000)),
+            (recipient, system_account_with_lamports(0)),
+            keyed_account_for_system_program(),
+        ],
+    );
+
+    assert!(result.raw_result.is_ok());
+    assert_eq!(result.inner_instructions.len(), 2);
+    assert_eq!(
+        result.inner_instructions[0].len(),
+        1,
+        "CPI from the first instruction should be attributed to the first instruction"
+    );
+    assert_eq!(result.inner_instructions[0][0].stack_height, Some(2));
+    assert!(
+        result.inner_instructions[1].is_empty(),
+        "direct system transfer should not record inner instructions"
+    );
+}
+
+#[test]
 fn test_compute_units_tracked() {
     let mut mollusk = Mollusk::default();
     mollusk.compute_budget.compute_unit_limit = 1000;

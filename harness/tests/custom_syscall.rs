@@ -3,7 +3,7 @@ use {
     solana_instruction::Instruction,
     solana_program_runtime::{
         invoke_context::InvokeContext,
-        solana_sbpf::{declare_builtin_function, memory_region::MemoryMapping},
+        solana_sbpf::{declare_builtin_function, program::BuiltinFunctionDefinition},
     },
     solana_pubkey::Pubkey,
 };
@@ -12,15 +12,14 @@ declare_builtin_function!(
     /// A custom syscall to burn CUs.
     SyscallBurnCus,
     fn rust(
-        invoke_context: &mut InvokeContext,
+        invoke_context: &mut InvokeContext<'_, '_>,
         to_burn: u64,
         _arg2: u64,
         _arg3: u64,
         _arg4: u64,
         _arg5: u64,
-        _memory_mapping: &mut MemoryMapping,
     ) -> Result<u64, Box<dyn std::error::Error>> {
-        invoke_context.consume_checked(to_burn)?;
+        invoke_context.compute_meter.consume_checked(to_burn)?;
         Ok(0)
     }
 );
@@ -39,8 +38,7 @@ fn test_custom_syscall() {
         let mut mollusk = Mollusk::default();
         mollusk
             .program_cache
-            .program_runtime_environment
-            .register_function("sol_burn_cus", SyscallBurnCus::vm)
+            .register_builtin_function("sol_burn_cus", SyscallBurnCus::register)
             .unwrap();
         mollusk.add_program_with_loader(
             &program_id,

@@ -142,22 +142,30 @@ impl From<EpochSchedule> for ProtoEpochSchedule {
 }
 
 // Rent sysvar.
+//
+// The protobuf layout predates SIMD-0194, so the legacy fields are mapped
+// onto the new `Rent` layout: `lamports_per_byte_year` carries the rate
+// (now `lamports_per_byte`) and `exemption_threshold` carries the `f64`
+// whose little-endian bits the new layout stores directly. This keeps
+// `minimum_balance` results identical for existing fixtures.
+#[allow(deprecated)]
 impl From<ProtoRent> for Rent {
     fn from(value: ProtoRent) -> Self {
         let burn_percent =
             u8::try_from(value.burn_percent).expect("Invalid integer for burn percent");
         Self {
-            lamports_per_byte_year: value.lamports_per_byte_year,
-            exemption_threshold: value.exemption_threshold,
+            lamports_per_byte: value.lamports_per_byte_year,
+            exemption_threshold: value.exemption_threshold.to_le_bytes(),
             burn_percent,
         }
     }
 }
+#[allow(deprecated)]
 impl From<Rent> for ProtoRent {
     fn from(value: Rent) -> Self {
         Self {
-            lamports_per_byte_year: value.lamports_per_byte_year,
-            exemption_threshold: value.exemption_threshold,
+            lamports_per_byte_year: value.lamports_per_byte,
+            exemption_threshold: f64::from_le_bytes(value.exemption_threshold),
             burn_percent: value.burn_percent.into(),
         }
     }

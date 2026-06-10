@@ -1,19 +1,23 @@
 //! Module for working with Solana programs.
 
 use {
-    agave_syscalls::create_program_runtime_environment_v1,
     solana_account::Account,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_loader_v3_interface::state::UpgradeableLoaderState,
-    solana_loader_v4_interface::state::{LoaderV4State, LoaderV4Status},
     solana_program_runtime::{
-        invoke_context::{BuiltinFunctionWithContext, InvokeContext},
-        loaded_programs::{LoadProgramMetrics, ProgramCacheEntry, ProgramCacheForTxBatch},
-        solana_sbpf::program::BuiltinProgram,
+        invoke_context::{BuiltinFunctionRegisterer, InvokeContext},
+        loaded_programs::{ProgramCacheForTxBatch, ProgramRuntimeEnvironment},
+        program_cache_entry::ProgramCacheEntry,
+        program_metrics::LoadProgramMetrics,
+        solana_sbpf::{
+            elf::ElfError,
+            program::{BuiltinFunctionDefinition, BuiltinProgram},
+        },
     },
     solana_pubkey::Pubkey,
     solana_rent::Rent,
     solana_svm_feature_set::SVMFeatureSet,
+    solana_syscalls::create_program_runtime_environment,
     std::{
         cell::{RefCell, RefMut},
         collections::HashMap,
@@ -26,8 +30,7 @@ use {
 pub mod loader_keys {
     pub use solana_sdk_ids::{
         bpf_loader::ID as LOADER_V2, bpf_loader_deprecated::ID as LOADER_V1,
-        bpf_loader_upgradeable::ID as LOADER_V3, loader_v4::ID as LOADER_V4,
-        native_loader::ID as NATIVE_LOADER,
+        bpf_loader_upgradeable::ID as LOADER_V3, native_loader::ID as NATIVE_LOADER,
     };
 }
 
@@ -75,7 +78,7 @@ pub struct ProgramCache {
     entries_cache: Rc<RefCell<HashMap<Pubkey, CacheEntry>>>,
     // The function registry (syscalls) to use for verifying and loading
     // program ELFs.
-    pub program_runtime_environment: BuiltinProgram<InvokeContext<'static, 'static>>,
+    pub program_runtime_environment: ProgramRuntimeEnvironment,
 }
 
 impl ProgramCache {
@@ -87,7 +90,7 @@ impl ProgramCache {
         let me = Self {
             cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::default())),
             entries_cache: Rc::new(RefCell::new(HashMap::new())),
-            program_runtime_environment: create_program_runtime_environment_v1(
+            program_runtime_environment: create_program_runtime_environment(
                 feature_set,
                 &compute_budget.to_budget(),
                 /* reject_deployment_of_broken_elfs */ false,
@@ -130,25 +133,45 @@ impl ProgramCache {
         self.replenish(program_id, entry, None);
     }
 
+    // Clone the program runtime environment into a fresh, mutable loader,
+    // carrying over the registered functions (syscalls).
+    fn clone_program_runtime_environment(&self) -> BuiltinProgram<InvokeContext<'static, 'static>> {
+        let config = self.program_runtime_environment.get_config().clone();
+        let mut loader = BuiltinProgram::new_loader(config);
+
+        for (_key, (name, value)) in self
+            .program_runtime_environment
+            .get_function_registry()
+            .iter()
+        {
+            let name = std::str::from_utf8(name).unwrap();
+            loader.register_function(name, value).unwrap();
+        }
+
+        loader
+    }
+
+    /// Register an additional builtin function (ie. a custom syscall) into
+    /// the program runtime environment.
+    ///
+    /// Programs added to the cache afterwards are verified and loaded against
+    /// the updated environment.
+    pub fn register_builtin_function(
+        &mut self,
+        name: &str,
+        register_fn: BuiltinFunctionRegisterer,
+    ) -> Result<(), ElfError> {
+        let mut loader = self.clone_program_runtime_environment();
+        register_fn(&mut loader, name)?;
+        self.program_runtime_environment = ProgramRuntimeEnvironment::from(loader);
+        Ok(())
+    }
+
     /// Add a program to the cache.
     pub fn add_program(&mut self, program_id: &Pubkey, loader_key: &Pubkey, elf: &[u8]) {
         // This might look rough, but it's actually functionally the same as
-        // calling `create_program_runtime_environment_v1` on every addition.
-        let environment = {
-            let config = self.program_runtime_environment.get_config().clone();
-            let mut loader = BuiltinProgram::new_loader(config);
-
-            for (_key, (name, value)) in self
-                .program_runtime_environment
-                .get_function_registry()
-                .iter()
-            {
-                let name = std::str::from_utf8(name).unwrap();
-                loader.register_function(name, value).unwrap();
-            }
-
-            Arc::new(loader)
-        };
+        // calling `create_program_runtime_environment` on every addition.
+        let environment = ProgramRuntimeEnvironment::from(self.clone_program_runtime_environment());
         self.replenish(
             *program_id,
             Arc::new(
@@ -188,7 +211,6 @@ impl ProgramCache {
                 loader_keys::LOADER_V3 => {
                     (*program_id, create_program_account_loader_v3(program_id))
                 }
-                loader_keys::LOADER_V4 => (*program_id, create_program_account_loader_v4(&[])),
                 _ => panic!("Invalid loader key: {}", cache_entry.loader_key),
             })
             .collect()
@@ -207,7 +229,6 @@ impl ProgramCache {
                 loader_keys::LOADER_V1 => create_program_account_loader_v1(&[]),
                 loader_keys::LOADER_V2 => create_program_account_loader_v2(&[]),
                 loader_keys::LOADER_V3 => create_program_account_loader_v3(pubkey),
-                loader_keys::LOADER_V4 => create_program_account_loader_v4(&[]),
                 _ => panic!("Invalid loader key: {}", cache_entry.loader_key),
             })
     }
@@ -223,7 +244,7 @@ impl ProgramCache {
 pub struct Builtin {
     pub program_id: Pubkey,
     pub name: &'static str,
-    pub entrypoint: BuiltinFunctionWithContext,
+    pub register_fn: BuiltinFunctionRegisterer,
 }
 
 impl Builtin {
@@ -231,7 +252,7 @@ impl Builtin {
         Arc::new(ProgramCacheEntry::new_builtin(
             0,
             self.name.len(),
-            self.entrypoint,
+            self.register_fn,
         ))
     }
 }
@@ -240,47 +261,41 @@ static BUILTINS: &[Builtin] = &[
     Builtin {
         program_id: solana_system_program::id(),
         name: "system_program",
-        entrypoint: solana_system_program::system_processor::Entrypoint::vm,
+        register_fn: solana_system_program::system_processor::Entrypoint::register,
     },
     Builtin {
         program_id: loader_keys::LOADER_V2,
         name: "solana_bpf_loader_program",
-        entrypoint: solana_bpf_loader_program::Entrypoint::vm,
+        register_fn: solana_bpf_loader_program::Entrypoint::register,
     },
     Builtin {
         program_id: loader_keys::LOADER_V3,
         name: "solana_bpf_loader_upgradeable_program",
-        entrypoint: solana_bpf_loader_program::Entrypoint::vm,
+        register_fn: solana_bpf_loader_program::Entrypoint::register,
     },
     #[cfg(feature = "all-builtins")]
     Builtin {
         program_id: loader_keys::LOADER_V1,
         name: "solana_bpf_loader_deprecated_program",
-        entrypoint: solana_bpf_loader_program::Entrypoint::vm,
-    },
-    #[cfg(feature = "all-builtins")]
-    Builtin {
-        program_id: loader_keys::LOADER_V4,
-        name: "solana_loader_v4_program",
-        entrypoint: solana_loader_v4_program::Entrypoint::vm,
+        register_fn: solana_bpf_loader_program::Entrypoint::register,
     },
     #[cfg(feature = "all-builtins")]
     Builtin {
         program_id: solana_sdk_ids::zk_elgamal_proof_program::id(),
         name: "zk_elgamal_proof_program",
-        entrypoint: solana_zk_elgamal_proof_program::Entrypoint::vm,
+        register_fn: solana_zk_elgamal_proof_program::Entrypoint::register,
     },
     #[cfg(feature = "all-builtins")]
     Builtin {
         program_id: solana_sdk_ids::compute_budget::id(),
         name: "compute_budget_program",
-        entrypoint: solana_compute_budget_program::Entrypoint::vm,
+        register_fn: solana_compute_budget_program::Entrypoint::register,
     },
     #[cfg(feature = "all-builtins")]
     Builtin {
         program_id: solana_sdk_ids::vote::id(),
         name: "vote_program",
-        entrypoint: solana_vote_program::vote_processor::Entrypoint::vm,
+        register_fn: solana_vote_program::vote_processor::Entrypoint::register,
     },
 ];
 
@@ -399,30 +414,4 @@ pub fn create_program_account_pair_loader_v3(
         create_program_account_loader_v3(program_id),
         create_program_data_account_loader_v3(elf),
     )
-}
-
-/// Create a BPF Loader 4 program account.
-pub fn create_program_account_loader_v4(elf: &[u8]) -> Account {
-    let data = unsafe {
-        let elf_offset = LoaderV4State::program_data_offset();
-        let data_len = elf_offset + elf.len();
-        let mut data = vec![0u8; data_len];
-        *std::mem::transmute::<&mut [u8; LoaderV4State::program_data_offset()], &mut LoaderV4State>(
-            (&mut data[0..elf_offset]).try_into().unwrap(),
-        ) = LoaderV4State {
-            slot: 0,
-            authority_address_or_next_version: Pubkey::new_from_array([2; 32]),
-            status: LoaderV4Status::Deployed,
-        };
-        data[elf_offset..].copy_from_slice(elf);
-        data
-    };
-    let lamports = Rent::default().minimum_balance(data.len());
-    Account {
-        lamports,
-        data,
-        owner: loader_keys::LOADER_V4,
-        executable: true,
-        ..Default::default()
-    }
 }
