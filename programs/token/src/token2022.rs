@@ -1,8 +1,5 @@
-use {
-    mollusk_svm::Mollusk,
-    solana_account::Account,
-    solana_pubkey::Pubkey,
-    solana_rent::Rent,
+use {mollusk_svm::Mollusk, solana_account::Account, solana_pubkey::Pubkey, solana_rent::Rent};
+pub use {
     spl_token_2022_interface::{
         extension::{
             cpi_guard::CpiGuard,
@@ -24,7 +21,7 @@ use {
             BaseStateWithExtensions, BaseStateWithExtensionsMut, ExtensionType,
             StateWithExtensions, StateWithExtensionsMut,
         },
-        state::{Account as TokenAccount, Mint},
+        state::{Account as TokenAccount, AccountState, Mint},
     },
     spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_token_metadata_interface::state::TokenMetadata,
@@ -38,6 +35,7 @@ pub const ELF: &[u8] = include_bytes!("elf/token_2022.so");
 ///
 /// Confidential transfer extensions are not supported.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum MintExtension {
     TransferFeeConfig(TransferFeeConfig),
     MintCloseAuthority(MintCloseAuthority),
@@ -77,6 +75,13 @@ impl MintExtension {
             Self::Pausable(_) => ExtensionType::Pausable,
             Self::PermissionedBurn(_) => ExtensionType::PermissionedBurn,
         }
+    }
+
+    // Variable-length extensions cannot be sized by
+    // `ExtensionType::try_calculate_account_len` and are initialized by
+    // growing the buffer instead.
+    fn is_variable_len(&self) -> bool {
+        matches!(self, Self::TokenMetadata(_))
     }
 
     fn init(&self, state: &mut StateWithExtensionsMut<Mint>) {
@@ -139,6 +144,7 @@ impl MintExtension {
 ///
 /// Confidential transfer extensions are not supported.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum TokenAccountExtension {
     TransferFeeAmount(TransferFeeAmount),
     ImmutableOwner,
@@ -215,15 +221,36 @@ pub fn create_account_for_mint(mint_data: Mint) -> Account {
     create_account_for_mint_with_extensions(mint_data, &[])
 }
 
+// Each extension type may appear at most once, since duplicates would
+// otherwise silently overwrite each other in the TLV data.
+fn assert_unique_extension_types(extension_types: &[ExtensionType]) {
+    for (index, extension_type) in extension_types.iter().enumerate() {
+        assert!(
+            !extension_types[..index].contains(extension_type),
+            "duplicate extension: {extension_type:?}"
+        );
+    }
+}
+
 /// Create a Mint Account with extensions
 pub fn create_account_for_mint_with_extensions(
     mint_data: Mint,
     extensions: &[MintExtension],
 ) -> Account {
-    let fixed_len_types: Vec<ExtensionType> = extensions
+    assert_unique_extension_types(
+        &extensions
+            .iter()
+            .map(MintExtension::extension_type)
+            .collect::<Vec<_>>(),
+    );
+
+    let (variable_len_extensions, fixed_len_extensions): (Vec<_>, Vec<_>) = extensions
         .iter()
-        .filter(|extension| !matches!(extension, MintExtension::TokenMetadata(_)))
-        .map(MintExtension::extension_type)
+        .partition(|extension| extension.is_variable_len());
+
+    let fixed_len_types: Vec<ExtensionType> = fixed_len_extensions
+        .iter()
+        .map(|extension| extension.extension_type())
         .collect();
 
     let len = ExtensionType::try_calculate_account_len::<Mint>(&fixed_len_types).unwrap();
@@ -231,25 +258,26 @@ pub fn create_account_for_mint_with_extensions(
 
     {
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut data).unwrap();
-        for extension in extensions {
-            if !matches!(extension, MintExtension::TokenMetadata(_)) {
-                extension.init(&mut state);
-            }
+        for extension in fixed_len_extensions {
+            extension.init(&mut state);
         }
     }
 
     // variable-length extensions require growing the buffer first
-    for extension in extensions {
-        if let MintExtension::TokenMetadata(metadata) = extension {
-            let new_len = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut data)
-                .unwrap()
-                .try_get_new_account_len_for_variable_len_extension(metadata)
-                .unwrap();
-            data.resize(new_len, 0);
-            StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut data)
-                .unwrap()
-                .init_variable_len_extension(metadata, true)
-                .unwrap();
+    for extension in variable_len_extensions {
+        match extension {
+            MintExtension::TokenMetadata(metadata) => {
+                let new_len = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut data)
+                    .unwrap()
+                    .try_get_new_account_len_for_variable_len_extension(metadata)
+                    .unwrap();
+                data.resize(new_len, 0);
+                StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut data)
+                    .unwrap()
+                    .init_variable_len_extension(metadata, true)
+                    .unwrap();
+            }
+            _ => unreachable!("unhandled variable-length extension: {extension:?}"),
         }
     }
 
@@ -281,6 +309,7 @@ pub fn create_account_for_token_account_with_extensions(
         .iter()
         .map(TokenAccountExtension::extension_type)
         .collect();
+    assert_unique_extension_types(&extension_types);
 
     let len = ExtensionType::try_calculate_account_len::<TokenAccount>(&extension_types).unwrap();
     let mut data = vec![0u8; len];
@@ -304,6 +333,9 @@ pub fn create_account_for_token_account_with_extensions(
 }
 
 /// Get the account extensions required by a mint's extensions
+///
+/// Panics if the mint account data is invalid, or if a required extension
+/// has no [`TokenAccountExtension`] counterpart
 pub fn required_account_extensions_for_mint(
     mint_account_data: &[u8],
 ) -> Vec<TokenAccountExtension> {
@@ -315,6 +347,7 @@ pub fn required_account_extensions_for_mint(
             ExtensionType::TransferFeeAmount => {
                 TokenAccountExtension::TransferFeeAmount(TransferFeeAmount::default())
             }
+            ExtensionType::ImmutableOwner => TokenAccountExtension::ImmutableOwner,
             ExtensionType::NonTransferableAccount => TokenAccountExtension::NonTransferableAccount,
             ExtensionType::TransferHookAccount => {
                 TokenAccountExtension::TransferHookAccount(TransferHookAccount::default())
@@ -333,7 +366,8 @@ mod tests {
         solana_program_option::COption,
         solana_program_pack::Pack,
         spl_token_2022_interface::{
-            extension::transfer_fee::TransferFee, instruction::mint_to, state::AccountState,
+            extension::transfer_fee::TransferFee,
+            instruction::{mint_to, transfer_checked},
         },
     };
 
@@ -488,5 +522,151 @@ mod tests {
             StateWithExtensions::<TokenAccount>::unpack(&resulting_token_account.data).unwrap();
         assert_eq!(state.base.amount, 1_000);
         state.get_extension::<TransferFeeAmount>().unwrap();
+    }
+
+    #[test]
+    fn transfer_checked_withholds_fee() {
+        let mut mollusk = Mollusk::default();
+        add_program(&mut mollusk);
+
+        let authority = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+        let source = Pubkey::new_unique();
+        let destination = Pubkey::new_unique();
+
+        let mint_account = create_account_for_mint_with_extensions(
+            Mint {
+                supply: 10_000,
+                ..mint_data(authority)
+            },
+            &[MintExtension::TransferFeeConfig(transfer_fee_config(
+                authority,
+            ))],
+        );
+        let required = required_account_extensions_for_mint(&mint_account.data);
+        let source_account = create_account_for_token_account_with_extensions(
+            token_account_data(mint, owner, 10_000),
+            &required,
+        );
+        let destination_account = create_account_for_token_account_with_extensions(
+            token_account_data(mint, owner, 0),
+            &required,
+        );
+
+        let instruction =
+            transfer_checked(&ID, &source, &mint, &destination, &owner, &[], 10_000, 9).unwrap();
+        let result = mollusk.process_and_validate_instruction(
+            &instruction,
+            &[
+                (source, source_account),
+                (mint, mint_account),
+                (destination, destination_account),
+                (owner, Account::default()),
+            ],
+            &[Check::success()],
+        );
+
+        // 100 basis points of 10_000 are withheld on the destination
+        let resulting_destination = result.get_account(&destination).unwrap();
+        let state =
+            StateWithExtensions::<TokenAccount>::unpack(&resulting_destination.data).unwrap();
+        assert_eq!(state.base.amount, 9_900);
+        assert_eq!(
+            state
+                .get_extension::<TransferFeeAmount>()
+                .unwrap()
+                .withheld_amount,
+            100.into()
+        );
+
+        let resulting_source = result.get_account(&source).unwrap();
+        let state = StateWithExtensions::<TokenAccount>::unpack(&resulting_source.data).unwrap();
+        assert_eq!(state.base.amount, 0);
+    }
+
+    #[test]
+    fn required_extensions_for_non_transferable_mint() {
+        let mint_account = create_account_for_mint_with_extensions(
+            mint_data(Pubkey::new_unique()),
+            &[MintExtension::NonTransferable],
+        );
+        let required = required_account_extensions_for_mint(&mint_account.data);
+        assert!(required.contains(&TokenAccountExtension::NonTransferableAccount));
+        assert!(required.contains(&TokenAccountExtension::ImmutableOwner));
+
+        let token_account = create_account_for_token_account_with_extensions(
+            token_account_data(Pubkey::new_unique(), Pubkey::new_unique(), 0),
+            &required,
+        );
+        let state = StateWithExtensions::<TokenAccount>::unpack(&token_account.data).unwrap();
+        state.get_extension::<NonTransferableAccount>().unwrap();
+        state.get_extension::<ImmutableOwner>().unwrap();
+    }
+
+    #[test]
+    fn all_extension_variants_round_trip() {
+        let metadata = TokenMetadata {
+            update_authority: None.try_into().unwrap(),
+            mint: Pubkey::new_unique(),
+            name: "Mollusk".to_string(),
+            symbol: "MLSK".to_string(),
+            uri: "https://example.com".to_string(),
+            additional_metadata: vec![],
+        };
+        let mint_account = create_account_for_mint_with_extensions(
+            mint_data(Pubkey::new_unique()),
+            &[
+                MintExtension::TransferFeeConfig(TransferFeeConfig::default()),
+                MintExtension::MintCloseAuthority(MintCloseAuthority::default()),
+                MintExtension::DefaultAccountState(DefaultAccountState::default()),
+                MintExtension::NonTransferable,
+                MintExtension::InterestBearingConfig(InterestBearingConfig::default()),
+                MintExtension::PermanentDelegate(PermanentDelegate::default()),
+                MintExtension::TransferHook(TransferHook::default()),
+                MintExtension::MetadataPointer(MetadataPointer::default()),
+                MintExtension::TokenMetadata(metadata.clone()),
+                MintExtension::GroupPointer(GroupPointer::default()),
+                MintExtension::TokenGroup(TokenGroup::default()),
+                MintExtension::GroupMemberPointer(GroupMemberPointer::default()),
+                MintExtension::TokenGroupMember(TokenGroupMember::default()),
+                MintExtension::ScaledUiAmount(ScaledUiAmountConfig::default()),
+                MintExtension::Pausable(PausableConfig::default()),
+                MintExtension::PermissionedBurn(PermissionedBurnConfig::default()),
+            ],
+        );
+        let state = StateWithExtensions::<Mint>::unpack(&mint_account.data).unwrap();
+        assert_eq!(state.get_extension_types().unwrap().len(), 16);
+        assert_eq!(
+            state.get_variable_len_extension::<TokenMetadata>().unwrap(),
+            metadata
+        );
+
+        let token_account = create_account_for_token_account_with_extensions(
+            token_account_data(Pubkey::new_unique(), Pubkey::new_unique(), 0),
+            &[
+                TokenAccountExtension::TransferFeeAmount(TransferFeeAmount::default()),
+                TokenAccountExtension::ImmutableOwner,
+                TokenAccountExtension::MemoTransfer(MemoTransfer::default()),
+                TokenAccountExtension::CpiGuard(CpiGuard::default()),
+                TokenAccountExtension::NonTransferableAccount,
+                TokenAccountExtension::TransferHookAccount(TransferHookAccount::default()),
+                TokenAccountExtension::PausableAccount,
+            ],
+        );
+        let state = StateWithExtensions::<TokenAccount>::unpack(&token_account.data).unwrap();
+        assert_eq!(state.get_extension_types().unwrap().len(), 7);
+    }
+
+    #[test]
+    #[should_panic(expected = "duplicate extension")]
+    fn duplicate_extension_panics() {
+        create_account_for_mint_with_extensions(
+            mint_data(Pubkey::new_unique()),
+            &[
+                MintExtension::NonTransferable,
+                MintExtension::NonTransferable,
+            ],
+        );
     }
 }
