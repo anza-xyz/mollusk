@@ -1,0 +1,24 @@
+[package]
+name = "mollusk-svm-programs-token-2022"
+description = "SVM program SPL Token-2022."
+documentation = "https://docs.rs/mollusk-svm-programs-token-2022"
+authors = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+license-file = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+mollusk-svm-programs-token = { workspace = true, features = ["token-2022"] }
+solana-account = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-rent = { workspace = true }
+spl-token-2022-interface = { workspace = true }
+spl-token-group-interface = { workspace = true }
+spl-token-metadata-interface = { workspace = true }
+
+[dev-dependencies]
+mollusk-svm = { workspace = true }
+solana-program-option = { workspace = true }
+solana-program-pack = { workspace = true }
