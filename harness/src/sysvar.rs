@@ -379,7 +379,7 @@ mod tests {
             last_restart_slot: 6,
         };
         let rent = Rent {
-            lamports_per_byte_year: 7,
+            lamports_per_byte: 7,
             ..Default::default()
         };
         let slot_hashes = SlotHashes::new(&[(8, Hash::default())]);

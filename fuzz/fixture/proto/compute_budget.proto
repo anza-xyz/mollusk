@@ -37,8 +37,6 @@ message ComputeBudget {
     reserved 32, 33;
     uint64 alt_bn128_pairing_one_pair_cost_first = 34;
     uint64 alt_bn128_pairing_one_pair_cost_other = 35;
-    uint64 big_modular_exponentiation_base_cost = 36;
-    uint64 big_modular_exponentiation_cost_divisor = 37;
     uint64 poseidon_cost_coefficient_a = 38;
     uint64 poseidon_cost_coefficient_c = 39;
     uint64 get_remaining_compute_units_cost = 40;
@@ -62,4 +60,7 @@ message ComputeBudget {
     uint64 bls12_381_g2_validate_cost = 58;
     uint64 bls12_381_one_pair_cost = 59;
     uint64 bls12_381_additional_pair_cost = 60;
+    uint64 set_buffer_length_base_cost = 61;
+    uint64 abi_v2_assign_owner = 62;
+    uint64 sol_transfer_lamports_cost = 63;
 }

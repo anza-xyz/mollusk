@@ -256,8 +256,6 @@ fn test_debugger() {
         "test_program_cpi_target",
         &mollusk_svm::program::loader_keys::LOADER_V3,
     );
-    mollusk.feature_set.provide_instruction_data_offset_in_vm_r2 = true;
-
     let data = &[1, 2, 3, 4, 5];
     let space = data.len();
     let lamports = mollusk.sysvars.rent.minimum_balance(space);

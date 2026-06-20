@@ -22,8 +22,7 @@ const TEST_VECTORS_PATH: &str = "tests/test-vectors";
 const TEST_VECTORS_REPOSITORY: &str = "https://github.com/buffalojoec/test-vectors.git";
 const TEST_VECTORS_BRANCH: &str = "mollusk-tests";
 const TEST_VECTORS_TO_TEST: &[&str] = &[
-    "instr/fixtures/address-lookup-table",
-    "instr/fixtures/config",
+    "instr/fixtures/bpf-address-lookup-table",
     "instr/fixtures/stake",
     // Add more here!
 ];

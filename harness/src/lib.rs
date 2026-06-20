@@ -470,9 +470,6 @@ use {
         account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
         sysvar::Sysvars,
     },
-    agave_syscalls::{
-        create_program_runtime_environment_v1, create_program_runtime_environment_v2,
-    },
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{
         types::{TransactionProgramResult, TransactionResult},
@@ -495,15 +492,14 @@ use {
     solana_svm_feature_set::SVMFeatureSet,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
-    solana_svm_transaction::instruction::SVMInstruction,
-    solana_transaction_context::{transaction::TransactionContext, IndexOfAccount},
+    solana_syscalls::create_program_runtime_environment,
+    solana_transaction_context::transaction::TransactionContext,
     solana_transaction_error::TransactionError,
     std::{
         cell::RefCell,
         collections::{HashMap, HashSet},
         iter::once,
         rc::Rc,
-        sync::Arc,
     },
 };
 #[cfg(feature = "inner-instructions")]
@@ -727,7 +723,7 @@ impl Mollusk {
              solana_runtime::message_processor=debug,\
              solana_runtime::system_instruction_processor=trace",
         );
-        let compute_budget = ComputeBudget::new_with_defaults(true, true);
+        let compute_budget = ComputeBudget::new_with_defaults(true);
 
         #[cfg(feature = "fuzz")]
         let feature_set = {
@@ -994,21 +990,18 @@ impl Mollusk {
         #[cfg(feature = "register-tracing")]
         let _enable_register_tracing = self.enable_register_tracing;
 
-        let program_runtime_environments: ProgramRuntimeEnvironments = ProgramRuntimeEnvironments {
-            program_runtime_v1: Arc::new(
-                create_program_runtime_environment_v1(
-                    &self.feature_set,
-                    &execution_budget,
-                    /* reject_deployment_of_broken_elfs */ false,
-                    /* debugging_features */ _enable_register_tracing,
-                )
-                .unwrap(),
-            ),
-            program_runtime_v2: Arc::new(create_program_runtime_environment_v2(
-                &execution_budget,
-                /* debugging_features */ _enable_register_tracing,
-            )),
-        };
+        let execution_environment = create_program_runtime_environment(
+            &self.feature_set,
+            &execution_budget,
+            /* reject_deployment_of_broken_elfs */ false,
+            /* debugging_features */ _enable_register_tracing,
+        )
+        .unwrap();
+        // Same as the execution environment.
+        let deployment_environment = execution_environment.clone();
+
+        let program_runtime_environments =
+            ProgramRuntimeEnvironments::new(execution_environment, deployment_environment);
 
         let mut invoke_context = InvokeContext::new(
             transaction_context,
@@ -1016,9 +1009,9 @@ impl Mollusk {
             EnvironmentConfig::new(
                 Hash::default(),
                 /* blockhash_lamports_per_signature */ 5000, // The default value
+                /* alpenglow_migration_succeeded */ false,
                 &callback,
                 &self.feature_set,
-                &program_runtime_environments,
                 &program_runtime_environments,
                 sysvar_cache,
             ),
@@ -1028,21 +1021,13 @@ impl Mollusk {
         );
 
         let mut raw_result = Ok(());
+        invoke_context
+            .prepare_top_level_instructions(sanitized_message)
+            .expect("failed to prepare instructions");
 
         for (instruction_index, (program_id, compiled_ix)) in
             sanitized_message.program_instructions_iter().enumerate()
         {
-            let program_id_index = compiled_ix.program_id_index as IndexOfAccount;
-
-            invoke_context
-                .prepare_next_top_level_instruction(
-                    sanitized_message,
-                    &SVMInstruction::from(compiled_ix),
-                    program_id_index,
-                    &compiled_ix.data,
-                )
-                .expect("failed to prepare instruction");
-
             #[cfg(feature = "invocation-inspect-callback")]
             {
                 let instruction_context = invoke_context

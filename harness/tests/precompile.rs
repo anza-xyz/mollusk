@@ -1,3 +1,5 @@
+#![cfg(feature = "precompiles")]
+
 use {
     mollusk_svm::{result::Check, Mollusk},
     rand0_7::{thread_rng, Rng},
