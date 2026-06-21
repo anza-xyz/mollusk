@@ -2253,6 +2253,7 @@ name = "mollusk-svm-programs-token"
 version = "0.13.1"
 dependencies = [
  "mollusk-svm",
+ "mollusk-svm-programs-token-2022",
  "solana-account",
  "solana-program-pack",
  "solana-pubkey 4.1.0",
@@ -2266,7 +2267,6 @@ name = "mollusk-svm-programs-token-2022"
 version = "0.13.1"
 dependencies = [
  "mollusk-svm",
- "mollusk-svm-programs-token",
  "solana-account",
  "solana-program-option",
  "solana-program-pack",
@@ -2274,6 +2274,7 @@ dependencies = [
  "solana-rent 3.1.0",
  "spl-token-2022-interface",
  "spl-token-group-interface",
+ "spl-token-interface",
  "spl-token-metadata-interface",
 ]
 

@@ -9,16 +9,24 @@ license-file = { workspace = true }
 edition = { workspace = true }
 version = { workspace = true }
 
+[features]
+default = []
+extensions = [
+    "dep:spl-token-2022-interface",
+    "dep:spl-token-group-interface",
+    "dep:spl-token-metadata-interface",
+]
+
 [dependencies]
-mollusk-svm-programs-token = { workspace = true, features = ["token-2022"] }
+mollusk-svm = { workspace = true }
 solana-account = { workspace = true }
+solana-program-pack = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
-spl-token-2022-interface = { workspace = true }
-spl-token-group-interface = { workspace = true }
-spl-token-metadata-interface = { workspace = true }
+spl-token-interface = { workspace = true }
+spl-token-2022-interface = { workspace = true, optional = true }
+spl-token-group-interface = { workspace = true, optional = true }
+spl-token-metadata-interface = { workspace = true, optional = true }
 
 [dev-dependencies]
-mollusk-svm = { workspace = true }
 solana-program-option = { workspace = true }
-solana-program-pack = { workspace = true }
