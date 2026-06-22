@@ -17,6 +17,7 @@ PUBLISH_CRATES := \
 	mollusk-svm \
 	mollusk-svm-bencher \
 	mollusk-svm-programs-memo \
+	mollusk-svm-programs-token-2022 \
 	mollusk-svm-programs-token \
 	mollusk-svm-cli
 

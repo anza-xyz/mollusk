@@ -41,6 +41,7 @@ mollusk-svm-fuzz-fs = { path = "fuzz/fs", version = "0.13.1" }
 mollusk-svm-programs-memo = { path = "programs/memo", version = "0.13.1" }
 mollusk-svm-result = { path = "result", version = "0.13.1" }
 mollusk-svm-programs-token = { path = "programs/token", version = "0.13.1" }
+mollusk-svm-programs-token-2022 = { path = "programs/token-2022", version = "0.13.1" }
 num-format = "0.4.4"
 openssl = "0.10.78"
 prost = "0.14"
@@ -79,6 +80,7 @@ solana-native-token = "3.0.0"
 solana-precompile-error = "3.0.0"
 solana-program-entrypoint = "3.1.1"
 solana-program-error = "3.0.0"
+solana-program-option = "3.1.0"
 solana-program-pack = "3.1.0"
 solana-program-runtime = "4.0.0"
 solana-pubkey = "4.1.0"
@@ -103,6 +105,9 @@ solana-transaction-status-client-types = "4.0.0"
 solana-vote-program = "4.0.0"
 solana-zk-elgamal-proof-program = "4.0.0"
 spl-associated-token-account-interface = "2.0.0"
+spl-token-2022-interface = "3.0.1"
+spl-token-group-interface = "0.7.2"
 spl-token-interface = "2.0.0"
+spl-token-metadata-interface = "1.0.0"
 thiserror = "2.0.17"
 tokio = "1.52.1"
