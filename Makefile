@@ -21,22 +21,9 @@ SOLANA_VERSION := 4.0.0
 	audit \
 	check-features \
 	prepublish \
+	verify-crate-owners \
 	package \
 	publish
-
-# Crates to publish, in dependency order
-PUBLISH_CRATES := \
-	mollusk-svm-error \
-	mollusk-svm-fuzz-fs \
-	mollusk-svm-fuzz-fixture \
-	mollusk-svm-fuzz-fixture-firedancer \
-	mollusk-svm-result \
-	mollusk-svm \
-	mollusk-svm-bencher \
-	mollusk-svm-programs-memo \
-	mollusk-svm-programs-token-2022 \
-	mollusk-svm-programs-token \
-	mollusk-svm-cli
 
 # Advisories to ignore for audit.
 # - RUSTSEC-2022-0093: ed25519-dalek: Double Public Key Signing Function Oracle Attack
@@ -120,18 +107,14 @@ prepublish:
 	@$(MAKE) check-features
 	@$(MAKE) test
 
-# Package crates into target/package/*.crate (so attestation can sign them
-# before publish). Uses multi-package mode to resolve workspace inter-deps.
-package:
-	@cargo package $(addprefix -p ,$(PUBLISH_CRATES)) $(ARGS)
+verify-crate-owners:
+	@./scripts/verify-crate-owners.sh
 
-# Publish crates in dependency order
+# Package all workspace crates into target/package/*.crate (so attestation can
+# sign them before publish).
+package:
+	@cargo package --workspace $(ARGS)
+
+DRY_RUN ?=
 publish:
-	@set -e && set -u && set -o pipefail && \
-	for crate in $(PUBLISH_CRATES); do \
-		echo "Publishing $$crate..." && \
-		cargo publish -p $$crate --token $$TOKEN $(ARGS) && \
-		echo "$$crate published successfully!" && \
-		sleep 5; \
-	done && \
-	echo "All crates published successfully!"
+	@cargo publish --workspace $(DRY_RUN) $(ARGS)

@@ -1,0 +1,48 @@
+name: Publish setup
+description: Shared setup for publish jobs — cargo cache, protoc, and the Solana toolchain.
+
+inputs:
+  nightly:
+    description: Install the nightly toolchain with rustfmt and clippy.
+    default: "false"
+  cargo-hack:
+    description: Install cargo-hack.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: cargo-build-sbf-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          cargo-build-sbf-
+    - name: Install protoc
+      shell: bash
+      run: sudo apt-get install -y protobuf-compiler
+    - name: Get nightly toolchain version
+      if: inputs.nightly == 'true'
+      id: nightly
+      shell: bash
+      run: echo "version=$(make nightly-version)" >> "$GITHUB_OUTPUT"
+    - uses: dtolnay/rust-toolchain@master
+      if: inputs.nightly == 'true'
+      with:
+        toolchain: ${{ steps.nightly.outputs.version }}
+        components: rustfmt, clippy
+    - name: Get Solana version
+      id: solana
+      shell: bash
+      run: echo "version=$(make solana-version)" >> "$GITHUB_OUTPUT"
+    - uses: metaplex-foundation/actions/install-solana@v1
+      with:
+        cache: true
+        version: ${{ steps.solana.outputs.version }}
+    - name: Install cargo-hack
+      if: inputs.cargo-hack == 'true'
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-hack
