@@ -3,9 +3,26 @@ NIGHTLY_TOOLCHAIN := nightly-2025-10-07
 SOLANA_VERSION := 4.0.0
 
 
-.PHONY: audit build-test-programs build-test-elfs prepublish package publish format \
-	format-check clippy test check-features all-checks nightly-version \
-	solana-version
+.PHONY: \
+	nightly-version \
+	solana-version \
+	format \
+	format-test-programs \
+	format-fix \
+	format-fix-test-programs \
+	clippy \
+	clippy-test-programs \
+	clippy-fix \
+	clippy-fix-test-programs \
+	build \
+	build-test-programs \
+	build-test-elfs \
+	test \
+	audit \
+	check-features \
+	prepublish \
+	package \
+	publish
 
 # Crates to publish, in dependency order
 PUBLISH_CRATES := \
@@ -21,6 +38,19 @@ PUBLISH_CRATES := \
 	mollusk-svm-programs-token \
 	mollusk-svm-cli
 
+# Advisories to ignore for audit.
+# - RUSTSEC-2022-0093: ed25519-dalek: Double Public Key Signing Function Oracle Attack
+# - RUSTSEC-2024-0344: curve25519-dalek
+# - RUSTSEC-2024-0376: Remotely exploitable Denial of Service in Tonic
+# - RUSTSEC-2024-0421: idna accepts Punycode labels that do not produce any non-ASCII when decoded
+# - RUSTSEC-2025-0009: Some AES functions may panic when overflow checking is enabled
+IGNORE_SECS := \
+	RUSTSEC-2022-0093 \
+	RUSTSEC-2024-0344 \
+	RUSTSEC-2024-0376 \
+	RUSTSEC-2024-0421 \
+	RUSTSEC-2025-0009
+
 # Print the nightly toolchain version for CI
 nightly-version:
 	@echo $(NIGHTLY_TOOLCHAIN)
@@ -29,26 +59,35 @@ nightly-version:
 solana-version:
 	@echo $(SOLANA_VERSION)
 
-audit:
-	@cargo audit \
-		--ignore RUSTSEC-2022-0093 \
-		--ignore RUSTSEC-2024-0344 \
-		--ignore RUSTSEC-2024-0421 \
-		--ignore RUSTSEC-2024-0376 \
-		--ignore RUSTSEC-2025-0009
-# RUSTSEC-2022-0093: ed25519-dalek: Double Public Key Signing Function Oracle Attack
-# RUSTSEC-2024-0344: curve25519-dalek
-# RUSTSEC-2024-0421: idna accepts Punycode labels that do not produce any non-ASCII when decoded
-# RUSTSEC-2024-0376: Remotely exploitable Denial of Service in Tonic
-# RUSTSEC-2025-0009: Some AES functions may panic when overflow checking is enabled
+format:
+	@cargo +$(NIGHTLY_TOOLCHAIN) fmt --all -- --check
+
+format-test-programs:
+	@cargo +$(NIGHTLY_TOOLCHAIN) fmt --manifest-path test-programs/Cargo.toml --all -- --check
+
+format-fix:
+	@cargo +$(NIGHTLY_TOOLCHAIN) fmt --all
+
+format-fix-test-programs:
+	@cargo +$(NIGHTLY_TOOLCHAIN) fmt --manifest-path test-programs/Cargo.toml --all
+
+clippy:
+	@cargo +$(NIGHTLY_TOOLCHAIN) clippy --all --all-features --all-targets -- -D warnings
+
+clippy-test-programs:
+	@cargo +$(NIGHTLY_TOOLCHAIN) clippy --manifest-path test-programs/Cargo.toml --all --all-features --all-targets -- -D warnings
+
+clippy-fix:
+	@cargo +$(NIGHTLY_TOOLCHAIN) clippy --all --all-features --all-targets --fix --allow-dirty --allow-staged -- -D warnings
+
+clippy-fix-test-programs:
+	@cargo +$(NIGHTLY_TOOLCHAIN) clippy --manifest-path test-programs/Cargo.toml --all --all-features --all-targets --fix --allow-dirty --allow-staged -- -D warnings
+
+build:
+	@cargo build
 
 build-test-programs:
-	@cargo build-sbf --manifest-path test-programs/cpi-target/Cargo.toml
-	@cargo build-sbf --manifest-path test-programs/custom-syscall/Cargo.toml
-	@cargo build-sbf --manifest-path test-programs/epoch-stake/Cargo.toml
-	@cargo build-sbf --manifest-path test-programs/instructions-sysvar/Cargo.toml
-	@cargo build-sbf --manifest-path test-programs/noop-log/Cargo.toml
-	@cargo build-sbf --manifest-path test-programs/primary/Cargo.toml
+	@cargo build-sbf --manifest-path test-programs/Cargo.toml --sbf-out-dir target/deploy
 
 build-test-elfs:
 	@set -e; \
@@ -62,14 +101,22 @@ build-test-elfs:
 	done; \
 	rm -rf $$TMP_DIR
 
-# Pre-publish checks
-prepublish:
-	@agave-install init $(SOLANA_VERSION)
-	@rm -rf target
-	@cargo build
+test:
 	@$(MAKE) build-test-programs
-	@$(MAKE) format-check
+	@$(MAKE) build-test-elfs
+	@cargo test --manifest-path test-programs/Cargo.toml --all-features
+	@cargo test --all-features
+
+audit:
+	@cargo audit $(addprefix --ignore ,$(IGNORE_SECS))
+
+check-features:
+	@cargo hack --feature-powerset --no-dev-deps check
+
+prepublish:
+	@$(MAKE) format
 	@$(MAKE) clippy
+	@$(MAKE) build
 	@$(MAKE) check-features
 	@$(MAKE) test
 
@@ -88,37 +135,3 @@ publish:
 		sleep 5; \
 	done && \
 	echo "All crates published successfully!"
-
-format:
-	@cargo +$(NIGHTLY_TOOLCHAIN) fmt --all -- --check
-
-format-fix:
-	@cargo +$(NIGHTLY_TOOLCHAIN) fmt --all
-
-clippy:
-	@cargo +$(NIGHTLY_TOOLCHAIN) clippy --all --all-features --all-targets -- -D warnings
-
-clippy-fix:
-	@cargo +$(NIGHTLY_TOOLCHAIN) clippy --all --all-features --all-targets --fix --allow-dirty --allow-staged -- -D warnings
-
-check-features:
-	@cargo hack --feature-powerset --no-dev-deps check
-
-build:
-	@$(MAKE) build-test-programs
-	@$(MAKE) build-test-elfs
-	@cargo build
-
-test:
-	@$(MAKE) build-test-programs
-	@$(MAKE) build-test-elfs
-	@cargo test --all-features
-
-# Run all checks in sequence
-all-checks:
-	@echo "Running all checks..."
-	@$(MAKE) format
-	@$(MAKE) clippy
-	@$(MAKE) check-features
-	@$(MAKE) test
-	@echo "All checks passed!"
