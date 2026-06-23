@@ -23,6 +23,8 @@ jobs:
           components: rustfmt
       - name: Run format
         run: make format
+      - name: Run format (test programs)
+        run: make format-test-programs
 
   rust_clippy:
     name: Clippy
@@ -48,6 +50,8 @@ jobs:
           components: clippy
       - name: Run clippy
         run: make clippy
+      - name: Run clippy (test programs)
+        run: make clippy-test-programs
 
   check_features:
     name: Check Features

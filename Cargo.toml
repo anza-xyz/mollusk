@@ -7,8 +7,8 @@ members = [
     "harness",
     "programs/*",
     "result",
-    "test-programs/*",
 ]
+exclude = ["test-programs"]
 resolver = "2"
 
 [workspace.package]
