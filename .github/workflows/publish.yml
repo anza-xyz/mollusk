@@ -12,71 +12,58 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/agave-4.0'
     permissions:
       contents: read
-
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/cache@v5
+      - uses: ./.github/actions/publish-setup
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-build-sbf-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-build-sbf-
-      - name: Install protoc
-        run: sudo apt-get install -y protobuf-compiler
-      - name: Get nightly toolchain version
-        id: nightly
-        run: echo "version=$(make nightly-version)" >> $GITHUB_OUTPUT
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ steps.nightly.outputs.version }}
-          components: rustfmt, clippy
-      - name: Get Solana version
-        id: solana
-        run: echo "version=$(make solana-version)" >> $GITHUB_OUTPUT
-      - uses: metaplex-foundation/actions/install-solana@v1
-        with:
-          cache: true
-          version: ${{ steps.solana.outputs.version }}
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-hack
+          nightly: "true"
+          cargo-hack: "true"
       - name: Prepublish
         shell: bash
         run: make prepublish
+
+  verify_crate_owners:
+    name: Verify crate owners
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/agave-4.0'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify crate owners
+        shell: bash
+        run: make verify-crate-owners
+
+  publish_dry_run:
+    name: Publish dry-run
+    runs-on: ubuntu-latest
+    needs: [pre_publish, verify_crate_owners]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/agave-4.0'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/publish-setup
+      - name: Dry-run publish
+        shell: bash
+        env:
+          ARGS: "--locked"
+        run: make publish DRY_RUN=--dry-run
 
   publish:
     name: Publish
     runs-on: ubuntu-latest
     environment: prod
-    needs: pre_publish
+    needs: [pre_publish, publish_dry_run, verify_crate_owners]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/agave-4.0'
     permissions:
       id-token: write
       attestations: write
       artifact-metadata: write
       contents: read
-
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-build-sbf-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-build-sbf-
-      - name: Install protoc
-        run: sudo apt-get install -y protobuf-compiler
-      - name: Get Solana version
-        id: solana
-        run: echo "version=$(make solana-version)" >> $GITHUB_OUTPUT
-      - uses: metaplex-foundation/actions/install-solana@v1
-        with:
-          cache: true
-          version: ${{ steps.solana.outputs.version }}
+      - uses: ./.github/actions/publish-setup
       - name: Package
         shell: bash
         env:
@@ -91,6 +78,6 @@ jobs:
       - name: Publish
         shell: bash
         env:
-          TOKEN: ${{ steps.auth.outputs.token }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
           ARGS: "--locked"
         run: make publish
