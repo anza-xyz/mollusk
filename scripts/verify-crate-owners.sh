@@ -7,6 +7,10 @@
 
 set -euo pipefail
 
+# Run from the workspace root so `cargo metadata` resolves this workspace
+# regardless of the caller's working directory.
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
 readonly VERIFIED_OWNER="${VERIFIED_OWNER:-anza-team}"
 readonly USER_AGENT="Anza (https://github.com/anza-xyz/mollusk)"
 
