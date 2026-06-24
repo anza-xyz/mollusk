@@ -67,6 +67,7 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             set_buffer_length_base_cost,
             abi_v2_assign_owner,
             sol_transfer_lamports_cost,
+            abi_v2_cpi_base,
         } = value;
 
         Self {
@@ -129,6 +130,7 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             set_buffer_length_base_cost,
             abi_v2_assign_owner,
             sol_transfer_lamports_cost,
+            abi_v2_cpi_base,
         }
     }
 }
@@ -195,6 +197,7 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             set_buffer_length_base_cost,
             abi_v2_assign_owner,
             sol_transfer_lamports_cost,
+            abi_v2_cpi_base,
         } = value;
 
         Self {
@@ -257,6 +260,7 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             set_buffer_length_base_cost,
             abi_v2_assign_owner,
             sol_transfer_lamports_cost,
+            abi_v2_cpi_base,
         }
     }
 }

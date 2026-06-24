@@ -20,8 +20,8 @@ edition = "2021"
 version = "0.13.4"
 
 [workspace.dependencies]
-agave-feature-set = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-agave-precompiles = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
+agave-feature-set = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
+agave-precompiles = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
 bincode = "1.3.3"
 bs58 = "0.5.1"
 chrono = "0.4.44"
@@ -55,10 +55,10 @@ serial_test = "2.0"
 sha2 = "0.10.9"
 solana-account = "4.3.0"
 solana-account-info = "3.1.0"
-solana-bpf-loader-program = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
+solana-bpf-loader-program = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
 solana-clock = "3.0.1"
-solana-compute-budget = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-solana-compute-budget-program = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
+solana-compute-budget = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
+solana-compute-budget-program = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
 solana-cpi = "3.1.0"
 solana-ed25519-program = "3.0.0"
 solana-epoch-rewards = "3.0.0"
@@ -79,7 +79,7 @@ solana-program-entrypoint = "3.1.1"
 solana-program-error = "3.0.1"
 solana-program-option = "3.1.0"
 solana-program-pack = "3.1.0"
-solana-program-runtime = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
+solana-program-runtime = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
 solana-pubkey = "4.2.0"
 solana-rent = { version = "4.2.1", features = ["serde", "sysvar"] }
 solana-sdk-ids = "3.1.0"
@@ -87,20 +87,20 @@ solana-secp256k1-program = "3.0.1"
 solana-secp256r1-program = "3.0.0"
 solana-slot-hashes = "3.0.2"
 solana-stake-interface = { version = "4.2.0", features = ["serde", "sysvar"] }
-solana-svm-callback = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-solana-svm-feature-set = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-solana-svm-log-collector = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-solana-svm-timings = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-solana-syscalls = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
+solana-svm-callback = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
+solana-svm-feature-set = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
+solana-svm-log-collector = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
+solana-svm-timings = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
+solana-syscalls = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
 solana-system-interface = "3.2.0"
-solana-system-program = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
+solana-system-program = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
 solana-sysvar = { version = "4.0.0", features = ["bincode"] }
 solana-sysvar-id = "3.1.0"
-solana-transaction-context = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
+solana-transaction-context = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
 solana-transaction-error = "3.2.0"
-solana-transaction-status-client-types = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-solana-vote-program = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-solana-zk-elgamal-proof-program = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
+solana-transaction-status-client-types = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
+solana-vote-program = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
+solana-zk-elgamal-proof-program = { version = "4.2.0-alpha.0", git = "https://github.com/LucasSte/agave.git", branch = "cpi-done-right" }
 spl-associated-token-account-interface = "2.0.0"
 spl-token-2022-interface = "3.0.1"
 spl-token-group-interface = "0.7.2"

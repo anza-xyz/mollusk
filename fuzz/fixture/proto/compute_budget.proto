@@ -63,4 +63,5 @@ message ComputeBudget {
     uint64 set_buffer_length_base_cost = 61;
     uint64 abi_v2_assign_owner = 62;
     uint64 sol_transfer_lamports_cost = 63;
+    uint64 abi_v2_cpi_base = 64;
 }
