@@ -22,8 +22,7 @@ const TEST_VECTORS_PATH: &str = "tests/test-vectors";
 const TEST_VECTORS_REPOSITORY: &str = "https://github.com/buffalojoec/test-vectors.git";
 const TEST_VECTORS_BRANCH: &str = "mollusk-tests";
 const TEST_VECTORS_TO_TEST: &[&str] = &[
-    "instr/fixtures/address-lookup-table",
-    "instr/fixtures/config",
+    "instr/fixtures/bpf-address-lookup-table",
     "instr/fixtures/stake",
     // Add more here!
 ];
@@ -143,8 +142,8 @@ fn compare_accounts(
     let mut b_sorted = b.to_vec();
 
     // Sort by Pubkey
-    a_sorted.sort_by(|(pubkey_a, _, _), (pubkey_b, _, _)| pubkey_a.cmp(pubkey_b));
-    b_sorted.sort_by(|(pubkey_a, _, _), (pubkey_b, _, _)| pubkey_a.cmp(pubkey_b));
+    a_sorted.sort_by_key(|(pubkey_a, _, _)| *pubkey_a);
+    b_sorted.sort_by_key(|(pubkey_a, _, _)| *pubkey_a);
 
     // Compare sorted lists
     a_sorted == b_sorted
@@ -159,8 +158,8 @@ fn compare_instruction_accounts(a: &[InstructionAccount], b: &[InstructionAccoun
     let mut b_sorted = b.to_vec();
 
     // Sort by index_in_transaction
-    a_sorted.sort_by(|ia_a, ia_b| ia_a.index_in_transaction.cmp(&ia_b.index_in_transaction));
-    b_sorted.sort_by(|ia_a, ia_b| ia_a.index_in_transaction.cmp(&ia_b.index_in_transaction));
+    a_sorted.sort_by_key(|ia_a| ia_a.index_in_transaction);
+    b_sorted.sort_by_key(|ia_a| ia_a.index_in_transaction);
 
     // Compare sorted lists; InstructionAccount no longer implements PartialEq
     a_sorted

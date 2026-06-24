@@ -66,12 +66,11 @@ impl From<ProtoContext> for Context {
         let feature_set: FeatureSet = value.feature_set.map(Into::into).unwrap_or_default();
         let simd_0268_active =
             feature_set.is_active(&agave_feature_set::raise_cpi_nesting_limit_to_8::id());
-        let simd_0339_active =
-            feature_set.is_active(&agave_feature_set::increase_cpi_account_info_limit::id());
 
-        let compute_budget = value.compute_budget.map(Into::into).unwrap_or_else(|| {
-            ComputeBudget::new_with_defaults(simd_0268_active, simd_0339_active)
-        });
+        let compute_budget = value
+            .compute_budget
+            .map(Into::into)
+            .unwrap_or_else(|| ComputeBudget::new_with_defaults(simd_0268_active));
 
         Self {
             compute_budget,
@@ -185,7 +184,7 @@ mod tests {
         ]));
 
         let ctx: Context = proto.into();
-        let expected = ComputeBudget::new_with_defaults(true, true);
+        let expected = ComputeBudget::new_with_defaults(true);
         assert_eq!(ctx.compute_budget, expected);
     }
 
@@ -193,7 +192,7 @@ mod tests {
     fn test_defaults_use_feature_flag_when_inactive() {
         let proto = empty_proto_context();
         let ctx: Context = proto.into();
-        let expected = ComputeBudget::new_with_defaults(false, false);
+        let expected = ComputeBudget::new_with_defaults(false);
         assert_eq!(ctx.compute_budget, expected);
     }
 

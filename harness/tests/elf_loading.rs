@@ -54,17 +54,18 @@ fn test_sbpf_v3_elf_fails_without_feature() {
 
     let mut mollusk = Mollusk::default();
     mollusk.feature_set.enable_sbpf_v3_deployment_and_execution = false;
+    mollusk.feature_set.enable_sbpf_v2_deployment_and_execution = false;
+    mollusk.feature_set.enable_sbpf_v1_deployment_and_execution = false;
+    mollusk.feature_set.program_runtime_abiv2 = false;
 
     // Rebuild the program cache with the updated feature set so that
-    // the runtime environment no longer includes V3 in
-    // `enabled_sbpf_versions`.
+    // the runtime environment is narrowed back down to V0.
     mollusk.program_cache = ProgramCache::new(&mollusk.feature_set, &mollusk.compute_budget, false);
 
     let program_id = Pubkey::new_unique();
     let elf = mollusk_svm::file::load_program_elf("test_program_cpi_target_v3");
 
-    // Loading a V3 ELF should fail because V3 is not in the
-    // enabled range.
+    // Loading a V3 ELF should fail because V3 is not in the enabled range.
     mollusk.program_cache.add_program(
         &program_id,
         &solana_sdk_ids::bpf_loader_upgradeable::ID,
