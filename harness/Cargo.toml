@@ -85,7 +85,6 @@ solana-svm-callback = { workspace = true, features = ["agave-unstable-api"] }
 solana-svm-feature-set = { workspace = true, features = ["agave-unstable-api"] }
 solana-svm-log-collector = { workspace = true, features = ["agave-unstable-api"] }
 solana-svm-timings = { workspace = true, features = ["agave-unstable-api"] }
-solana-svm-transaction = { workspace = true, features = ["agave-unstable-api"] }
 solana-syscalls = { workspace = true, features = ["agave-unstable-api"] }
 solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
 solana-sysvar = { workspace = true }

@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "agave-feature-set"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "ahash",
  "solana-epoch-schedule",
@@ -55,7 +55,7 @@ dependencies = [
 [[package]]
 name = "agave-precompiles"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "agave-feature-set",
  "bincode",
@@ -1954,7 +1954,6 @@ dependencies = [
  "solana-svm-feature-set",
  "solana-svm-log-collector",
  "solana-svm-timings",
- "solana-svm-transaction",
  "solana-syscalls",
  "solana-system-interface",
  "solana-system-program",
@@ -3127,7 +3126,7 @@ dependencies = [
 [[package]]
 name = "solana-account-decoder-client-types"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "base64",
  "bs58",
@@ -3275,7 +3274,7 @@ dependencies = [
 [[package]]
 name = "solana-bpf-loader-program"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "bincode",
  "qualifier_attr",
@@ -3320,7 +3319,7 @@ checksum = "1517aa49dcfa9cb793ef90e7aac81346d62ca4a546bb1a754030a033e3972e1c"
 [[package]]
 name = "solana-compute-budget"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "solana-fee-structure",
  "solana-program-runtime",
@@ -3329,7 +3328,7 @@ dependencies = [
 [[package]]
 name = "solana-compute-budget-program"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "solana-program-runtime",
 ]
@@ -3747,7 +3746,7 @@ dependencies = [
 [[package]]
 name = "solana-program-runtime"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "base64",
  "bincode",
@@ -3787,6 +3786,7 @@ dependencies = [
  "solana-sysvar-id",
  "solana-transaction-context",
  "thiserror 2.0.18",
+ "wincode",
 ]
 
 [[package]]
@@ -3809,9 +3809,9 @@ dependencies = [
 
 [[package]]
 name = "solana-rent"
-version = "4.2.0"
+version = "4.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9809b081e99bc142ce803bcd7ee18306759ce3b30a96a9da3f6f41c45e50ef0"
+checksum = "40f02fbe2669ebe5d851dbf29a02e91ed6244b051bb64fcc57e6644aba636063"
 dependencies = [
  "serde",
  "serde_derive",
@@ -3947,9 +3947,9 @@ dependencies = [
 
 [[package]]
 name = "solana-serialize-utils"
-version = "3.1.1"
+version = "3.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d7cc401931d178472358e6b78dc72d031dc08f752d7410f0e8bd259dd6f02fa"
+checksum = "761357b0853c9623bf12c1d2314b3d6160a85b087b84c45224fb85766d22616b"
 dependencies = [
  "solana-instruction-error",
  "solana-pubkey 4.2.0",
@@ -4025,6 +4025,7 @@ dependencies = [
  "solana-hash",
  "solana-sdk-ids",
  "solana-sysvar-id",
+ "wincode",
 ]
 
 [[package]]
@@ -4072,7 +4073,7 @@ dependencies = [
 [[package]]
 name = "solana-svm-callback"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "solana-account",
  "solana-clock",
@@ -4083,12 +4084,12 @@ dependencies = [
 [[package]]
 name = "solana-svm-feature-set"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 
 [[package]]
 name = "solana-svm-log-collector"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "log",
 ]
@@ -4096,12 +4097,12 @@ dependencies = [
 [[package]]
 name = "solana-svm-measure"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 
 [[package]]
 name = "solana-svm-timings"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "eager",
  "enum-iterator",
@@ -4110,8 +4111,9 @@ dependencies = [
 
 [[package]]
 name = "solana-svm-transaction"
-version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "736d2cec944c6f8f298a7bd8ada5eb318cca9ab859281b1300842fa0e9a25afa"
 dependencies = [
  "solana-hash",
  "solana-message",
@@ -4124,7 +4126,7 @@ dependencies = [
 [[package]]
 name = "solana-svm-type-overrides"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "rand 0.9.4",
 ]
@@ -4132,7 +4134,7 @@ dependencies = [
 [[package]]
 name = "solana-syscalls"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "bincode",
  "libsecp256k1",
@@ -4167,6 +4169,7 @@ dependencies = [
  "solana-sysvar-id",
  "solana-transaction-context",
  "thiserror 2.0.18",
+ "wincode",
 ]
 
 [[package]]
@@ -4188,7 +4191,7 @@ dependencies = [
 [[package]]
 name = "solana-system-program"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "bincode",
  "log",
@@ -4275,7 +4278,7 @@ dependencies = [
 [[package]]
 name = "solana-transaction-context"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "bincode",
  "qualifier_attr",
@@ -4304,7 +4307,7 @@ dependencies = [
 [[package]]
 name = "solana-transaction-status-client-types"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "base64",
  "bincode",
@@ -4326,9 +4329,9 @@ dependencies = [
 
 [[package]]
 name = "solana-vote-interface"
-version = "6.0.0"
+version = "6.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d495cb001d3373229ba523625783e5168707f70a9c38ddc90fbc5b0470d600ea"
+checksum = "1ab4307b353cbfab0ca1666c969f91fd7ca6f592abee2d03f5fa6a32c0e1a42b"
 dependencies = [
  "bincode",
  "cfg_eval",
@@ -4353,7 +4356,7 @@ dependencies = [
 [[package]]
 name = "solana-vote-program"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "agave-feature-set",
  "bincode",
@@ -4405,7 +4408,7 @@ dependencies = [
 [[package]]
 name = "solana-zk-elgamal-proof-program"
 version = "4.2.0-alpha.0"
-source = "git+https://github.com/anza-xyz/agave-runtime.git#d2ac304ffa2d8e9f01ee79a788b7e84eed43e63c"
+source = "git+https://github.com/anza-xyz/agave-runtime.git#93cf470c7a7c43cd7d12097a5196830dd97f8d2b"
 dependencies = [
  "bytemuck",
  "solana-instruction",

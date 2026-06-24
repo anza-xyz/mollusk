@@ -81,7 +81,7 @@ solana-program-option = "3.1.0"
 solana-program-pack = "3.1.0"
 solana-program-runtime = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
 solana-pubkey = "4.2.0"
-solana-rent = { version = "4.2.0", features = ["serde", "sysvar"] }
+solana-rent = { version = "4.2.1", features = ["serde", "sysvar"] }
 solana-sdk-ids = "3.1.0"
 solana-secp256k1-program = "3.0.1"
 solana-secp256r1-program = "3.0.0"
@@ -91,7 +91,6 @@ solana-svm-callback = { version = "4.2.0-alpha.0", git = "https://github.com/anz
 solana-svm-feature-set = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
 solana-svm-log-collector = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
 solana-svm-timings = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
-solana-svm-transaction = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
 solana-syscalls = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
 solana-system-interface = "3.2.0"
 solana-system-program = { version = "4.2.0-alpha.0", git = "https://github.com/anza-xyz/agave-runtime.git" }
