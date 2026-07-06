@@ -16,7 +16,7 @@ use {
     solana_keccak_hasher::Hasher,
     solana_rent::Rent,
     solana_slot_hashes::{SlotHash, SlotHashes},
-    solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
+    solana_stake_history::{StakeHistory, StakeHistoryEntry},
     solana_sysvar::recent_blockhashes::RecentBlockhashes,
 };
 

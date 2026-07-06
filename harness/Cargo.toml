@@ -80,7 +80,7 @@ solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-sdk-ids = { workspace = true }
 solana-slot-hashes = { workspace = true }
-solana-stake-interface = { workspace = true }
+solana-stake-history = { workspace = true }
 solana-svm-callback = { workspace = true, features = ["agave-unstable-api"] }
 solana-svm-feature-set = { workspace = true, features = ["agave-unstable-api"] }
 solana-svm-log-collector = { workspace = true, features = ["agave-unstable-api"] }
