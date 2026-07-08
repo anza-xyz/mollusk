@@ -39,7 +39,6 @@ static BUILTIN_PROGRAM_IDS: &[Pubkey] = &[
     solana_sdk_ids::compute_budget::id(),
     solana_sdk_ids::address_lookup_table::id(),
     solana_sdk_ids::zk_token_proof_program::id(),
-    solana_sdk_ids::loader_v4::id(),
     solana_sdk_ids::zk_elgamal_proof_program::id(),
 ];
 
@@ -143,7 +142,7 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
 
     let compute_budget = ComputeBudget {
         compute_unit_limit: *compute_units_available,
-        ..ComputeBudget::new_with_defaults(true, true)
+        ..ComputeBudget::new_with_defaults(true)
     };
 
     let accounts = accounts

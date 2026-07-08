@@ -30,6 +30,10 @@ pub enum MolluskError<'a> {
     /// Account index exceeds maximum (255).
     #[error("    [MOLLUSK]: Account index exceeds maximum of 255: {0}")]
     AccountIndexOverflow(usize),
+    /// Failed to prepare the transaction's top-level instructions for
+    /// execution.
+    #[error("    [MOLLUSK]: Failed to prepare instructions for execution")]
+    InstructionPreparationFailed,
 }
 
 pub trait MolluskPanic<T> {
