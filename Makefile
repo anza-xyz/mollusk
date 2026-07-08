@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 NIGHTLY_TOOLCHAIN := nightly-2026-04-11
-SOLANA_VERSION := 4.0.0
+SOLANA_VERSION := 4.2.0-beta.0
 
 
 .PHONY: \
@@ -45,6 +45,10 @@ nightly-version:
 # Print the Solana version for CI
 solana-version:
 	@echo $(SOLANA_VERSION)
+
+clean:
+	@cargo clean
+	@cargo clean --manifest-path test-programs/Cargo.toml
 
 format:
 	@cargo +$(NIGHTLY_TOOLCHAIN) fmt --all -- --check
