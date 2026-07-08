@@ -419,6 +419,8 @@ mod tests {
             sysvar_cache.get_slot_hashes().unwrap().deref(),
             &sysvars.slot_hashes
         );
+        // TODO: Once Agave's SysvarCache uses solana-stake-history,
+        //       this can go back to a direct comparison.
         assert_eq!(
             bincode::serialize(sysvar_cache.get_stake_history().unwrap().deref()).unwrap(),
             bincode::serialize(&sysvars.stake_history).unwrap(),

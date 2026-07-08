@@ -1986,7 +1986,7 @@ dependencies = [
  "solana-secp256k1-program",
  "solana-secp256r1-program",
  "solana-slot-hashes",
- "solana-stake-interface",
+ "solana-stake-history",
  "solana-svm-callback",
  "solana-svm-feature-set",
  "solana-svm-log-collector",
@@ -2066,7 +2066,7 @@ dependencies = [
  "solana-pubkey 4.2.0",
  "solana-rent",
  "solana-slot-hashes",
- "solana-stake-interface",
+ "solana-stake-history",
  "solana-sysvar",
 ]
 
