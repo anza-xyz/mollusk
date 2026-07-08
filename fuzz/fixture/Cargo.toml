@@ -25,7 +25,7 @@ solana-keccak-hasher = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-slot-hashes = { workspace = true }
-solana-stake-interface = { workspace = true }
+solana-stake-history = { workspace = true }
 solana-sysvar = { workspace = true }
 
 [build-dependencies]

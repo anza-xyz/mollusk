@@ -11,7 +11,7 @@ use {
     solana_rent::{Rent, DEFAULT_LAMPORTS_PER_BYTE},
     solana_sdk_ids::sysvar::stake_history,
     solana_slot_hashes::{SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
-    solana_stake_interface::stake_history::{StakeHistory, StakeHistoryEntry},
+    solana_stake_history::{StakeHistory, StakeHistoryEntry},
     solana_sysvar::{
         self, last_restart_slot::LastRestartSlot, recent_blockhashes::RecentBlockhashes,
     },
@@ -328,7 +328,7 @@ impl From<&Sysvars> for SysvarCache {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, solana_stake_interface::stake_history::StakeHistoryEntry, std::ops::Deref};
+    use {super::*, solana_stake_history::StakeHistoryEntry, std::ops::Deref};
 
     #[test]
     fn test_warp_to_slot() {
@@ -419,9 +419,11 @@ mod tests {
             sysvar_cache.get_slot_hashes().unwrap().deref(),
             &sysvars.slot_hashes
         );
+        // TODO: Once Agave's SysvarCache uses solana-stake-history,
+        //       this can go back to a direct comparison.
         assert_eq!(
-            sysvar_cache.get_stake_history().unwrap().deref(),
-            &sysvars.stake_history
+            bincode::serialize(sysvar_cache.get_stake_history().unwrap().deref()).unwrap(),
+            bincode::serialize(&sysvars.stake_history).unwrap(),
         );
     }
 }
