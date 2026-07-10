@@ -1,5 +1,5 @@
 SHELL := /usr/bin/env bash
-NIGHTLY_TOOLCHAIN := nightly-2025-10-07
+NIGHTLY_TOOLCHAIN := nightly-2026-04-11
 SOLANA_VERSION := 4.0.0
 
 
