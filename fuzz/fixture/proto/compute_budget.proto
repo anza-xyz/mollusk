@@ -37,8 +37,7 @@ message ComputeBudget {
     reserved 32, 33;
     uint64 alt_bn128_pairing_one_pair_cost_first = 34;
     uint64 alt_bn128_pairing_one_pair_cost_other = 35;
-    uint64 big_modular_exponentiation_base_cost = 36;
-    uint64 big_modular_exponentiation_cost_divisor = 37;
+    reserved 36, 37;
     uint64 poseidon_cost_coefficient_a = 38;
     uint64 poseidon_cost_coefficient_c = 39;
     uint64 get_remaining_compute_units_cost = 40;

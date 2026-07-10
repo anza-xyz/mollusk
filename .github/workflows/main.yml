@@ -2,9 +2,9 @@ name: Main
 
 on:
   push:
-    branches: [main, agave-4.0, agave-4.0-rectify]
+    branches: [main, agave-4.2.0-beta]
   pull_request:
-    branches: [main, agave-4.0, agave-4.0-rectify]
+    branches: [main, agave-4.2.0-beta]
 
 env: {}
 
