@@ -1323,19 +1323,8 @@ impl Mollusk {
 
     /// Process multiple instructions using a single shared transaction context.
     ///
-    /// This is the same as
-    /// [`Self::process_transaction_instructions_with_payer`], but without a
-    /// payer. In this case, the payer is assumed to be the first account in the
-    /// `accounts` slice.
-    pub fn process_transaction_instructions(
-        &self,
-        instructions: &[Instruction],
-        accounts: &[(Pubkey, Account)],
-    ) -> TransactionResult {
-        self.process_transaction_instructions_with_payer(instructions, accounts, None)
-    }
-
-    /// Process multiple instructions using a single shared transaction context.
+    /// When a transaction fee `payer` is not provided, it is assumed to be the
+    /// first account in the `accounts` slice.
     ///
     /// This API is the closest Mollusk offers to a transaction. All
     /// instructions are processed in the same message using the same
@@ -1351,7 +1340,7 @@ impl Mollusk {
     /// * `program_result`: The result code of the last program's execution and
     ///   its index.
     /// * `resulting_accounts`: The resulting accounts after all instructions.
-    pub fn process_transaction_instructions_with_payer(
+    pub fn process_transaction_instructions(
         &self,
         instructions: &[Instruction],
         accounts: &[(Pubkey, Account)],
@@ -1539,7 +1528,7 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         checks: &[Check],
     ) -> TransactionResult {
-        let result = self.process_transaction_instructions(instructions, accounts);
+        let result = self.process_transaction_instructions(instructions, accounts, None);
         result.run_checks(checks, &self.config, self);
         result
     }
@@ -1957,7 +1946,7 @@ impl<AS: AccountStore> MolluskContext<AS> {
         let accounts = self.load_accounts_for_instructions(instructions.iter());
         let result = self
             .mollusk
-            .process_transaction_instructions(instructions, &accounts);
+            .process_transaction_instructions(instructions, &accounts, None);
         self.consume_transaction_result(&result);
         result
     }

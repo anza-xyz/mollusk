@@ -159,6 +159,7 @@ fn test_compute_units_tracked() {
             (sender, system_account_with_lamports(1000)),
             (recipient, system_account_with_lamports(0)),
         ],
+        None,
     );
 
     assert_eq!(result.compute_units_consumed, 150);
@@ -182,6 +183,7 @@ fn test_compute_units_accumulate_across_instructions() {
             (bob, system_account_with_lamports(0)),
             (carol, system_account_with_lamports(0)),
         ],
+        None,
     );
 
     assert_eq!(
@@ -212,6 +214,7 @@ fn test_failure_stops_instruction_chain() {
             (bob, system_account_with_lamports(0)),
             (carol, system_account_with_lamports(0)),
         ],
+        None,
     );
 
     assert!(result.program_result.is_err());
@@ -240,6 +243,7 @@ fn test_missing_signer_fails() {
             (sender, system_account_with_lamports(1_000_000)),
             (recipient, system_account_with_lamports(0)),
         ],
+        None,
     );
 
     assert!(result.program_result.is_err());
@@ -267,7 +271,7 @@ fn test_many_instructions_in_transaction() {
         accounts.push((*recipient, system_account_with_lamports(0)));
     }
 
-    let result = mollusk.process_transaction_instructions(&instructions, &accounts);
+    let result = mollusk.process_transaction_instructions(&instructions, &accounts, None);
 
     assert!(result.program_result.is_ok());
 
@@ -292,7 +296,7 @@ fn test_transfers_with_absent_payer_account() {
     let initial_balance = 1_000;
     let transfer_amount = 100;
 
-    let result = mollusk.process_transaction_instructions_with_payer(
+    let result = mollusk.process_transaction_instructions(
         &[solana_system_interface::instruction::transfer(
             &sender,
             &recipient,
@@ -335,7 +339,7 @@ fn test_transfers_with_existing_payer_account() {
     let initial_balance = 1_000;
     let transfer_amount = 100;
 
-    let result = mollusk.process_transaction_instructions_with_payer(
+    let result = mollusk.process_transaction_instructions(
         &[solana_system_interface::instruction::transfer(
             &payer,
             &recipient,
