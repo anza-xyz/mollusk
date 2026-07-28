@@ -1508,6 +1508,9 @@ impl Mollusk {
     /// Process multiple instructions using a single shared transaction context,
     /// then perform checks on the result. Panics if any checks fail.
     ///
+    /// When a transaction fee `payer` is not provided, it is assumed to be the
+    /// first account in the `accounts` slice.
+    ///
     /// This API is the closest Mollusk offers to a transaction. All
     /// instructions are processed in the same message using the same
     /// transaction context. The result is atomic, meaning resulting accounts
@@ -1527,8 +1530,9 @@ impl Mollusk {
         instructions: &[Instruction],
         accounts: &[(Pubkey, Account)],
         checks: &[Check],
+        payer: Option<&Pubkey>,
     ) -> TransactionResult {
-        let result = self.process_transaction_instructions(instructions, accounts, None);
+        let result = self.process_transaction_instructions(instructions, accounts, payer);
         result.run_checks(checks, &self.config, self);
         result
     }
@@ -1942,11 +1946,12 @@ impl<AS: AccountStore> MolluskContext<AS> {
     pub fn process_transaction_instructions(
         &self,
         instructions: &[Instruction],
+        payer: Option<&Pubkey>,
     ) -> TransactionResult {
         let accounts = self.load_accounts_for_instructions(instructions.iter());
         let result = self
             .mollusk
-            .process_transaction_instructions(instructions, &accounts, None);
+            .process_transaction_instructions(instructions, &accounts, payer);
         self.consume_transaction_result(&result);
         result
     }
@@ -1958,12 +1963,14 @@ impl<AS: AccountStore> MolluskContext<AS> {
         &self,
         instructions: &[Instruction],
         checks: &[Check],
+        payer: Option<&Pubkey>,
     ) -> TransactionResult {
         let accounts = self.load_accounts_for_instructions(instructions.iter());
         let result = self.mollusk.process_and_validate_transaction_instructions(
             instructions,
             &accounts,
             checks,
+            payer,
         );
         self.consume_transaction_result(&result);
         result

@@ -40,6 +40,7 @@ fn test_transfers_with_persisted_state() {
             Check::account(&intermediary).lamports(0).build(),
             Check::account(&recipient).lamports(transfer_amount).build(),
         ],
+        None,
     );
 }
 
@@ -87,6 +88,7 @@ fn test_multi_program_transaction() {
                 .owner(&program_id)
                 .build(),
         ],
+        None,
     );
 }
 
@@ -127,6 +129,7 @@ fn test_inner_instructions_attributed_to_instruction() {
             (recipient, system_account_with_lamports(0)),
             keyed_account_for_system_program(),
         ],
+        None,
     );
 
     assert!(result.raw_result.is_ok());

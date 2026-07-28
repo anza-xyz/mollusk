@@ -185,6 +185,7 @@ fn test_transaction_instructions() {
         &[instruction1, instruction2, instruction3],
         &accounts,
         &[Check::success()],
+        None,
     );
 
     // Verify entries were written for each instruction.
