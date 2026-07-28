@@ -1323,6 +1323,20 @@ impl Mollusk {
 
     /// Process multiple instructions using a single shared transaction context.
     ///
+    /// This is the same as
+    /// [`Self::process_transaction_instructions_with_payer`], but without a
+    /// payer. In this case, the payer is assumed to be the first account in the
+    /// `accounts` slice.
+    pub fn process_transaction_instructions(
+        &self,
+        instructions: &[Instruction],
+        accounts: &[(Pubkey, Account)],
+    ) -> TransactionResult {
+        self.process_transaction_instructions_with_payer(instructions, accounts, None)
+    }
+
+    /// Process multiple instructions using a single shared transaction context.
+    ///
     /// This API is the closest Mollusk offers to a transaction. All
     /// instructions are processed in the same message using the same
     /// transaction context. The result is atomic, meaning resulting accounts
@@ -1337,10 +1351,11 @@ impl Mollusk {
     /// * `program_result`: The result code of the last program's execution and
     ///   its index.
     /// * `resulting_accounts`: The resulting accounts after all instructions.
-    pub fn process_transaction_instructions(
+    pub fn process_transaction_instructions_with_payer(
         &self,
         instructions: &[Instruction],
         accounts: &[(Pubkey, Account)],
+        payer: Option<&Pubkey>,
     ) -> TransactionResult {
         let fallback_accounts = self.get_account_fallbacks(
             instructions.iter().map(|ix| &ix.program_id),
@@ -1348,11 +1363,13 @@ impl Mollusk {
             accounts,
         );
 
-        let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
-            instructions,
-            accounts.iter(),
-            &fallback_accounts,
-        );
+        let (sanitized_message, transaction_accounts) =
+            crate::compile_accounts::compile_accounts_with_payer(
+                instructions,
+                accounts.iter(),
+                &fallback_accounts,
+                payer,
+            );
 
         let mut transaction_context =
             self.create_transaction_context(transaction_accounts, instructions.len());

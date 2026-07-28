@@ -15,10 +15,28 @@ pub fn compile_accounts<'a>(
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
     fallback_accounts: &HashMap<Pubkey, Account>,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
-    let message = Message::new(instructions, None);
+    compile_accounts_with_payer(instructions, accounts, fallback_accounts, None)
+}
+
+pub fn compile_accounts_with_payer<'a>(
+    instructions: &[Instruction],
+    accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
+    fallback_accounts: &HashMap<Pubkey, Account>,
+    payer: Option<&Pubkey>,
+) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
+    let message = Message::new(instructions, payer);
     let sanitized_message = SanitizedMessage::Legacy(LegacyMessage::new(message, &HashSet::new()));
 
-    let accounts: Vec<_> = accounts.collect();
+    let mut accounts: Vec<_> = accounts.collect();
+
+    let payer_account = payer
+        .filter(|payer| !accounts.iter().any(|(key, _)| key == *payer))
+        .map(|payer| (*payer, Account::default()));
+
+    if let Some(payer_account) = payer_account.as_ref() {
+        accounts.insert(0, payer_account);
+    }
+
     let transaction_accounts = build_transaction_accounts(
         &sanitized_message,
         &accounts,

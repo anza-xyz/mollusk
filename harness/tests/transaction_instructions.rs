@@ -281,3 +281,92 @@ fn test_many_instructions_in_transaction() {
         Some(initial_balance - (transfer_amount * 10))
     );
 }
+
+#[test]
+fn test_transfers_with_absent_payer_account() {
+    let mollusk = Mollusk::default();
+
+    let payer = Pubkey::new_unique();
+    let sender = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
+    let initial_balance = 1_000;
+    let transfer_amount = 100;
+
+    let result = mollusk.process_transaction_instructions_with_payer(
+        &[solana_system_interface::instruction::transfer(
+            &sender,
+            &recipient,
+            transfer_amount,
+        )],
+        &[
+            (sender, system_account_with_lamports(initial_balance)),
+            (recipient, system_account_with_lamports(0)),
+        ],
+        Some(&payer),
+    );
+
+    assert!(result.program_result.is_ok());
+
+    assert_eq!(
+        result
+            .resulting_accounts
+            .iter()
+            .find(|(pubkey, _)| pubkey == &sender)
+            .map(|(_, account)| account.lamports),
+        Some(initial_balance - transfer_amount),
+    );
+
+    assert_eq!(
+        result
+            .resulting_accounts
+            .iter()
+            .find(|(pubkey, _)| pubkey == &recipient)
+            .map(|(_, account)| account.lamports),
+        Some(transfer_amount),
+    );
+}
+
+#[test]
+fn test_transfers_with_existing_payer_account() {
+    let mollusk = Mollusk::default();
+
+    let payer = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
+    let initial_balance = 1_000;
+    let transfer_amount = 100;
+
+    let result = mollusk.process_transaction_instructions_with_payer(
+        &[solana_system_interface::instruction::transfer(
+            &payer,
+            &recipient,
+            transfer_amount,
+        )],
+        &[
+            (payer, system_account_with_lamports(initial_balance)),
+            (recipient, system_account_with_lamports(0)),
+        ],
+        Some(&payer),
+    );
+
+    assert!(result.program_result.is_ok());
+    // If the account for the payer is not provided, a default account
+    // will be used for the payer, which will not have enough lamports
+    // to complete the transfer.
+    assert_eq!(
+        result
+            .resulting_accounts
+            .iter()
+            .find(|(pubkey, _)| pubkey == &payer)
+            .map(|(_, account)| account.lamports),
+        Some(initial_balance - transfer_amount),
+    );
+
+    assert_eq!(
+        result
+            .resulting_accounts
+            .iter()
+            .find(|(pubkey, _)| pubkey == &recipient)
+            .map(|(_, account)| account.lamports),
+        Some(transfer_amount),
+    );
+}
