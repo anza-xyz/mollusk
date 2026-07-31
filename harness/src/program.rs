@@ -88,7 +88,7 @@ impl ProgramCache {
         enable_register_tracing: bool,
     ) -> Self {
         let me = Self {
-            cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::default())),
+            cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::new(1))),
             entries_cache: Rc::new(RefCell::new(HashMap::new())),
             program_runtime_environment: create_program_runtime_environment(
                 feature_set,
@@ -175,9 +175,8 @@ impl ProgramCache {
                     loader_key,
                     environment,
                     0,
-                    0,
+                    1,
                     elf,
-                    elf.len(),
                     &mut LoadProgramMetrics::default(),
                 )
                 .unwrap(),
@@ -247,7 +246,6 @@ impl Builtin {
     fn program_cache_entry(&self) -> Arc<ProgramCacheEntry> {
         Arc::new(ProgramCacheEntry::new_builtin(
             0,
-            self.name.len(),
             self.register_fn,
         ))
     }

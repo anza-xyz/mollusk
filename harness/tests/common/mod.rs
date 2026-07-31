@@ -38,9 +38,6 @@ pub fn compare_svm_feature_sets(a: &SVMFeatureSet, b: &SVMFeatureSet) {
         enable_big_mod_exp_syscall,
         enable_get_epoch_stake_syscall,
         enable_poseidon_syscall,
-        enable_sbpf_v1_deployment_and_execution,
-        enable_sbpf_v2_deployment_and_execution,
-        enable_sbpf_v3_deployment_and_execution,
         enable_sha512_syscall,
         get_sysvar_syscall_enabled,
         last_restart_slot_sysvar,
@@ -72,5 +69,6 @@ pub fn compare_svm_feature_sets(a: &SVMFeatureSet, b: &SVMFeatureSet) {
         block_revenue_sharing,
         vote_account_initialize_v2,
         direct_account_pointers_in_program_input,
+        program_runtime_abiv2,
     }
 }
