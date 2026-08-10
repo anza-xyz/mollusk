@@ -2,9 +2,9 @@ name: Main
 
 on:
   push:
-    branches: [main, agave-4.2.0-beta]
+    branches: [main]
   pull_request:
-    branches: [main, agave-4.2.0-beta]
+    branches: [main]
 
 env: {}
 
