@@ -140,9 +140,10 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
         epoch_context,
     } = context;
 
+    let feature_set = epoch_context.feature_set.runtime_features();
     let compute_budget = ComputeBudget {
         compute_unit_limit: *compute_units_available,
-        ..ComputeBudget::new_with_defaults(true)
+        ..ComputeBudget::new_with_defaults(feature_set.raise_cpi_nesting_limit_to_8)
     };
 
     let accounts = accounts
@@ -170,7 +171,7 @@ pub(crate) fn parse_fixture_context(context: &FuzzContext) -> ParsedFixtureConte
     ParsedFixtureContext {
         accounts,
         compute_budget,
-        feature_set: epoch_context.feature_set.runtime_features(),
+        feature_set,
         instruction,
         slot: slot_context.slot,
     }
@@ -300,6 +301,33 @@ pub fn load_firedancer_fixture(
         &fixture.output,
     );
     (parsed, result)
+}
+
+#[test]
+fn test_parse_fixture_context_honors_fixture_feature_set() {
+    // A Firedancer fixture whose feature set does not activate SIMD-0268
+    // (raise_cpi_nesting_limit_to_8) must replay with the instruction stack
+    // depth the real runtime uses for that feature set, not the latest-features
+    // default. This path previously hardcoded the flag to `true`, so a fixture
+    // with the feature inactive replayed with a deeper CPI stack than on-chain.
+    let mut feature_set = SVMFeatureSet::all_enabled();
+    feature_set.raise_cpi_nesting_limit_to_8 = false;
+
+    let instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
+    let context = build_fixture_context(
+        &[],
+        &ComputeBudget::new_with_defaults(true),
+        &feature_set,
+        &instruction,
+        0,
+    );
+    let parsed = parse_fixture_context(&context);
+
+    assert_eq!(
+        parsed.compute_budget.max_instruction_stack_depth,
+        ComputeBudget::new_with_defaults(false).max_instruction_stack_depth,
+    );
+    assert!(!parsed.feature_set.raise_cpi_nesting_limit_to_8);
 }
 
 #[test]
