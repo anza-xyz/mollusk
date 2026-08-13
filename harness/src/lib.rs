@@ -440,6 +440,7 @@
 //! capabilities are provided by the respective fixture crates.
 
 pub mod account_store;
+mod callback;
 mod compile_accounts;
 #[cfg(feature = "sbpf-debugger")]
 pub mod debugger;
@@ -455,16 +456,15 @@ pub mod program;
 pub mod register_tracing;
 pub mod sysvar;
 
+#[cfg(feature = "invocation-inspect-callback")]
+pub use crate::callback::invocation_inspect::*;
 #[cfg(feature = "register-tracing")]
 use crate::register_tracing::DefaultRegisterTracingCallback;
-// Re-export result module from mollusk-svm-result crate
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
 #[cfg(feature = "precompiles")]
 use solana_precompile_error::PrecompileError;
-#[cfg(feature = "invocation-inspect-callback")]
-use solana_transaction_context::instruction_accounts::InstructionAccount;
 use {
     crate::{
         account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
@@ -542,45 +542,6 @@ pub struct Mollusk {
     /// programs comes from the sysvars.
     #[cfg(feature = "fuzz-fd")]
     pub slot: u64,
-}
-
-#[cfg(feature = "invocation-inspect-callback")]
-pub trait InvocationInspectCallback {
-    fn before_invocation(
-        &self,
-        mollusk: &Mollusk,
-        program_id: &Pubkey,
-        instruction_data: &[u8],
-        instruction_accounts: &[InstructionAccount],
-        invoke_context: &mut InvokeContext,
-        register_tracing_enabled: bool,
-    );
-
-    fn after_invocation(
-        &self,
-        mollusk: &Mollusk,
-        invoke_context: &InvokeContext,
-        register_tracing_enabled: bool,
-    );
-}
-
-#[cfg(feature = "invocation-inspect-callback")]
-pub struct EmptyInvocationInspectCallback;
-
-#[cfg(feature = "invocation-inspect-callback")]
-impl InvocationInspectCallback for EmptyInvocationInspectCallback {
-    fn before_invocation(
-        &self,
-        _: &Mollusk,
-        _: &Pubkey,
-        _: &[u8],
-        _: &[InstructionAccount],
-        _: &mut InvokeContext,
-        _register_tracing_enabled: bool,
-    ) {
-    }
-
-    fn after_invocation(&self, _: &Mollusk, _: &InvokeContext, _register_tracing_enabled: bool) {}
 }
 
 impl Default for Mollusk {
