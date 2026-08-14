@@ -440,6 +440,7 @@
 //! capabilities are provided by the respective fixture crates.
 
 pub mod account_store;
+mod callback;
 mod compile_accounts;
 #[cfg(feature = "sbpf-debugger")]
 pub mod debugger;
@@ -450,45 +451,40 @@ pub mod file;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 pub mod fuzz;
 pub mod instructions_sysvar;
+mod message_result;
 pub mod program;
 #[cfg(feature = "register-tracing")]
 pub mod register_tracing;
 pub mod sysvar;
 
+#[cfg(feature = "invocation-inspect-callback")]
+pub use crate::callback::invocation_inspect::*;
 #[cfg(feature = "register-tracing")]
 use crate::register_tracing::DefaultRegisterTracingCallback;
-// Re-export result module from mollusk-svm-result crate
 pub use mollusk_svm_result as result;
 #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
 use mollusk_svm_result::Compare;
-#[cfg(feature = "precompiles")]
-use solana_precompile_error::PrecompileError;
-#[cfg(feature = "invocation-inspect-callback")]
-use solana_transaction_context::instruction_accounts::InstructionAccount;
 use {
     crate::{
-        account_store::AccountStore, epoch_stake::EpochStake, program::ProgramCache,
+        account_store::AccountStore, callback::invoke_context::MolluskInvokeContextCallback,
+        epoch_stake::EpochStake, message_result::MessageResult, program::ProgramCache,
         sysvar::Sysvars,
     },
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{
-        types::{TransactionProgramResult, TransactionResult},
-        Check, CheckContext, Config, InstructionResult,
+        types::TransactionResult, Check, CheckContext, Config, InstructionResult,
     },
     solana_account::{Account, AccountSharedData, ReadableAccount},
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
-    solana_instruction_error::InstructionError,
     solana_message::SanitizedMessage,
-    solana_program_error::ProgramError,
     solana_program_runtime::{
         invoke_context::{EnvironmentConfig, InvokeContext},
         loaded_programs::ProgramRuntimeEnvironments,
         sysvar_cache::SysvarCache,
     },
     solana_pubkey::Pubkey,
-    solana_svm_callback::InvokeContextCallback,
     solana_svm_feature_set::SVMFeatureSet,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
@@ -544,45 +540,6 @@ pub struct Mollusk {
     pub slot: u64,
 }
 
-#[cfg(feature = "invocation-inspect-callback")]
-pub trait InvocationInspectCallback {
-    fn before_invocation(
-        &self,
-        mollusk: &Mollusk,
-        program_id: &Pubkey,
-        instruction_data: &[u8],
-        instruction_accounts: &[InstructionAccount],
-        invoke_context: &mut InvokeContext,
-        register_tracing_enabled: bool,
-    );
-
-    fn after_invocation(
-        &self,
-        mollusk: &Mollusk,
-        invoke_context: &InvokeContext,
-        register_tracing_enabled: bool,
-    );
-}
-
-#[cfg(feature = "invocation-inspect-callback")]
-pub struct EmptyInvocationInspectCallback;
-
-#[cfg(feature = "invocation-inspect-callback")]
-impl InvocationInspectCallback for EmptyInvocationInspectCallback {
-    fn before_invocation(
-        &self,
-        _: &Mollusk,
-        _: &Pubkey,
-        _: &[u8],
-        _: &[InstructionAccount],
-        _: &mut InvokeContext,
-        _register_tracing_enabled: bool,
-    ) {
-    }
-
-    fn after_invocation(&self, _: &Mollusk, _: &InvokeContext, _register_tracing_enabled: bool) {}
-}
-
 impl Default for Mollusk {
     fn default() -> Self {
         let _enable_register_tracing = false;
@@ -600,118 +557,6 @@ impl CheckContext for Mollusk {
     fn is_rent_exempt(&self, lamports: u64, space: usize, owner: Pubkey) -> bool {
         owner.eq(&Pubkey::default()) && lamports == 0
             || self.sysvars.rent.is_exempt(lamports, space)
-    }
-}
-
-struct MolluskInvokeContextCallback<'a> {
-    #[cfg_attr(not(feature = "precompiles"), allow(dead_code))]
-    feature_set: &'a SVMFeatureSet,
-    epoch_stake: &'a EpochStake,
-}
-
-impl InvokeContextCallback for MolluskInvokeContextCallback<'_> {
-    fn get_epoch_stake(&self) -> u64 {
-        self.epoch_stake.values().sum()
-    }
-
-    fn get_epoch_stake_for_vote_account(&self, vote_address: &Pubkey) -> u64 {
-        self.epoch_stake.get(vote_address).copied().unwrap_or(0)
-    }
-
-    #[cfg(feature = "precompiles")]
-    fn is_precompile(&self, program_id: &Pubkey) -> bool {
-        // `agave-precompiles` only gates `secp256r1` behind a feature, and
-        // Mollusk exposes no way to toggle it off, so treat every precompile
-        // as enabled.
-        agave_precompiles::is_precompile(program_id, |_feature_id| true)
-    }
-
-    #[cfg(not(feature = "precompiles"))]
-    fn is_precompile(&self, _program_id: &Pubkey) -> bool {
-        false
-    }
-
-    #[cfg(feature = "precompiles")]
-    fn process_precompile(
-        &self,
-        program_id: &Pubkey,
-        data: &[u8],
-        instruction_datas: Vec<&[u8]>,
-    ) -> Result<(), PrecompileError> {
-        // `agave-precompiles` only gates `secp256r1` behind a feature, and
-        // Mollusk exposes no way to toggle it off, so treat every precompile
-        // as enabled.
-        if let Some(precompile) = agave_precompiles::get_precompile(program_id, |_feature_id| true)
-        {
-            // However, the Agave FeatureSet is still required as an arg here.
-            let feature_set = crate::feature_set::svm_feature_set_to_feature_set(self.feature_set);
-            precompile.verify(data, &instruction_datas, &feature_set)
-        } else {
-            Err(PrecompileError::InvalidPublicKey)
-        }
-    }
-
-    #[cfg(not(feature = "precompiles"))]
-    fn process_precompile(
-        &self,
-        _program_id: &Pubkey,
-        _data: &[u8],
-        _instruction_datas: Vec<&[u8]>,
-    ) -> Result<(), solana_precompile_error::PrecompileError> {
-        panic!("precompiles feature not enabled");
-    }
-}
-
-struct MessageResult {
-    /// The number of compute units consumed by the transaction.
-    pub compute_units_consumed: u64,
-    /// The time taken to execute the transaction, in microseconds.
-    pub execution_time: u64,
-    /// The raw result of the transaction's execution.
-    pub raw_result: Result<(), TransactionError>,
-    /// The return data produced by the transaction, if any.
-    pub return_data: Vec<u8>,
-    /// Inner instructions (CPIs) invoked during the transaction execution.
-    ///
-    /// Each entry represents a cross-program invocation made by the program,
-    /// including the invoked instruction and the stack height at which it
-    /// was called.
-    #[cfg(feature = "inner-instructions")]
-    pub inner_instructions: Vec<Vec<InnerInstruction>>,
-    /// The compiled message used to execute the transaction.
-    ///
-    /// This can be used to map account indices in inner instructions back to
-    /// their corresponding pubkeys via `message.account_keys()`.
-    ///
-    /// This is `None` when the result is loaded from a fuzz fixture, since
-    /// fixtures don't contain the compiled message.
-    #[cfg(feature = "inner-instructions")]
-    pub message: Option<SanitizedMessage>,
-}
-
-impl MessageResult {
-    fn extract_ix_err(txn_err: TransactionError) -> InstructionError {
-        match txn_err {
-            TransactionError::InstructionError(_, ix_err) => ix_err,
-            _ => unreachable!(), // Mollusk only uses `InstructionError` variant.
-        }
-    }
-
-    fn extract_txn_program_result(
-        raw_result: &Result<(), TransactionError>,
-    ) -> TransactionProgramResult {
-        match raw_result {
-            Ok(()) => TransactionProgramResult::Success,
-            Err(TransactionError::InstructionError(idx, ix_err)) => {
-                let index = *idx as usize;
-                if let Ok(program_error) = ProgramError::try_from(ix_err.clone()) {
-                    TransactionProgramResult::Failure(index, program_error)
-                } else {
-                    TransactionProgramResult::UnknownError(index, ix_err.clone())
-                }
-            }
-            _ => unreachable!(), // Mollusk only uses `InstructionError` variant.
-        }
     }
 }
 
