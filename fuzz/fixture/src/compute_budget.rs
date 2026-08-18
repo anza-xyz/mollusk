@@ -64,6 +64,8 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             bls12_381_g2_validate_cost,
             bls12_381_one_pair_cost,
             bls12_381_additional_pair_cost,
+            big_modular_exponentiation_base_cost,
+            big_modular_exponentiation_cost_divisor,
         } = value;
 
         Self {
@@ -104,6 +106,8 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             alt_bn128_g2_multiplication_cost,
             alt_bn128_pairing_one_pair_cost_first,
             alt_bn128_pairing_one_pair_cost_other,
+            big_modular_exponentiation_base_cost,
+            big_modular_exponentiation_cost_divisor,
             poseidon_cost_coefficient_a,
             poseidon_cost_coefficient_c,
             get_remaining_compute_units_cost,
@@ -167,6 +171,8 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             alt_bn128_g2_multiplication_cost,
             alt_bn128_pairing_one_pair_cost_first,
             alt_bn128_pairing_one_pair_cost_other,
+            big_modular_exponentiation_base_cost,
+            big_modular_exponentiation_cost_divisor,
             poseidon_cost_coefficient_a,
             poseidon_cost_coefficient_c,
             get_remaining_compute_units_cost,
@@ -245,6 +251,8 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             bls12_381_g2_validate_cost,
             bls12_381_one_pair_cost,
             bls12_381_additional_pair_cost,
+            big_modular_exponentiation_base_cost,
+            big_modular_exponentiation_cost_divisor,
         }
     }
 }
@@ -366,4 +374,14 @@ pub(crate) fn hash_proto_compute_budget(hasher: &mut Hasher, compute_budget: &Pr
     hasher.hash(&compute_budget.bls12_381_g2_validate_cost.to_le_bytes());
     hasher.hash(&compute_budget.bls12_381_one_pair_cost.to_le_bytes());
     hasher.hash(&compute_budget.bls12_381_additional_pair_cost.to_le_bytes());
+    hasher.hash(
+        &compute_budget
+            .big_modular_exponentiation_base_cost
+            .to_le_bytes(),
+    );
+    hasher.hash(
+        &compute_budget
+            .big_modular_exponentiation_cost_divisor
+            .to_le_bytes(),
+    );
 }

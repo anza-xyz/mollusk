@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
-NIGHTLY_TOOLCHAIN := nightly-2026-04-11
-SOLANA_VERSION := 4.2.0
+NIGHTLY_TOOLCHAIN := nightly-2026-05-23
+SOLANA_VERSION := 4.3.0-beta.0
 
 
 .PHONY: \

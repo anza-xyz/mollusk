@@ -61,4 +61,6 @@ message ComputeBudget {
     uint64 bls12_381_g2_validate_cost = 58;
     uint64 bls12_381_one_pair_cost = 59;
     uint64 bls12_381_additional_pair_cost = 60;
+    uint64 big_modular_exponentiation_base_cost = 61;
+    uint64 big_modular_exponentiation_cost_divisor = 62;
 }
