@@ -7,7 +7,7 @@ use {
     solana_program_runtime::{
         invoke_context::{BuiltinFunctionRegisterer, InvokeContext},
         loaded_programs::{ProgramCacheForTxBatch, ProgramRuntimeEnvironment},
-        program_cache_entry::ProgramCacheEntry,
+        program_cache_entry::{ProgramCacheEntry, DELAY_VISIBILITY_SLOT_OFFSET},
         program_metrics::LoadProgramMetrics,
         solana_sbpf::{
             elf::ElfError,
@@ -88,7 +88,12 @@ impl ProgramCache {
         enable_register_tracing: bool,
     ) -> Self {
         let me = Self {
-            cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::default())),
+            // Programs are deployed at slot 0, and a loaded entry only becomes
+            // effective `DELAY_VISIBILITY_SLOT_OFFSET` slots after deployment.
+            // Execute the batch at that slot so added programs are visible.
+            cache: Rc::new(RefCell::new(ProgramCacheForTxBatch::new(
+                DELAY_VISIBILITY_SLOT_OFFSET,
+            ))),
             entries_cache: Rc::new(RefCell::new(HashMap::new())),
             program_runtime_environment: create_program_runtime_environment(
                 feature_set,
@@ -171,13 +176,11 @@ impl ProgramCache {
         self.replenish(
             *program_id,
             Arc::new(
-                ProgramCacheEntry::new(
+                ProgramCacheEntry::load(
                     loader_key,
                     environment,
                     0,
-                    0,
                     elf,
-                    elf.len(),
                     &mut LoadProgramMetrics::default(),
                 )
                 .unwrap(),
@@ -245,11 +248,7 @@ pub struct Builtin {
 
 impl Builtin {
     fn program_cache_entry(&self) -> Arc<ProgramCacheEntry> {
-        Arc::new(ProgramCacheEntry::new_builtin(
-            0,
-            self.name.len(),
-            self.register_fn,
-        ))
+        Arc::new(ProgramCacheEntry::new_builtin(0, self.register_fn))
     }
 }
 
