@@ -260,6 +260,11 @@ static BUILTINS: &[Builtin] = &[
         register_fn: solana_system_program::system_processor::Entrypoint::register,
     },
     Builtin {
+        program_id: loader_keys::LOADER_V1,
+        name: "solana_bpf_loader_deprecated_program",
+        register_fn: solana_bpf_loader_program::Entrypoint::register,
+    },
+    Builtin {
         program_id: loader_keys::LOADER_V2,
         name: "solana_bpf_loader_program",
         register_fn: solana_bpf_loader_program::Entrypoint::register,
@@ -267,12 +272,6 @@ static BUILTINS: &[Builtin] = &[
     Builtin {
         program_id: loader_keys::LOADER_V3,
         name: "solana_bpf_loader_upgradeable_program",
-        register_fn: solana_bpf_loader_program::Entrypoint::register,
-    },
-    #[cfg(feature = "all-builtins")]
-    Builtin {
-        program_id: loader_keys::LOADER_V1,
-        name: "solana_bpf_loader_deprecated_program",
         register_fn: solana_bpf_loader_program::Entrypoint::register,
     },
     #[cfg(feature = "all-builtins")]
