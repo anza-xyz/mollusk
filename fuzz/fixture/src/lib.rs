@@ -152,4 +152,26 @@ mod tests {
             last_hash = new_hash;
         }
     }
+
+    #[test]
+    fn test_hash_includes_return_data() {
+        let mut fixture = Fixture {
+            input: Context {
+                compute_budget: ComputeBudget::new_with_defaults(false),
+                feature_set: FeatureSet::default(),
+                sysvars: Sysvars::default(),
+                program_id: Pubkey::default(),
+                instruction_accounts: vec![],
+                instruction_data: vec![],
+                accounts: vec![],
+            },
+            output: Effects::default(),
+        };
+
+        let hash_without_return_data = produce_hash(&fixture);
+        fixture.output.return_data = vec![1, 2, 3];
+        let hash_with_return_data = produce_hash(&fixture);
+
+        assert_ne!(hash_without_return_data, hash_with_return_data);
+    }
 }
