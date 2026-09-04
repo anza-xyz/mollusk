@@ -1,22 +1,23 @@
 use {
-    solana_account::Account,
-    solana_instruction::{BorrowedAccountMeta, BorrowedInstruction, Instruction},
-    solana_instructions_sysvar::construct_instructions_data,
-    solana_pubkey::Pubkey,
+    solana_account::Account, solana_instruction::{BorrowedAccountMeta, BorrowedInstruction}, solana_instructions_sysvar::construct_instructions_data, solana_message::SanitizedMessage, solana_pubkey::Pubkey,
 };
 
-pub fn keyed_account<'a>(instructions: impl Iterator<Item = &'a Instruction>) -> (Pubkey, Account) {
+pub fn keyed_account<'a>(message: &SanitizedMessage) -> (Pubkey, Account) {
+    let account_keys = message.account_keys();
     let data = construct_instructions_data(
-        instructions
-            .map(|instruction| BorrowedInstruction {
-                program_id: &instruction.program_id,
+        message.program_instructions_iter()
+            .map(|(program_id, instruction)| BorrowedInstruction {
+                program_id: program_id,
                 accounts: instruction
                     .accounts
                     .iter()
-                    .map(|meta| BorrowedAccountMeta {
-                        pubkey: &meta.pubkey,
-                        is_signer: meta.is_signer,
-                        is_writable: meta.is_writable,
+                    .map(|account_index| {
+                        let account_index = usize::from(*account_index);
+                        BorrowedAccountMeta {
+                            pubkey: account_keys.get(account_index).unwrap(),
+                            is_signer: message.is_signer(account_index),
+                            is_writable: message.is_writable(account_index),
+                        }
                     })
                     .collect(),
                 data: &instruction.data,

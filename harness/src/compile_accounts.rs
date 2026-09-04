@@ -76,11 +76,9 @@ fn build_transaction_accounts(
                 if let Some((_, provided_account)) = accounts.iter().find(|(k, _)| k == key) {
                     return (*key, AccountSharedData::from(provided_account.clone()));
                 }
-                if let Some(fallback) = fallback_accounts.get(key) {
-                    return (*key, AccountSharedData::from(fallback.clone()));
-                }
+                // We will never have a fallback for the Instructions sysvar.
                 let (_, account) =
-                    crate::instructions_sysvar::keyed_account(all_instructions.iter());
+                    crate::instructions_sysvar::keyed_account(message);
                 return (*key, account.into());
             }
 

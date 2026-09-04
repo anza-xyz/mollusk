@@ -709,7 +709,6 @@ impl Mollusk {
     fn get_account_fallbacks<'a>(
         &self,
         all_program_ids: impl Iterator<Item = &'a Pubkey>,
-        all_instructions: impl Iterator<Item = &'a Instruction>,
         accounts: &[(Pubkey, Account)],
     ) -> HashMap<Pubkey, Account> {
         // Use a HashSet for fast lookups.
@@ -731,14 +730,6 @@ impl Mollusk {
                 );
             }
         });
-
-        // Instructions sysvar.
-        if !account_keys.contains(&solana_instructions_sysvar::ID) {
-            // Fallback to the actual implementation of the sysvar.
-            let (ix_sysvar_id, ix_sysvar_acct) =
-                crate::instructions_sysvar::keyed_account(all_instructions);
-            fallbacks.insert(ix_sysvar_id, ix_sysvar_acct);
-        }
 
         fallbacks
     }
@@ -1030,7 +1021,6 @@ impl Mollusk {
     ) -> InstructionResult {
         let fallback_accounts = self.get_account_fallbacks(
             std::iter::once(&instruction.program_id),
-            std::iter::once(instruction),
             accounts,
         );
 
@@ -1142,7 +1132,6 @@ impl Mollusk {
 
         let fallback_accounts = self.get_account_fallbacks(
             instructions.iter().map(|ix| &ix.program_id),
-            instructions.iter(),
             accounts,
         );
 
@@ -1193,7 +1182,6 @@ impl Mollusk {
     ) -> TransactionResult {
         let fallback_accounts = self.get_account_fallbacks(
             instructions.iter().map(|ix| &ix.program_id),
-            instructions.iter(),
             accounts,
         );
 
@@ -1324,7 +1312,6 @@ impl Mollusk {
 
         let fallback_accounts = self.get_account_fallbacks(
             instructions.iter().map(|(ix, _)| &ix.program_id),
-            instructions.iter().map(|(ix, _)| *ix),
             accounts,
         );
 
