@@ -35,17 +35,10 @@ pub fn compile_accounts_with_payer<'a, 'b>(
     let message = Message::new(instructions, payer);
     let sanitized_message = SanitizedMessage::Legacy(LegacyMessage::new(message, &HashSet::new()));
 
-    let mut accounts: Vec<_> = accounts.collect();
+    let accounts: Vec<_> = accounts.collect();
 
-    let fallback_accounts = get_account_fallbacks(all_program_ids, &accounts, get_loader_key);
-
-    let payer_account = payer
-        .filter(|payer| !accounts.iter().any(|(key, _)| key == *payer))
-        .map(|payer| (*payer, Account::default()));
-
-    if let Some(payer_account) = payer_account.as_ref() {
-        accounts.insert(0, payer_account);
-    }
+    let fallback_accounts =
+        get_account_fallbacks(all_program_ids, &accounts, get_loader_key, payer);
 
     let transaction_accounts = build_transaction_accounts(
         &sanitized_message,
@@ -62,6 +55,7 @@ fn get_account_fallbacks<'a>(
     all_program_ids: impl Iterator<Item = &'a Pubkey>,
     accounts: &[&(Pubkey, Account)],
     get_loader_key: impl Fn(&Pubkey) -> Pubkey,
+    payer: Option<&Pubkey>,
 ) -> HashMap<Pubkey, Account> {
     // Use a HashSet for fast lookups.
     let account_keys: HashSet<&Pubkey> = accounts.iter().map(|(key, _)| key).collect();
@@ -82,6 +76,11 @@ fn get_account_fallbacks<'a>(
             );
         }
     });
+
+    // Transaction fee payer.
+    if let Some(payer) = payer.filter(|payer| !account_keys.contains(payer)) {
+        fallbacks.entry(*payer).or_default();
+    }
 
     fallbacks
 }
