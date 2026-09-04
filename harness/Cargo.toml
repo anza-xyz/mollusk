@@ -99,6 +99,7 @@ solana-zk-elgamal-proof-program = { workspace = true, features = ["agave-unstabl
 criterion = { workspace = true }
 ed25519-dalek = { workspace = true }
 libsecp256k1 = { workspace = true }
+mollusk-svm-accounts = { workspace = true }
 openssl = { workspace = true }
 rand0-7 = { workspace = true }
 rayon = { workspace = true }

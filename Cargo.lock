@@ -1915,6 +1915,7 @@ dependencies = [
  "ed25519-dalek 2.1.1",
  "hex",
  "libsecp256k1",
+ "mollusk-svm-accounts",
  "mollusk-svm-error",
  "mollusk-svm-fuzz-fixture",
  "mollusk-svm-fuzz-fixture-firedancer",
@@ -1966,6 +1967,21 @@ dependencies = [
  "solana-transaction-status-client-types",
  "solana-vote-program",
  "solana-zk-elgamal-proof-program",
+]
+
+[[package]]
+name = "mollusk-svm-accounts"
+version = "0.15.1"
+dependencies = [
+ "bincode",
+ "solana-account",
+ "solana-program-option",
+ "solana-program-pack",
+ "solana-pubkey 4.2.0",
+ "solana-rent",
+ "solana-sdk-ids",
+ "solana-stake-interface",
+ "spl-token-interface",
 ]
 
 [[package]]
