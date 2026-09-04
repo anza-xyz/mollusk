@@ -10,24 +10,34 @@ use {
     std::collections::{HashMap, HashSet},
 };
 
-pub fn compile_accounts<'a>(
+pub fn compile_accounts<'a, 'b>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    fallback_accounts: &HashMap<Pubkey, Account>,
+    all_program_ids: impl Iterator<Item = &'b Pubkey>,
+    get_loader_key: impl Fn(&Pubkey) -> Pubkey,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
-    compile_accounts_with_payer(instructions, accounts, fallback_accounts, None)
+    compile_accounts_with_payer(
+        instructions,
+        accounts,
+        all_program_ids,
+        get_loader_key,
+        None,
+    )
 }
 
-pub fn compile_accounts_with_payer<'a>(
+pub fn compile_accounts_with_payer<'a, 'b>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    fallback_accounts: &HashMap<Pubkey, Account>,
+    all_program_ids: impl Iterator<Item = &'b Pubkey>,
+    get_loader_key: impl Fn(&Pubkey) -> Pubkey,
     payer: Option<&Pubkey>,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
     let message = Message::new(instructions, payer);
     let sanitized_message = SanitizedMessage::Legacy(LegacyMessage::new(message, &HashSet::new()));
 
     let mut accounts: Vec<_> = accounts.collect();
+
+    let fallback_accounts = get_account_fallbacks(all_program_ids, &accounts, get_loader_key);
 
     let payer_account = payer
         .filter(|payer| !accounts.iter().any(|(key, _)| key == *payer))
@@ -41,16 +51,16 @@ pub fn compile_accounts_with_payer<'a>(
         &sanitized_message,
         &accounts,
         instructions,
-        fallback_accounts,
+        &fallback_accounts,
     );
 
     (sanitized_message, transaction_accounts)
 }
 
 // Determine the accounts to fallback to during account compilation.
-pub fn get_account_fallbacks<'a>(
+fn get_account_fallbacks<'a>(
     all_program_ids: impl Iterator<Item = &'a Pubkey>,
-    accounts: &[(Pubkey, Account)],
+    accounts: &[&(Pubkey, Account)],
     get_loader_key: impl Fn(&Pubkey) -> Pubkey,
 ) -> HashMap<Pubkey, Account> {
     // Use a HashSet for fast lookups.

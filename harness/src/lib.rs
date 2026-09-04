@@ -491,12 +491,7 @@ use {
     solana_syscalls::create_program_runtime_environment,
     solana_transaction_context::transaction::TransactionContext,
     solana_transaction_error::TransactionError,
-    std::{
-        cell::RefCell,
-        collections::{HashMap, HashSet},
-        iter::once,
-        rc::Rc,
-    },
+    std::{cell::RefCell, collections::HashSet, iter::once, rc::Rc},
 };
 #[cfg(feature = "inner-instructions")]
 use {
@@ -910,17 +905,18 @@ impl Mollusk {
         }
     }
 
-    fn process_instruction_chain_element(
+    fn process_instruction_chain_element<'a>(
         &self,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
-        fallback_accounts: &HashMap<Pubkey, Account>,
+        all_program_ids: impl Iterator<Item = &'a Pubkey>,
         sysvar_cache: &SysvarCache,
     ) -> InstructionResult {
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             std::slice::from_ref(instruction),
             accounts.iter(),
-            fallback_accounts,
+            all_program_ids,
+            |program_id| self.get_loader_key(program_id),
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts, 1);
@@ -990,16 +986,11 @@ impl Mollusk {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let fallback_accounts = crate::compile_accounts::get_account_fallbacks(
-            std::iter::once(&instruction.program_id),
-            accounts,
-            |program_id| self.get_loader_key(program_id),
-        );
-
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             std::slice::from_ref(instruction),
             accounts.iter(),
-            &fallback_accounts,
+            std::iter::once(&instruction.program_id),
+            |program_id| self.get_loader_key(program_id),
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts, 1);
@@ -1102,19 +1093,13 @@ impl Mollusk {
             ..Default::default()
         };
 
-        let fallback_accounts = crate::compile_accounts::get_account_fallbacks(
-            instructions.iter().map(|ix| &ix.program_id),
-            accounts,
-            |program_id| self.get_loader_key(program_id),
-        );
-
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         for instruction in instructions.iter() {
             let this_result = self.process_instruction_chain_element(
                 instruction,
                 &composite_result.resulting_accounts,
-                &fallback_accounts,
+                instructions.iter().map(|ix| &ix.program_id),
                 &sysvar_cache,
             );
 
@@ -1153,17 +1138,12 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         payer: Option<&Pubkey>,
     ) -> TransactionResult {
-        let fallback_accounts = crate::compile_accounts::get_account_fallbacks(
-            instructions.iter().map(|ix| &ix.program_id),
-            accounts,
-            |program_id| self.get_loader_key(program_id),
-        );
-
         let (sanitized_message, transaction_accounts) =
             crate::compile_accounts::compile_accounts_with_payer(
                 instructions,
                 accounts.iter(),
-                &fallback_accounts,
+                instructions.iter().map(|ix| &ix.program_id),
+                |program_id| self.get_loader_key(program_id),
                 payer,
             );
 
@@ -1284,19 +1264,13 @@ impl Mollusk {
             ..Default::default()
         };
 
-        let fallback_accounts = crate::compile_accounts::get_account_fallbacks(
-            instructions.iter().map(|(ix, _)| &ix.program_id),
-            accounts,
-            |program_id| self.get_loader_key(program_id),
-        );
-
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         for (instruction, checks) in instructions.iter() {
             let this_result = self.process_instruction_chain_element(
                 instruction,
                 &composite_result.resulting_accounts,
-                &fallback_accounts,
+                instructions.iter().map(|(ix, _)| &ix.program_id),
                 &sysvar_cache,
             );
 
