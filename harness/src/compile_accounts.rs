@@ -47,6 +47,35 @@ pub fn compile_accounts_with_payer<'a>(
     (sanitized_message, transaction_accounts)
 }
 
+// Determine the accounts to fallback to during account compilation.
+pub fn get_account_fallbacks<'a>(
+    all_program_ids: impl Iterator<Item = &'a Pubkey>,
+    accounts: &[(Pubkey, Account)],
+    get_loader_key: impl Fn(&Pubkey) -> Pubkey,
+) -> HashMap<Pubkey, Account> {
+    // Use a HashSet for fast lookups.
+    let account_keys: HashSet<&Pubkey> = accounts.iter().map(|(key, _)| key).collect();
+
+    let mut fallbacks = HashMap::new();
+
+    // Top-level target programs.
+    all_program_ids.for_each(|program_id| {
+        if !account_keys.contains(program_id) {
+            // Fallback to a stub.
+            fallbacks.insert(
+                *program_id,
+                Account {
+                    owner: get_loader_key(program_id),
+                    executable: true,
+                    ..Default::default()
+                },
+            );
+        }
+    });
+
+    fallbacks
+}
+
 fn build_transaction_accounts(
     message: &SanitizedMessage,
     accounts: &[&(Pubkey, Account)],

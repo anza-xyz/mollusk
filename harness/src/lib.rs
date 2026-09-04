@@ -705,35 +705,6 @@ impl Mollusk {
         }
     }
 
-    // Determine the accounts to fallback to during account compilation.
-    fn get_account_fallbacks<'a>(
-        all_program_ids: impl Iterator<Item = &'a Pubkey>,
-        accounts: &[(Pubkey, Account)],
-        get_loader_key: impl Fn(&Pubkey) -> Pubkey,
-    ) -> HashMap<Pubkey, Account> {
-        // Use a HashSet for fast lookups.
-        let account_keys: HashSet<&Pubkey> = accounts.iter().map(|(key, _)| key).collect();
-
-        let mut fallbacks = HashMap::new();
-
-        // Top-level target programs.
-        all_program_ids.for_each(|program_id| {
-            if !account_keys.contains(program_id) {
-                // Fallback to a stub.
-                fallbacks.insert(
-                    *program_id,
-                    Account {
-                        owner: get_loader_key(program_id),
-                        executable: true,
-                        ..Default::default()
-                    },
-                );
-            }
-        });
-
-        fallbacks
-    }
-
     fn create_transaction_context(
         &self,
         transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
@@ -1019,7 +990,7 @@ impl Mollusk {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let fallback_accounts = Self::get_account_fallbacks(
+        let fallback_accounts = crate::compile_accounts::get_account_fallbacks(
             std::iter::once(&instruction.program_id),
             accounts,
             |program_id| self.get_loader_key(program_id),
@@ -1131,7 +1102,7 @@ impl Mollusk {
             ..Default::default()
         };
 
-        let fallback_accounts = Self::get_account_fallbacks(
+        let fallback_accounts = crate::compile_accounts::get_account_fallbacks(
             instructions.iter().map(|ix| &ix.program_id),
             accounts,
             |program_id| self.get_loader_key(program_id),
@@ -1182,7 +1153,7 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         payer: Option<&Pubkey>,
     ) -> TransactionResult {
-        let fallback_accounts = Self::get_account_fallbacks(
+        let fallback_accounts = crate::compile_accounts::get_account_fallbacks(
             instructions.iter().map(|ix| &ix.program_id),
             accounts,
             |program_id| self.get_loader_key(program_id),
@@ -1313,7 +1284,7 @@ impl Mollusk {
             ..Default::default()
         };
 
-        let fallback_accounts = Self::get_account_fallbacks(
+        let fallback_accounts = crate::compile_accounts::get_account_fallbacks(
             instructions.iter().map(|(ix, _)| &ix.program_id),
             accounts,
             |program_id| self.get_loader_key(program_id),
