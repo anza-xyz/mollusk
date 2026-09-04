@@ -25,7 +25,6 @@ use {
     solana_pubkey::Pubkey,
     solana_svm_feature_set::SVMFeatureSet,
     solana_transaction_context::instruction_accounts::InstructionAccount,
-    std::collections::HashMap,
 };
 
 static BUILTIN_PROGRAM_IDS: &[Pubkey] = &[
@@ -70,22 +69,10 @@ fn build_fixture_context(
         DEFAULT_LOADER_KEY
     };
 
-    let fallbacks: HashMap<Pubkey, Account> = [(
-        instruction.program_id,
-        Account {
-            owner: loader_key,
-            executable: true,
-            ..Default::default()
-        },
-    )]
-    .into_iter()
-    .collect();
-
-    let (sanitized_message, _transaction_accounts) = compile_accounts(
-        std::slice::from_ref(instruction),
-        accounts.iter(),
-        &fallbacks,
-    );
+    let (sanitized_message, _transaction_accounts) =
+        compile_accounts(std::slice::from_ref(instruction), accounts.iter(), |_| {
+            loader_key
+        });
 
     let compiled_ix = sanitized_message.instructions().first().unwrap();
     let instruction_accounts: Vec<InstructionAccount> = compiled_ix

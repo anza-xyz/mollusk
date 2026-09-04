@@ -13,38 +13,70 @@ use {
 pub fn compile_accounts<'a>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    fallback_accounts: &HashMap<Pubkey, Account>,
+    get_loader_key: impl Fn(&Pubkey) -> Pubkey,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
-    compile_accounts_with_payer(instructions, accounts, fallback_accounts, None)
+    compile_accounts_with_payer(instructions, accounts, get_loader_key, None)
 }
 
 pub fn compile_accounts_with_payer<'a>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    fallback_accounts: &HashMap<Pubkey, Account>,
+    get_loader_key: impl Fn(&Pubkey) -> Pubkey,
     payer: Option<&Pubkey>,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
     let message = Message::new(instructions, payer);
     let sanitized_message = SanitizedMessage::Legacy(LegacyMessage::new(message, &HashSet::new()));
 
-    let mut accounts: Vec<_> = accounts.collect();
+    let accounts: Vec<_> = accounts.collect();
 
-    let payer_account = payer
-        .filter(|payer| !accounts.iter().any(|(key, _)| key == *payer))
-        .map(|payer| (*payer, Account::default()));
-
-    if let Some(payer_account) = payer_account.as_ref() {
-        accounts.insert(0, payer_account);
-    }
+    let fallback_accounts =
+        get_account_fallbacks(&sanitized_message, &accounts, get_loader_key, payer);
 
     let transaction_accounts = build_transaction_accounts(
         &sanitized_message,
         &accounts,
         instructions,
-        fallback_accounts,
+        &fallback_accounts,
     );
 
     (sanitized_message, transaction_accounts)
+}
+
+// Determine the accounts to fallback to during account compilation.
+fn get_account_fallbacks(
+    message: &SanitizedMessage,
+    accounts: &[&(Pubkey, Account)],
+    get_loader_key: impl Fn(&Pubkey) -> Pubkey,
+    payer: Option<&Pubkey>,
+) -> HashMap<Pubkey, Account> {
+    // Use a HashSet for fast lookups.
+    let account_keys: HashSet<&Pubkey> = accounts.iter().map(|(key, _)| key).collect();
+
+    let mut fallbacks = HashMap::new();
+
+    // Top-level target programs.
+    message
+        .program_instructions_iter()
+        .for_each(|(program_id, _)| {
+            if !account_keys.contains(program_id) {
+                // Fallback to a stub.
+                fallbacks.insert(
+                    *program_id,
+                    Account {
+                        owner: get_loader_key(program_id),
+                        executable: true,
+                        ..Default::default()
+                    },
+                );
+            }
+        });
+
+    // Transaction fee payer.
+    if let Some(payer) = payer.filter(|payer| !account_keys.contains(payer)) {
+        fallbacks.entry(*payer).or_default();
+    }
+
+    fallbacks
 }
 
 fn build_transaction_accounts(
