@@ -344,8 +344,9 @@ fn test_instruction_chain() {
     let output_lamports = Rent::default().minimum_balance(output_space);
 
     // Account is writable in first Instruction but readonly in second.
-    // This makes the Instructions sysvar correctly report the account as writable in the second Instruction.
-    // When the test program checks the sysvar vs its own flags it should fail.
+    // This makes the Instructions sysvar correctly report the account as writable
+    // in the second Instruction. When the test program checks the sysvar vs its
+    // own flags it should fail.
     let extra_pubkey = Pubkey::new_unique();
     let extra_is_signer = false;
 

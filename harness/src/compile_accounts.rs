@@ -77,8 +77,7 @@ fn build_transaction_accounts(
                     return (*key, AccountSharedData::from(provided_account.clone()));
                 }
                 // We will never have a fallback for the Instructions sysvar.
-                let (_, account) =
-                    crate::instructions_sysvar::keyed_account(message);
+                let (_, account) = crate::instructions_sysvar::keyed_account(message);
                 return (*key, account.into());
             }
 

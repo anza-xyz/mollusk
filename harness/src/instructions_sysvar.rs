@@ -1,13 +1,18 @@
 use {
-    solana_account::Account, solana_instruction::{BorrowedAccountMeta, BorrowedInstruction}, solana_instructions_sysvar::construct_instructions_data, solana_message::SanitizedMessage, solana_pubkey::Pubkey,
+    solana_account::Account,
+    solana_instruction::{BorrowedAccountMeta, BorrowedInstruction},
+    solana_instructions_sysvar::construct_instructions_data,
+    solana_message::SanitizedMessage,
+    solana_pubkey::Pubkey,
 };
 
-pub fn keyed_account<'a>(message: &SanitizedMessage) -> (Pubkey, Account) {
+pub fn keyed_account(message: &SanitizedMessage) -> (Pubkey, Account) {
     let account_keys = message.account_keys();
     let data = construct_instructions_data(
-        message.program_instructions_iter()
+        message
+            .program_instructions_iter()
             .map(|(program_id, instruction)| BorrowedInstruction {
-                program_id: program_id,
+                program_id,
                 accounts: instruction
                     .accounts
                     .iter()
