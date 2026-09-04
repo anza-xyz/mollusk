@@ -709,7 +709,6 @@ impl Mollusk {
     fn get_account_fallbacks<'a>(
         &self,
         all_program_ids: impl Iterator<Item = &'a Pubkey>,
-        all_instructions: impl Iterator<Item = &'a Instruction>,
         accounts: &[(Pubkey, Account)],
     ) -> HashMap<Pubkey, Account> {
         // Use a HashSet for fast lookups.
@@ -731,14 +730,6 @@ impl Mollusk {
                 );
             }
         });
-
-        // Instructions sysvar.
-        if !account_keys.contains(&solana_instructions_sysvar::ID) {
-            // Fallback to the actual implementation of the sysvar.
-            let (ix_sysvar_id, ix_sysvar_acct) =
-                crate::instructions_sysvar::keyed_account(all_instructions);
-            fallbacks.insert(ix_sysvar_id, ix_sysvar_acct);
-        }
 
         fallbacks
     }
@@ -1028,11 +1019,8 @@ impl Mollusk {
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
     ) -> InstructionResult {
-        let fallback_accounts = self.get_account_fallbacks(
-            std::iter::once(&instruction.program_id),
-            std::iter::once(instruction),
-            accounts,
-        );
+        let fallback_accounts =
+            self.get_account_fallbacks(std::iter::once(&instruction.program_id), accounts);
 
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             std::slice::from_ref(instruction),
@@ -1140,11 +1128,8 @@ impl Mollusk {
             ..Default::default()
         };
 
-        let fallback_accounts = self.get_account_fallbacks(
-            instructions.iter().map(|ix| &ix.program_id),
-            instructions.iter(),
-            accounts,
-        );
+        let fallback_accounts =
+            self.get_account_fallbacks(instructions.iter().map(|ix| &ix.program_id), accounts);
 
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
@@ -1191,11 +1176,8 @@ impl Mollusk {
         accounts: &[(Pubkey, Account)],
         payer: Option<&Pubkey>,
     ) -> TransactionResult {
-        let fallback_accounts = self.get_account_fallbacks(
-            instructions.iter().map(|ix| &ix.program_id),
-            instructions.iter(),
-            accounts,
-        );
+        let fallback_accounts =
+            self.get_account_fallbacks(instructions.iter().map(|ix| &ix.program_id), accounts);
 
         let (sanitized_message, transaction_accounts) =
             crate::compile_accounts::compile_accounts_with_payer(
@@ -1322,11 +1304,8 @@ impl Mollusk {
             ..Default::default()
         };
 
-        let fallback_accounts = self.get_account_fallbacks(
-            instructions.iter().map(|(ix, _)| &ix.program_id),
-            instructions.iter().map(|(ix, _)| *ix),
-            accounts,
-        );
+        let fallback_accounts =
+            self.get_account_fallbacks(instructions.iter().map(|(ix, _)| &ix.program_id), accounts);
 
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 

@@ -329,3 +329,81 @@ fn test_override_sysvar_actual() {
     let resulting_ix_sysvar_account = result.get_account(&solana_instructions_sysvar::ID).unwrap();
     assert_eq!(resulting_ix_sysvar_account.data, ix_sysvar_account_data);
 }
+
+#[test]
+fn test_instruction_chain() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+
+    let program_id = Pubkey::new_unique();
+    let mollusk = Mollusk::new(&program_id, "test_program_instructions_sysvar");
+
+    let output_pubkey = Pubkey::new_unique();
+    let output_is_signer = false;
+    let output_is_writable = true;
+    let output_space = ENTRY_SIZE;
+    let output_lamports = Rent::default().minimum_balance(output_space);
+
+    // Account is writable in first Instruction but readonly in second.
+    // This makes the Instructions sysvar correctly report the account as writable
+    // in the second Instruction. When the test program checks the sysvar vs its
+    // own flags it should fail.
+    let extra_pubkey = Pubkey::new_unique();
+    let extra_is_signer = false;
+
+    let build_instruction = |extra_is_writable: bool| -> Instruction {
+        let input_data = [
+            output_is_signer as u8,
+            output_is_writable as u8,
+            extra_is_signer as u8,
+            extra_is_writable as u8,
+        ];
+        Instruction::new_with_bytes(
+            program_id,
+            &input_data,
+            vec![
+                AccountMeta {
+                    pubkey: output_pubkey,
+                    is_signer: output_is_signer,
+                    is_writable: output_is_writable,
+                },
+                AccountMeta {
+                    pubkey: extra_pubkey,
+                    is_signer: extra_is_signer,
+                    is_writable: extra_is_writable,
+                },
+                AccountMeta::new_readonly(solana_instructions_sysvar::ID, false),
+            ],
+        )
+    };
+
+    let instruction1 = build_instruction(true);
+    let instruction2 = build_instruction(false);
+
+    let accounts = [
+        (
+            output_pubkey,
+            Account::new(output_lamports, output_space, &program_id),
+        ),
+        (extra_pubkey, Account::default()),
+    ];
+
+    let result = mollusk.process_and_validate_instruction_chain(
+        &[
+            (&instruction1, &[Check::success()]),
+            (&instruction2, &[Check::success()]),
+        ],
+        &accounts,
+    );
+
+    // Each chain element is its own transaction, so the current index is
+    // always 0. The last write is from the second instruction.
+    let output_account = result.get_account(&output_pubkey).unwrap();
+    let (written_program_id, written_index, executed) = parse_entry(&output_account.data, 0);
+    assert_eq!(written_program_id, program_id);
+    assert_eq!(written_index, 0);
+    assert!(!executed);
+
+    assert!(result
+        .get_account(&solana_instructions_sysvar::ID)
+        .is_none());
+}
