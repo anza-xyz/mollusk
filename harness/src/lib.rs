@@ -905,17 +905,15 @@ impl Mollusk {
         }
     }
 
-    fn process_instruction_chain_element<'a>(
+    fn process_instruction_chain_element(
         &self,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
-        all_program_ids: impl Iterator<Item = &'a Pubkey>,
         sysvar_cache: &SysvarCache,
     ) -> InstructionResult {
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             std::slice::from_ref(instruction),
             accounts.iter(),
-            all_program_ids,
             |program_id| self.get_loader_key(program_id),
         );
 
@@ -989,7 +987,6 @@ impl Mollusk {
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
             std::slice::from_ref(instruction),
             accounts.iter(),
-            std::iter::once(&instruction.program_id),
             |program_id| self.get_loader_key(program_id),
         );
 
@@ -1099,7 +1096,6 @@ impl Mollusk {
             let this_result = self.process_instruction_chain_element(
                 instruction,
                 &composite_result.resulting_accounts,
-                instructions.iter().map(|ix| &ix.program_id),
                 &sysvar_cache,
             );
 
@@ -1142,7 +1138,6 @@ impl Mollusk {
             crate::compile_accounts::compile_accounts_with_payer(
                 instructions,
                 accounts.iter(),
-                instructions.iter().map(|ix| &ix.program_id),
                 |program_id| self.get_loader_key(program_id),
                 payer,
             );
@@ -1270,7 +1265,6 @@ impl Mollusk {
             let this_result = self.process_instruction_chain_element(
                 instruction,
                 &composite_result.resulting_accounts,
-                instructions.iter().map(|(ix, _)| &ix.program_id),
                 &sysvar_cache,
             );
 

@@ -10,25 +10,17 @@ use {
     std::collections::{HashMap, HashSet},
 };
 
-pub fn compile_accounts<'a, 'b>(
+pub fn compile_accounts<'a>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    all_program_ids: impl Iterator<Item = &'b Pubkey>,
     get_loader_key: impl Fn(&Pubkey) -> Pubkey,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
-    compile_accounts_with_payer(
-        instructions,
-        accounts,
-        all_program_ids,
-        get_loader_key,
-        None,
-    )
+    compile_accounts_with_payer(instructions, accounts, get_loader_key, None)
 }
 
-pub fn compile_accounts_with_payer<'a, 'b>(
+pub fn compile_accounts_with_payer<'a>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    all_program_ids: impl Iterator<Item = &'b Pubkey>,
     get_loader_key: impl Fn(&Pubkey) -> Pubkey,
     payer: Option<&Pubkey>,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
@@ -38,7 +30,7 @@ pub fn compile_accounts_with_payer<'a, 'b>(
     let accounts: Vec<_> = accounts.collect();
 
     let fallback_accounts =
-        get_account_fallbacks(all_program_ids, &accounts, get_loader_key, payer);
+        get_account_fallbacks(&sanitized_message, &accounts, get_loader_key, payer);
 
     let transaction_accounts = build_transaction_accounts(
         &sanitized_message,
@@ -51,8 +43,8 @@ pub fn compile_accounts_with_payer<'a, 'b>(
 }
 
 // Determine the accounts to fallback to during account compilation.
-fn get_account_fallbacks<'a>(
-    all_program_ids: impl Iterator<Item = &'a Pubkey>,
+fn get_account_fallbacks(
+    message: &SanitizedMessage,
     accounts: &[&(Pubkey, Account)],
     get_loader_key: impl Fn(&Pubkey) -> Pubkey,
     payer: Option<&Pubkey>,
@@ -63,19 +55,21 @@ fn get_account_fallbacks<'a>(
     let mut fallbacks = HashMap::new();
 
     // Top-level target programs.
-    all_program_ids.for_each(|program_id| {
-        if !account_keys.contains(program_id) {
-            // Fallback to a stub.
-            fallbacks.insert(
-                *program_id,
-                Account {
-                    owner: get_loader_key(program_id),
-                    executable: true,
-                    ..Default::default()
-                },
-            );
-        }
-    });
+    message
+        .program_instructions_iter()
+        .for_each(|(program_id, _)| {
+            if !account_keys.contains(program_id) {
+                // Fallback to a stub.
+                fallbacks.insert(
+                    *program_id,
+                    Account {
+                        owner: get_loader_key(program_id),
+                        executable: true,
+                        ..Default::default()
+                    },
+                );
+            }
+        });
 
     // Transaction fee payer.
     if let Some(payer) = payer.filter(|payer| !account_keys.contains(payer)) {

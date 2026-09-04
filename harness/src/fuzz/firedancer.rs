@@ -69,12 +69,10 @@ fn build_fixture_context(
         DEFAULT_LOADER_KEY
     };
 
-    let (sanitized_message, _transaction_accounts) = compile_accounts(
-        std::slice::from_ref(instruction),
-        accounts.iter(),
-        std::iter::once(&instruction.program_id),
-        |_| loader_key,
-    );
+    let (sanitized_message, _transaction_accounts) =
+        compile_accounts(std::slice::from_ref(instruction), accounts.iter(), |_| {
+            loader_key
+        });
 
     let compiled_ix = sanitized_message.instructions().first().unwrap();
     let instruction_accounts: Vec<InstructionAccount> = compiled_ix
