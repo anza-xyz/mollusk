@@ -13,11 +13,11 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Get nightly toolchain version
         id: nightly
         run: echo "version=$(make nightly-version)" >> $GITHUB_OUTPUT
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0  # master
         with:
           toolchain: ${{ steps.nightly.outputs.version }}
           components: rustfmt
@@ -30,8 +30,8 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -44,7 +44,7 @@ jobs:
       - name: Get nightly toolchain version
         id: nightly
         run: echo "version=$(make nightly-version)" >> $GITHUB_OUTPUT
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0  # master
         with:
           toolchain: ${{ steps.nightly.outputs.version }}
           components: clippy
@@ -57,8 +57,8 @@ jobs:
     name: Check Features
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -68,8 +68,8 @@ jobs:
             cargo-hack-
       - name: Install protoc
         run: sudo apt-get install -y protobuf-compiler
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@v2.85.13
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+      - uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1  # v2.85.13
         with:
           tool: cargo-hack
       - name: Check all feature combinations
@@ -79,8 +79,8 @@ jobs:
     name: Cargo Build and Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -93,7 +93,7 @@ jobs:
       - name: Get Solana version
         id: solana
         run: echo "version=$(make solana-version)" >> $GITHUB_OUTPUT
-      - uses: metaplex-foundation/actions/install-solana@v1
+      - uses: metaplex-foundation/actions/install-solana@2389940047edc63a5781911f6a53fbdf784748d8  # v1.0.4
         with:
           cache: true
           version: ${{ steps.solana.outputs.version }}
@@ -106,8 +106,8 @@ jobs:
     name: Audit Rust
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -115,7 +115,7 @@ jobs:
           key: cargo-audit-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-audit-
-      - uses: taiki-e/install-action@v2.85.13
+      - uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1  # v2.85.13
         with:
           tool: cargo-audit
       - name: Run cargo-audit
