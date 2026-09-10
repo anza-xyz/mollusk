@@ -1,0 +1,21 @@
+[package]
+name = "mollusk-svm-accounts"
+description = "Account setup helpers for the Mollusk SVM harness."
+documentation = "https://docs.rs/mollusk-svm-accounts"
+authors = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+license-file ={ workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+bincode = { workspace = true }
+solana-account = { workspace = true }
+solana-program-option = { workspace = true }
+solana-program-pack = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-rent = { workspace = true }
+solana-sdk-ids = { workspace = true }
+solana-stake-interface = { workspace = true }
+spl-token-interface = { workspace = true }

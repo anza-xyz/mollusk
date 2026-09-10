@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "accounts",
     "bencher",
     "cli",
     "error",
@@ -31,6 +32,7 @@ hex = "0.4.3"
 ed25519-dalek = "=2.1.1"
 libsecp256k1 = "0.7.2"
 mollusk-svm = { path = "harness", version = "0.15.1" }
+mollusk-svm-accounts = { path = "accounts", version = "0.15.1" }
 mollusk-svm-bencher = { path = "bencher", version = "0.15.1" }
 mollusk-svm-cli = { path = "cli", version = "0.15.1" }
 mollusk-svm-error = { path = "error", version = "0.15.1" }
@@ -87,6 +89,7 @@ solana-secp256k1-program = "3.0.1"
 solana-secp256r1-program = "3.0.0"
 solana-slot-hashes = "3.0.1"
 solana-stake-history = "1.0.0"
+solana-stake-interface = { version = "4.3.0", features = ["serde"] }
 solana-svm-callback = "4.2.0"
 solana-svm-feature-set = "4.2.0"
 solana-svm-log-collector = "4.2.0"
