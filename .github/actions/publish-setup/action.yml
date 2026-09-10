@@ -12,7 +12,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/cache@v5
+    - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
       with:
         path: |
           ~/.cargo/registry
@@ -28,7 +28,7 @@ runs:
       id: nightly
       shell: bash
       run: echo "version=$(make nightly-version)" >> "$GITHUB_OUTPUT"
-    - uses: dtolnay/rust-toolchain@master
+    - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0  # master
       if: inputs.nightly == 'true'
       with:
         toolchain: ${{ steps.nightly.outputs.version }}
@@ -37,12 +37,12 @@ runs:
       id: solana
       shell: bash
       run: echo "version=$(make solana-version)" >> "$GITHUB_OUTPUT"
-    - uses: metaplex-foundation/actions/install-solana@v1
+    - uses: metaplex-foundation/actions/install-solana@2389940047edc63a5781911f6a53fbdf784748d8  # v1.0.4
       with:
         cache: true
         version: ${{ steps.solana.outputs.version }}
     - name: Install cargo-hack
       if: inputs.cargo-hack == 'true'
-      uses: taiki-e/install-action@v2
+      uses: taiki-e/install-action@c3ec0de9ae7f1019cea21aa96aa0a895b9552063  # v2.87.9
       with:
         tool: cargo-hack
