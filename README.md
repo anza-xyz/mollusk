@@ -25,6 +25,7 @@ a handful of helpers.
 
 - [Single Instructions](#single-instructions)
 - [Instruction Chains](#instruction-chains)
+- [Account Setup Helpers](#account-setup-helpers)
 - [Stateful Testing with MolluskContext](#stateful-testing-with-molluskcontext)
 - [Benchmarking Compute Units](#benchmarking-compute-units)
 - [Fixtures](#fixtures)
@@ -271,6 +272,81 @@ constraints on instruction chains, such as loaded account keys or size.
 Developers should recognize that instruction chains are primarily used for
 testing program execution.
 
+## Account Setup Helpers
+
+Because the harness has nowhere to load accounts from, every test has to hand
+it an explicit list. Spelling those out as raw `(Pubkey, Account)` tuples means
+packing state by hand and looking up rent-exempt minimums.
+
+`mollusk-svm-account` offers a builder for each of the common account types,
+which converts into the pair the harness expects:
+
+```rust
+use {
+    mollusk_svm_account::{Mint, Stake, System, TokenAccount},
+    solana_account::Account,
+    solana_pubkey::Pubkey,
+};
+
+let accounts: Vec<(Pubkey, Account)> = vec![
+    // A wallet holding 10 SOL, and an empty one.
+    System::new(alice).lamports(10_000_000_000).into(),
+    System::new(bob).into(),
+    // A mint with 9 decimals and a billion base units in supply.
+    Mint::initialized(mint)
+        .decimals(9)
+        .supply(1_000_000_000)
+        .mint_authority(alice)
+        .into(),
+    // Alice's token account for that mint.
+    TokenAccount::initialized(alice_token_account)
+        .mint(mint)
+        .owner(alice)
+        .balance(1_000)
+        .into(),
+    // ...and 5 SOL of active stake, delegated to a vote account.
+    Stake::initialized(alice_stake_account)
+        .staker(alice)
+        .withdrawer(alice)
+        .delegated_to(vote_account)
+        .stake(5_000_000_000)
+        .into(),
+];
+
+mollusk.process_and_validate_instruction(&instruction, &accounts, &[Check::success()]);
+```
+
+Balances default to the rent-exempt minimum, resolved against the account's
+final data length at conversion time. `lamports` overrides with an exact value.
+
+Each helper also takes the SDK's own state type through `new` (`Mint`,
+`StakeStateV2`, and so on), for anything the builder methods don't reach.
+
+### Your Own Program State
+
+For state the crate knows nothing about, implement `AccountState` on it and
+hand it to `account`, which sizes the data, funds it to the rent-exempt
+minimum, and sets the owner:
+
+```rust
+use mollusk_svm_account::{account, AccountState};
+
+#[derive(wincode::SchemaWrite)]
+struct Counter {
+    count: u64,
+}
+
+impl AccountState for Counter {
+    fn encode(&self) -> Vec<u8> {
+        wincode::serialize(self).unwrap()
+    }
+
+    fn owner() -> Pubkey {
+        MY_PROGRAM_ID
+    }
+}
+
+let account = account(&Counter { count: 42 });
 ## Mollusk Config
 
 `Mollusk::config` controls how results are validated. It has three fields.
@@ -289,6 +365,8 @@ rent state the runtime would reject.
 ```rust
 let mut mollusk = Mollusk::default();
 mollusk.config.rent_exempt_checks = false;
+```
+
 ```
 
 ## Stateful Testing with MolluskContext

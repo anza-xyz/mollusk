@@ -100,6 +100,7 @@ solana-zk-elgamal-proof-program = { workspace = true, features = ["agave-unstabl
 criterion = { workspace = true }
 ed25519-dalek = { workspace = true }
 libsecp256k1 = { workspace = true }
+mollusk-svm-account = { workspace = true }
 openssl = { workspace = true }
 rand0-7 = { workspace = true }
 rayon = { workspace = true }
@@ -109,6 +110,7 @@ solana-native-token = { workspace = true }
 solana-secp256k1-program = { workspace = true, features = ["bincode"] }
 solana-secp256r1-program = { workspace = true }
 solana-system-interface = { workspace = true }
+wincode = { workspace = true, features = ["derive"] }
 
 [[bench]]
 name = "ips"
