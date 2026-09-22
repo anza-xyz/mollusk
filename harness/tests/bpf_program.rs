@@ -1,14 +1,13 @@
 use {
     mollusk_svm::{
         program::{create_program_account_loader_v3, keyed_account_for_system_program},
-        result::{Check, CheckContext},
+        result::Check,
         Mollusk,
     },
     solana_account::Account,
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
-    solana_rent::Rent,
     solana_system_interface::error::SystemError,
 };
 
@@ -159,53 +158,7 @@ fn test_transfer() {
             Check::account(&recipient)
                 .lamports(recipient_lamports + transfer_amount)
                 .build(),
-            Check::all_rent_exempt(),
         ],
-    );
-}
-
-#[test]
-#[should_panic(
-    expected = "Account 4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi is not rent exempt after \
-                execution (lamports: 1, data_len: 0)"
-)]
-fn test_non_rent_exempt_transfer() {
-    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
-
-    let program_id = Pubkey::new_unique();
-
-    let mollusk = Mollusk::new(&program_id, "test_program_primary");
-
-    let payer = Pubkey::new_unique();
-    let payer_lamports = 100_000_000;
-    let payer_account = Account::new(payer_lamports, 0, &solana_sdk_ids::system_program::id());
-
-    // Use deterministic address for explicit panic matching
-    let recipient = Pubkey::new_from_array([0x01; 32]);
-
-    let instruction_non_rent_exempt = {
-        let mut instruction_data = vec![2];
-        instruction_data.extend_from_slice(&1u64.to_le_bytes());
-        Instruction::new_with_bytes(
-            program_id,
-            &instruction_data,
-            vec![
-                AccountMeta::new(payer, true),
-                AccountMeta::new(recipient, false),
-                AccountMeta::new_readonly(solana_sdk_ids::system_program::id(), false),
-            ],
-        )
-    };
-
-    // Fail non-rent-exempt account.
-    mollusk.process_and_validate_instruction(
-        &instruction_non_rent_exempt,
-        &[
-            (payer, payer_account.clone()),
-            (recipient, Account::default()),
-            keyed_account_for_system_program(),
-        ],
-        &[Check::all_rent_exempt()],
     );
 }
 
@@ -626,62 +579,4 @@ fn test_account_dedupe() {
             &[Check::success()],
         );
     }
-}
-
-#[test]
-fn test_account_checks_rent_exemption() {
-    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
-
-    let program_id = Pubkey::new_unique();
-
-    let mut mollusk = Mollusk::new(&program_id, "test_program_primary");
-    mollusk.config.panic = false; // Don't panic, so we can evaluate failing checks.
-
-    let key = Pubkey::new_unique();
-
-    let data_len = 8;
-    let data = vec![4; data_len];
-
-    let rent_exempt_lamports = mollusk.sysvars.rent.minimum_balance(data_len);
-    let not_rent_exempt_lamports = rent_exempt_lamports - 1;
-
-    struct TestCheckContext<'a> {
-        rent: &'a Rent,
-    }
-
-    impl CheckContext for TestCheckContext<'_> {
-        fn is_rent_exempt(&self, lamports: u64, space: usize, owner: Pubkey) -> bool {
-            owner.eq(&Pubkey::default()) && lamports == 0 || self.rent.is_exempt(lamports, space)
-        }
-    }
-
-    let get_result = |lamports: u64| {
-        mollusk
-            .process_and_validate_instruction(
-                &Instruction::new_with_bytes(
-                    program_id,
-                    &{
-                        let mut instruction_data = vec![1]; // `WriteData`
-                        instruction_data.extend_from_slice(&data);
-                        instruction_data
-                    },
-                    vec![AccountMeta::new(key, true)],
-                ),
-                &[(key, Account::new(lamports, data_len, &program_id))],
-                &[Check::success()], // It should still pass.
-            )
-            .run_checks(
-                &[Check::account(&key).rent_exempt().build()],
-                &mollusk.config,
-                &TestCheckContext {
-                    rent: &mollusk.sysvars.rent,
-                },
-            )
-    };
-
-    // Fail not rent exempt.
-    assert!(!get_result(not_rent_exempt_lamports));
-
-    // Success rent exempt.
-    assert!(get_result(rent_exempt_lamports));
 }

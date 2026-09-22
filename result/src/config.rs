@@ -1,10 +1,13 @@
 //! Configuration and context for result validation.
 
-use {solana_pubkey::Pubkey, solana_rent::Rent};
-
 pub struct Config {
+    /// Panic on harness error. If disabled, checks return a result instead.
     pub panic: bool,
+    /// Enable verbose output for checks.
     pub verbose: bool,
+    /// Assert that no account is left in a rent state the runtime would reject
+    /// with `InsufficientFundsForRent`.
+    pub rent_exempt_checks: bool,
 }
 
 impl Default for Config {
@@ -12,20 +15,8 @@ impl Default for Config {
         Self {
             panic: true,
             verbose: false,
+            rent_exempt_checks: true,
         }
-    }
-}
-
-/// A trait for providing context to the checks.
-///
-/// Developers who run checks on standalone results, rather than passing checks
-/// directly to methods like `Mollusk::process_and_validate_instruction`, may
-/// wish to customize the context in which the checks are run. For example,
-/// one may wish to evaluate resulting account lamports with a custom `Rent`
-/// configuration. This trait allows such customization.
-pub trait CheckContext {
-    fn is_rent_exempt(&self, lamports: u64, space: usize, owner: Pubkey) -> bool {
-        owner.eq(&Pubkey::default()) && lamports == 0 || Rent::default().is_exempt(lamports, space)
     }
 }
 
