@@ -71,5 +71,6 @@ pub(crate) fn hash_proto_effects(hasher: &mut Hasher, effects: &ProtoEffects) {
     hasher.hash(&effects.compute_units_consumed.to_le_bytes());
     hasher.hash(&effects.execution_time.to_le_bytes());
     hasher.hash(&effects.program_result.to_le_bytes());
+    hasher.hash(&effects.return_data);
     crate::account::hash_proto_accounts(hasher, &effects.resulting_accounts);
 }
