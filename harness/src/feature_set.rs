@@ -40,6 +40,7 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
         last_restart_slot_sysvar,
         loader_v3_minimum_extend_program_size,
         reenable_sbpf_v0_execution,
+        relax_fee_payer_constraint,
         relax_post_exec_min_balance_check,
         remaining_compute_units_syscall_enabled,
         remove_bpf_loader_incorrect_program_id,
