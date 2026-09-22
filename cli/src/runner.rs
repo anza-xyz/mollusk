@@ -127,7 +127,7 @@ impl Runner {
             if self.verbose {
                 println!("[GROUND]: Result:");
                 println!();
-                println!("{:?}", &ground_result);
+                println!("{:?}", ground_result);
                 println!();
             }
 
@@ -154,7 +154,7 @@ impl Runner {
         // All commands have a target.
 
         if self.verbose {
-            println!("[TARGET]: FIX: {}", &fixture_path);
+            println!("[TARGET]: FIX: {}", fixture_path);
         }
 
         if self.program_logs {
@@ -181,7 +181,7 @@ impl Runner {
         if self.verbose {
             println!("[TARGET]: Result:");
             println!();
-            println!("{:?}", &target_result);
+            println!("{:?}", target_result);
             println!();
         }
 
@@ -224,9 +224,9 @@ impl Runner {
         }
 
         if pass {
-            println!("PASS: {}", &fixture_path);
+            println!("PASS: {}", fixture_path);
         } else {
-            println!("FAIL: {}", &fixture_path);
+            println!("FAIL: {}", fixture_path);
         }
 
         if self.verbose {

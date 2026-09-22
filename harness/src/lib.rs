@@ -504,6 +504,7 @@ use {
     solana_transaction_status_client_types::InnerInstruction,
 };
 
+const DEFAULT_CLOCK_SLOT: u64 = 1;
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
 
 /// The Mollusk API, providing a simple interface for testing Solana programs.
@@ -584,6 +585,9 @@ impl Mollusk {
         let program_cache =
             ProgramCache::new(&feature_set, &compute_budget, enable_register_tracing);
 
+        let mut sysvars = Sysvars::default();
+        sysvars.clock.slot = DEFAULT_CLOCK_SLOT;
+
         #[allow(unused_mut)]
         let mut me = Self {
             config: Config::default(),
@@ -592,7 +596,7 @@ impl Mollusk {
             feature_set,
             logger: None,
             program_cache,
-            sysvars: Sysvars::default(),
+            sysvars,
 
             #[cfg(feature = "invocation-inspect-callback")]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
@@ -601,7 +605,7 @@ impl Mollusk {
             enable_register_tracing,
 
             #[cfg(feature = "fuzz-fd")]
-            slot: 0,
+            slot: DEFAULT_CLOCK_SLOT,
         };
 
         #[cfg(feature = "register-tracing")]
