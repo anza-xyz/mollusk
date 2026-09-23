@@ -6,6 +6,7 @@ use {
         Mollusk,
     },
     solana_account::Account,
+    solana_instruction::{AccountMeta, Instruction},
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
     solana_rent::Rent,
@@ -161,5 +162,44 @@ fn test_rent_checks_apply_per_chain_element() {
     Mollusk::default().process_and_validate_instruction_chain(
         &[(&instruction_one, checks), (&instruction_two, checks)],
         &accounts,
+    );
+}
+
+#[test]
+fn test_draining_rent_exempt_account_with_data_passes() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+
+    let program_id = Pubkey::new_unique();
+    let mollusk = Mollusk::new(&program_id, "test_program_primary");
+
+    let source = Pubkey::new_unique();
+    let destination = Pubkey::new_unique();
+
+    let data_len = 100;
+    let source_lamports = mollusk.sysvars.rent.minimum_balance(data_len);
+    let destination_lamports = exempt_minimum();
+
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &[6],
+        vec![
+            AccountMeta::new(source, false),
+            AccountMeta::new(destination, false),
+        ],
+    );
+
+    mollusk.process_and_validate_instruction(
+        &instruction,
+        &[
+            (source, Account::new(source_lamports, data_len, &program_id)),
+            (destination, system_account(destination_lamports)),
+        ],
+        &[
+            Check::success(),
+            Check::account(&source).lamports(0).space(data_len).build(),
+            Check::account(&destination)
+                .lamports(destination_lamports + source_lamports)
+                .build(),
+        ],
     );
 }

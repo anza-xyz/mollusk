@@ -329,7 +329,7 @@ fn test_cpi() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2127),
+            Check::compute_units(2130),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
