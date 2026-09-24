@@ -115,6 +115,19 @@ fn process_instruction(
                 return Err(ProgramError::MissingRequiredSignature);
             }
         }
+        Some((6, _)) => {
+            // Move all lamports from the first account to the second, leaving
+            // the first account's data intact.
+            let source_info = next_account_info(accounts_iter)?;
+            let destination_info = next_account_info(accounts_iter)?;
+
+            let lamports = source_info.lamports();
+            **destination_info.try_borrow_mut_lamports()? = destination_info
+                .lamports()
+                .checked_add(lamports)
+                .ok_or(ProgramError::ArithmeticOverflow)?;
+            **source_info.try_borrow_mut_lamports()? = 0;
+        }
         _ => return Err(ProgramError::InvalidInstructionData),
     }
 

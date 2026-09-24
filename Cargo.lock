@@ -2011,6 +2011,7 @@ dependencies = [
  "solana-secp256r1-program",
  "solana-slot-hashes",
  "solana-stake-history",
+ "solana-svm",
  "solana-svm-callback",
  "solana-svm-feature-set",
  "solana-svm-log-collector",
@@ -3685,6 +3686,18 @@ dependencies = [
  "solana-instruction 3.5.1",
  "solana-pubkey 4.3.0",
  "solana-sdk-ids",
+ "solana-system-interface",
+]
+
+[[package]]
+name = "solana-loader-v4-interface"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4c948b33ff81fa89699911b207059e493defdba9647eaf18f23abdf3674e0fb"
+dependencies = [
+ "solana-instruction 3.5.1",
+ "solana-pubkey 3.0.0",
+ "solana-sdk-ids",
 ]
 
 [[package]]
@@ -4176,6 +4189,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-svm"
+version = "4.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87a0a836cbd5de0e6bc17f5b85d2da7fd2589082c2ad49bd1e696464c2c4bd51"
+dependencies = [
+ "ahash",
+ "bincode",
+ "log",
+ "serde",
+ "solana-account",
+ "solana-bpf-loader-program",
+ "solana-clock 3.2.1",
+ "solana-fee-structure",
+ "solana-hash",
+ "solana-instruction 3.5.1",
+ "solana-instructions-sysvar 4.0.0",
+ "solana-loader-v3-interface",
+ "solana-loader-v4-interface",
+ "solana-message",
+ "solana-nonce",
+ "solana-nonce-account",
+ "solana-program-entrypoint",
+ "solana-program-pack",
+ "solana-program-runtime",
+ "solana-pubkey 4.3.0",
+ "solana-rent",
+ "solana-sdk-ids",
+ "solana-svm-callback",
+ "solana-svm-feature-set",
+ "solana-svm-log-collector",
+ "solana-svm-measure",
+ "solana-svm-timings",
+ "solana-svm-transaction",
+ "solana-svm-type-overrides",
+ "solana-system-interface",
+ "solana-sysvar-id",
+ "solana-transaction-context",
+ "solana-transaction-error",
+ "spl-generic-token",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "solana-svm-callback"
 version = "4.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4649,6 +4705,16 @@ dependencies = [
  "sha2 0.10.9",
  "syn 2.0.117",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "spl-generic-token"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "233df81b75ab99b42f002b5cdd6e65a7505ffa930624f7096a7580a56765e9cf"
+dependencies = [
+ "bytemuck",
+ "solana-pubkey 3.0.0",
 ]
 
 [[package]]

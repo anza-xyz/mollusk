@@ -133,6 +133,9 @@ pub enum TransactionProgramResult {
     Failure(usize, ProgramError),
     /// Mollusk encountered an error while executing the program.
     UnknownError(usize, InstructionError),
+    /// The runtime rejected the transaction itself, rather than any one
+    /// instruction within it.
+    TransactionError(TransactionError),
 }
 
 impl TransactionProgramResult {
