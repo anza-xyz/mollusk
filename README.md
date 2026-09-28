@@ -271,6 +271,26 @@ constraints on instruction chains, such as loaded account keys or size.
 Developers should recognize that instruction chains are primarily used for
 testing program execution.
 
+## Mollusk Config
+
+`Mollusk::config` controls how results are validated. It has three fields.
+
+`panic` (default `true`) decides what a failed check does. When `true`, the
+check panics, which is what you want from a test. Set it to `false` and checks
+report instead, returning normally so you can inspect the result yourself.
+
+`verbose` (default `false`) prints the details of failed checks when `panic` is
+`false`. It has no effect while checks are panicking, since the panic already
+carries the message.
+
+`rent_exempt_checks` (default `true`) asserts that no account was left in a
+rent state the runtime would reject.
+
+```rust
+let mut mollusk = Mollusk::default();
+mollusk.config.rent_exempt_checks = false;
+```
+
 ## Stateful Testing with MolluskContext
 
 For complex testing scenarios involving multiple instructions or persistent

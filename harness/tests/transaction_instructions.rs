@@ -3,10 +3,15 @@ use {
     solana_account::Account,
     solana_instruction::{AccountMeta, Instruction},
     solana_pubkey::Pubkey,
+    solana_rent::Rent,
 };
 
 fn system_account_with_lamports(lamports: u64) -> Account {
     Account::new(lamports, 0, &solana_sdk_ids::system_program::id())
+}
+
+fn exempt_minimum() -> u64 {
+    Rent::default().minimum_balance(0)
 }
 
 #[test]
@@ -156,10 +161,12 @@ fn test_compute_units_tracked() {
 
     let result = mollusk.process_transaction_instructions(
         &[solana_system_interface::instruction::transfer(
-            &sender, &recipient, 100,
+            &sender,
+            &recipient,
+            exempt_minimum(),
         )],
         &[
-            (sender, system_account_with_lamports(1000)),
+            (sender, system_account_with_lamports(exempt_minimum() * 2)),
             (recipient, system_account_with_lamports(0)),
         ],
         None,
@@ -178,11 +185,11 @@ fn test_compute_units_accumulate_across_instructions() {
 
     let result = mollusk.process_transaction_instructions(
         &[
-            solana_system_interface::instruction::transfer(&alice, &bob, 1000),
-            solana_system_interface::instruction::transfer(&bob, &carol, 500),
+            solana_system_interface::instruction::transfer(&alice, &bob, exempt_minimum() * 2),
+            solana_system_interface::instruction::transfer(&bob, &carol, exempt_minimum()),
         ],
         &[
-            (alice, system_account_with_lamports(10_000)),
+            (alice, system_account_with_lamports(exempt_minimum() * 3)),
             (bob, system_account_with_lamports(0)),
             (carol, system_account_with_lamports(0)),
         ],
@@ -259,8 +266,8 @@ fn test_many_instructions_in_transaction() {
     let sender = Pubkey::new_unique();
     let recipients: Vec<Pubkey> = (0..10).map(|_| Pubkey::new_unique()).collect();
 
-    let initial_balance = 10_000_000u64;
-    let transfer_amount = 1000u64;
+    let transfer_amount = exempt_minimum();
+    let initial_balance = transfer_amount * 11;
 
     let instructions: Vec<Instruction> = recipients
         .iter()
@@ -296,8 +303,8 @@ fn test_transfers_with_absent_payer_account() {
     let payer = Pubkey::new_unique();
     let sender = Pubkey::new_unique();
     let recipient = Pubkey::new_unique();
-    let initial_balance = 1_000;
-    let transfer_amount = 100;
+    let initial_balance = exempt_minimum() * 2;
+    let transfer_amount = exempt_minimum();
 
     let result = mollusk.process_transaction_instructions(
         &[solana_system_interface::instruction::transfer(
@@ -339,8 +346,8 @@ fn test_transfers_with_existing_payer_account() {
 
     let payer = Pubkey::new_unique();
     let recipient = Pubkey::new_unique();
-    let initial_balance = 1_000;
-    let transfer_amount = 100;
+    let initial_balance = exempt_minimum() * 2;
+    let transfer_amount = exempt_minimum();
 
     let result = mollusk.process_transaction_instructions(
         &[solana_system_interface::instruction::transfer(

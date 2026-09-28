@@ -144,6 +144,7 @@ impl Runner {
                     &Config {
                         panic: false,
                         verbose: self.verbose,
+                        rent_exempt_checks: true,
                     },
                 );
             }
@@ -198,6 +199,7 @@ impl Runner {
                 &Config {
                     panic: false,
                     verbose: self.verbose,
+                    rent_exempt_checks: true,
                 },
             );
         }
@@ -215,6 +217,7 @@ impl Runner {
                 &Config {
                     panic: false,
                     verbose: self.verbose,
+                    rent_exempt_checks: true,
                 },
             );
         }

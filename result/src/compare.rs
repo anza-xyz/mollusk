@@ -326,6 +326,7 @@ impl InstructionResult {
             &Config {
                 panic: true,
                 verbose: true,
+                rent_exempt_checks: true,
             },
         );
     }

@@ -455,6 +455,7 @@ mod message_result;
 pub mod program;
 #[cfg(feature = "register-tracing")]
 pub mod register_tracing;
+mod rent;
 pub mod sysvar;
 
 #[cfg(feature = "invocation-inspect-callback")]
@@ -472,12 +473,13 @@ use {
     },
     mollusk_svm_error::error::{MolluskError, MolluskPanic},
     mollusk_svm_result::{
-        types::TransactionResult, Check, CheckContext, Config, InstructionResult,
+        types::{TransactionProgramResult, TransactionResult},
+        Check, Config, InstructionResult,
     },
     solana_account::{Account, AccountSharedData, ReadableAccount},
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
-    solana_instruction::{AccountMeta, Instruction},
+    solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_message::SanitizedMessage,
     solana_program_runtime::{
         invoke_context::{EnvironmentConfig, InvokeContext},
@@ -551,13 +553,6 @@ impl Default for Mollusk {
         let _enable_register_tracing = std::env::var("SBF_TRACE_DIR").is_ok();
 
         Self::new_inner(_enable_register_tracing)
-    }
-}
-
-impl CheckContext for Mollusk {
-    fn is_rent_exempt(&self, lamports: u64, space: usize, owner: Pubkey) -> bool {
-        owner.eq(&Pubkey::default()) && lamports == 0
-            || self.sysvars.rent.is_exempt(lamports, space)
     }
 }
 
@@ -796,6 +791,27 @@ impl Mollusk {
         all_inner_instructions
     }
 
+    fn resulting_accounts(
+        &self,
+        transaction_context: &TransactionContext,
+        accounts: &[(Pubkey, Account)],
+        committed: bool,
+    ) -> (Vec<(Pubkey, Account)>, Result<(), TransactionError>) {
+        if !committed {
+            return (accounts.to_vec(), Ok(()));
+        }
+        let resulting_accounts =
+            Self::deconstruct_resulting_accounts(transaction_context, accounts);
+        let rent_result = rent::check_transitions(
+            &self.sysvars.rent,
+            &self.config,
+            self.feature_set.relax_post_exec_min_balance_check,
+            accounts,
+            &resulting_accounts,
+        );
+        (resulting_accounts, rent_result)
+    }
+
     fn deconstruct_resulting_accounts(
         transaction_context: &TransactionContext,
         original_accounts: &[(Pubkey, Account)],
@@ -964,20 +980,25 @@ impl Mollusk {
             sysvar_cache,
         );
 
-        let resulting_accounts = if message_result.raw_result.is_ok() {
-            Self::deconstruct_resulting_accounts(&transaction_context, accounts)
-        } else {
-            accounts.to_vec()
-        };
+        let (resulting_accounts, rent_result) = self.resulting_accounts(
+            &transaction_context,
+            accounts,
+            message_result.raw_result.is_ok(),
+        );
 
         let raw_result = message_result
             .raw_result
             .map_err(MessageResult::extract_ix_err);
 
+        let program_result = raw_result
+            .clone()
+            .and_then(|()| rent_result.map_err(|_| InstructionError::AccountNotRentExempt))
+            .into();
+
         let this_result = InstructionResult {
             compute_units_consumed: message_result.compute_units_consumed,
             execution_time: message_result.execution_time,
-            program_result: raw_result.clone().into(),
+            program_result,
             raw_result,
             return_data: message_result.return_data,
             resulting_accounts,
@@ -1041,20 +1062,25 @@ impl Mollusk {
             &sysvar_cache,
         );
 
-        let resulting_accounts = if message_result.raw_result.is_ok() {
-            Self::deconstruct_resulting_accounts(&transaction_context, accounts)
-        } else {
-            accounts.to_vec()
-        };
+        let (resulting_accounts, rent_result) = self.resulting_accounts(
+            &transaction_context,
+            accounts,
+            message_result.raw_result.is_ok(),
+        );
 
         let raw_result = message_result
             .raw_result
             .map_err(MessageResult::extract_ix_err);
 
+        let program_result = raw_result
+            .clone()
+            .and_then(|()| rent_result.map_err(|_| InstructionError::AccountNotRentExempt))
+            .into();
+
         let result = InstructionResult {
             compute_units_consumed: message_result.compute_units_consumed,
             execution_time: message_result.execution_time,
-            program_result: raw_result.clone().into(),
+            program_result,
             raw_result,
             return_data: message_result.return_data,
             resulting_accounts,
@@ -1201,19 +1227,29 @@ impl Mollusk {
             &sysvar_cache,
         );
 
-        let resulting_accounts = if message_result.raw_result.is_ok() {
-            Self::deconstruct_resulting_accounts(&transaction_context, accounts)
-        } else {
-            accounts.to_vec()
-        };
+        let (resulting_accounts, rent_result) = self.resulting_accounts(
+            &transaction_context,
+            accounts,
+            message_result.raw_result.is_ok(),
+        );
 
-        let program_result = MessageResult::extract_txn_program_result(&message_result.raw_result);
+        let raw_result = message_result.raw_result;
+
+        let program_result = match (
+            MessageResult::extract_txn_program_result(&raw_result),
+            rent_result,
+        ) {
+            (TransactionProgramResult::Success, Err(err)) => {
+                TransactionProgramResult::TransactionError(err)
+            }
+            (program_result, _) => program_result,
+        };
 
         TransactionResult {
             compute_units_consumed: message_result.compute_units_consumed,
             execution_time: message_result.execution_time,
             program_result,
-            raw_result: message_result.raw_result,
+            raw_result,
             return_data: message_result.return_data,
             resulting_accounts,
             #[cfg(feature = "inner-instructions")]
@@ -1252,7 +1288,7 @@ impl Mollusk {
         checks: &[Check],
     ) -> InstructionResult {
         let result = self.process_instruction(instruction, accounts);
-        result.run_checks(checks, &self.config, self);
+        result.run_checks(checks, &self.config);
         result
     }
 
@@ -1321,7 +1357,7 @@ impl Mollusk {
                 &sysvar_cache,
             );
 
-            this_result.run_checks(checks, &self.config, self);
+            this_result.run_checks(checks, &self.config);
 
             composite_result.absorb(this_result);
 
@@ -1361,7 +1397,7 @@ impl Mollusk {
         payer: Option<&Pubkey>,
     ) -> TransactionResult {
         let result = self.process_transaction_instructions(instructions, accounts, payer);
-        result.run_checks(checks, &self.config, self);
+        result.run_checks(checks, &self.config);
         result
     }
 

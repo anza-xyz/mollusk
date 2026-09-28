@@ -64,7 +64,7 @@ fn test_multiple_transfers_with_persistent_state() {
     let bob = Pubkey::new_unique();
     let charlie = Pubkey::new_unique();
 
-    let initial_lamports = 1_000_000u64;
+    let initial_lamports = 2_000_000u64;
     let transfer1_amount = 200_000u64;
     let transfer2_amount = 150_000u64;
 

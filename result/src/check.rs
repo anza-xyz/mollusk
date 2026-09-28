@@ -4,7 +4,7 @@
 use solana_transaction_status_client_types::InnerInstruction;
 use {
     crate::{
-        config::{compare, throw, CheckContext, Config},
+        config::{compare, throw, Config},
         types::{InstructionResult, ProgramResult, TransactionProgramResult, TransactionResult},
     },
     solana_account::{Account, ReadableAccount},
@@ -24,8 +24,6 @@ enum CheckType<'a> {
     ReturnData(&'a [u8]),
     /// Check a resulting account after executing the instruction.
     ResultingAccount(AccountCheck<'a>),
-    /// Check that all accounts are rent exempt
-    AllRentExempt,
     /// Check the number of inner instructions (CPIs) invoked.
     #[cfg(feature = "inner-instructions")]
     InnerInstructionCount(usize),
@@ -80,11 +78,6 @@ impl<'a> Check<'a> {
         AccountCheckBuilder::new(pubkey)
     }
 
-    /// Check that all resulting accounts are rent exempt
-    pub const fn all_rent_exempt() -> Self {
-        Check::new(CheckType::AllRentExempt)
-    }
-
     /// Check the number of inner instructions (CPIs) invoked during execution.
     #[cfg(feature = "inner-instructions")]
     pub const fn inner_instruction_count(count: usize) -> Self {
@@ -94,7 +87,6 @@ impl<'a> Check<'a> {
 
 enum AccountStateCheck {
     Closed,
-    RentExempt,
 }
 
 struct AccountCheck<'a> {
@@ -159,11 +151,6 @@ impl<'a> AccountCheckBuilder<'a> {
         self
     }
 
-    pub const fn rent_exempt(mut self) -> Self {
-        self.check.check_state = Some(AccountStateCheck::RentExempt);
-        self
-    }
-
     pub const fn space(mut self, space: usize) -> Self {
         self.check.check_space = Some(space);
         self
@@ -180,10 +167,9 @@ impl<'a> AccountCheckBuilder<'a> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn run_checks<C: CheckContext>(
+fn run_checks(
     checks: &[Check],
     config: &Config,
-    context: &C,
     compute_units_consumed: u64,
     execution_time: u64,
     program_result: &ProgramResult,
@@ -244,29 +230,13 @@ fn run_checks<C: CheckContext>(
                     let actual_space = resulting_account.data().len();
                     pass &= compare!(c, "account_space", check_space, actual_space);
                 }
-                if let Some(check_state) = &account.check_state {
-                    match check_state {
-                        AccountStateCheck::Closed => {
-                            pass &= compare!(
-                                c,
-                                "account_closed",
-                                true,
-                                resulting_account == &Default::default(),
-                            );
-                        }
-                        AccountStateCheck::RentExempt => {
-                            pass &= compare!(
-                                c,
-                                "account_rent_exempt",
-                                true,
-                                context.is_rent_exempt(
-                                    resulting_account.lamports,
-                                    resulting_account.data.len(),
-                                    resulting_account.owner,
-                                ),
-                            );
-                        }
-                    }
+                if let Some(AccountStateCheck::Closed) = &account.check_state {
+                    pass &= compare!(
+                        c,
+                        "account_closed",
+                        true,
+                        resulting_account == &Default::default(),
+                    );
                 }
                 if let Some((offset, check_data_slice)) = account.check_data_slice {
                     let actual_data = resulting_account.data();
@@ -285,25 +255,6 @@ fn run_checks<C: CheckContext>(
                     pass &= compare!(c, "account_data_slice", check_data_slice, actual_data_slice,);
                 }
             }
-            CheckType::AllRentExempt => {
-                for (pubkey, account) in resulting_accounts {
-                    let is_rent_exempt = context.is_rent_exempt(
-                        account.lamports(),
-                        account.data().len(),
-                        account.owner,
-                    );
-                    if !is_rent_exempt {
-                        pass &= throw!(
-                            c,
-                            "Account {} is not rent exempt after execution (lamports: {}, \
-                             data_len: {})",
-                            pubkey,
-                            account.lamports(),
-                            account.data().len()
-                        );
-                    }
-                }
-            }
             #[cfg(feature = "inner-instructions")]
             CheckType::InnerInstructionCount(count) => {
                 let check_count = *count;
@@ -316,21 +267,11 @@ fn run_checks<C: CheckContext>(
 }
 
 impl InstructionResult {
-    /// Perform checks on the instruction result with a custom context.
-    /// See `CheckContext` for more details.
-    ///
-    /// Note: `Mollusk` implements `CheckContext`, in case you don't want to
-    /// define a custom context.
-    pub fn run_checks<C: CheckContext>(
-        &self,
-        checks: &[Check],
-        config: &Config,
-        context: &C,
-    ) -> bool {
+    /// Perform checks on the instruction result.
+    pub fn run_checks(&self, checks: &[Check], config: &Config) -> bool {
         run_checks(
             checks,
             config,
-            context,
             self.compute_units_consumed,
             self.execution_time,
             &self.program_result,
@@ -343,28 +284,22 @@ impl InstructionResult {
 }
 
 impl TransactionResult {
-    /// Perform checks on the transaction result with a custom context.
-    /// See `CheckContext` for more details.
-    ///
-    /// Note: `Mollusk` implements `CheckContext`, in case you don't want to
-    /// define a custom context.
-    pub fn run_checks<C: CheckContext>(
-        &self,
-        checks: &[Check],
-        config: &Config,
-        context: &C,
-    ) -> bool {
+    /// Perform checks on the transaction result.
+    pub fn run_checks(&self, checks: &[Check], config: &Config) -> bool {
         let program_result = match &self.program_result {
             TransactionProgramResult::Success => ProgramResult::Success,
             TransactionProgramResult::Failure(_idx, err) => ProgramResult::Failure(err.clone()),
             TransactionProgramResult::UnknownError(_idx, err) => {
                 ProgramResult::UnknownError(err.clone())
             }
+            TransactionProgramResult::TransactionError(_) => {
+                // Right now, this is the only one we have.
+                ProgramResult::Failure(ProgramError::AccountNotRentExempt)
+            }
         };
         run_checks(
             checks,
             config,
-            context,
             self.compute_units_consumed,
             self.execution_time,
             &program_result,

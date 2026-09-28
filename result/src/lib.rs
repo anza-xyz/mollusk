@@ -14,7 +14,6 @@
 //! * [`Check`] - Validate individual instruction results
 //! * [`Compare`] - Compare two instruction results
 //! * [`Config`] - Configuration for validation behavior
-//! * [`CheckContext`] - Context trait for custom validation logic
 //!
 //! # Example
 //!
@@ -25,7 +24,7 @@
 //! let checks = vec![Check::success(), Check::compute_units(100)];
 //! let config = Config::default();
 //!
-//! result.run_checks(&checks, &config, &mollusk);
+//! result.run_checks(&checks, &config);
 //! ```
 
 pub mod check;
@@ -40,6 +39,6 @@ pub mod types;
 pub use {
     check::{AccountCheckBuilder, Check},
     compare::Compare,
-    config::{CheckContext, Config},
+    config::Config,
     types::{InstructionResult, ProgramResult},
 };
