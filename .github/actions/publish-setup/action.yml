@@ -37,9 +37,8 @@ runs:
       id: solana
       shell: bash
       run: echo "version=$(make solana-version)" >> "$GITHUB_OUTPUT"
-    - uses: metaplex-foundation/actions/install-solana@2389940047edc63a5781911f6a53fbdf784748d8  # v1.0.4
+    - uses: ./.github/actions/install-solana
       with:
-        cache: true
         version: ${{ steps.solana.outputs.version }}
     - name: Install cargo-hack
       if: inputs.cargo-hack == 'true'

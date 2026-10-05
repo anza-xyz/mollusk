@@ -1,0 +1,36 @@
+name: Install Solana
+description: Install and cache the Solana toolchain from release.anza.xyz.
+
+inputs:
+  version:
+    description: The Solana version to install.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Solana
+      id: cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: |
+          ~/.local/share/solana/install/releases/${{ inputs.version }}
+          ~/.cache/solana
+        key: ${{ runner.os }}-solana-v${{ inputs.version }}
+    - name: Install Solana
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: sh -c "$(curl -sSfL "https://release.anza.xyz/v${SOLANA_VERSION}/install")"
+      env:
+        SOLANA_VERSION: ${{ inputs.version }}
+    - name: Set active Solana version
+      shell: bash
+      run: |
+        rm -f "$HOME/.local/share/solana/install/active_release"
+        ln -s "$HOME/.local/share/solana/install/releases/${SOLANA_VERSION}/solana-release" "$HOME/.local/share/solana/install/active_release"
+        echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      env:
+        SOLANA_VERSION: ${{ inputs.version }}
+    - name: Verify Solana install
+      shell: bash
+      run: solana --version
