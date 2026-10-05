@@ -93,8 +93,9 @@ jobs:
       - name: Get Solana version
         id: solana
         run: echo "version=$(make solana-version)" >> $GITHUB_OUTPUT
-      - uses: ./.github/actions/install-solana
+      - uses: solana-program/actions/install-solana@2db12a00105e5b260ac43746b69df1658a5dca24  # main
         with:
+          cache: true
           version: ${{ steps.solana.outputs.version }}
       - name: Build test programs
         run: make build-test-programs
