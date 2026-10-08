@@ -98,6 +98,33 @@ fn test_rent_regression_in_transaction_no_panic() {
 }
 
 #[test]
+fn test_rent_regression_in_transaction_reports_message_account_index() {
+    let sender = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
+
+    let sender_lamports = exempt_minimum() + 1_000;
+
+    let instruction = transfer(&sender, &recipient, 2_000);
+    let accounts = [
+        (recipient, system_account(exempt_minimum())),
+        (sender, system_account(sender_lamports)),
+    ];
+
+    let mut mollusk = Mollusk::default();
+    mollusk.config.panic = false;
+
+    let result =
+        mollusk.process_and_validate_transaction_instructions(&[instruction], &accounts, &[], None);
+
+    assert_eq!(
+        result.program_result,
+        TransactionProgramResult::TransactionError(TransactionError::InsufficientFundsForRent {
+            account_index: 0
+        })
+    );
+}
+
+#[test]
 fn test_rent_checks_can_be_disabled() {
     let sender = Pubkey::new_unique();
     let recipient = Pubkey::new_unique();

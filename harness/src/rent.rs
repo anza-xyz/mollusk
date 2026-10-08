@@ -9,7 +9,7 @@ use {
         check_rent_state_with_account, get_post_exec_account_rent_state,
         get_pre_exec_account_rent_state, RentState,
     },
-    solana_transaction_context::IndexOfAccount,
+    solana_transaction_context::transaction::TransactionContext,
     solana_transaction_error::TransactionResult,
 };
 
@@ -17,6 +17,7 @@ pub(crate) fn check_transitions(
     rent: &Rent,
     config: &Config,
     relax_post_exec_min_balance_check: bool,
+    transaction_context: &TransactionContext,
     pre: &[(Pubkey, Account)],
     post: &[(Pubkey, Account)],
 ) -> TransactionResult<()> {
@@ -24,11 +25,17 @@ pub(crate) fn check_transitions(
         return Ok(());
     }
 
-    for (index, (pubkey, post_account)) in post.iter().enumerate() {
-        let Some((_, pre_account)) = pre.iter().find(|(key, _)| key == pubkey) else {
-            continue;
-        };
+    let mut transitions = post
+        .iter()
+        .filter_map(|(pubkey, post_account)| {
+            let index = transaction_context.find_index_of_account(pubkey)?;
+            let (_, pre_account) = pre.iter().find(|(key, _)| key == pubkey)?;
+            Some((index, pubkey, pre_account, post_account))
+        })
+        .collect::<Vec<_>>();
+    transitions.sort_by_key(|(index, ..)| *index);
 
+    for (index, pubkey, pre_account, post_account) in transitions {
         let pre_state = get_pre_exec_account_rent_state(
             pre_account.lamports,
             pre_account.data.len(),
@@ -50,9 +57,7 @@ pub(crate) fn check_transitions(
             relax_rent_exempt_criteria,
         );
 
-        let Err(err) =
-            check_rent_state_with_account(&pre_state, &post_state, pubkey, index as IndexOfAccount)
-        else {
+        let Err(err) = check_rent_state_with_account(&pre_state, &post_state, pubkey, index) else {
             continue;
         };
 

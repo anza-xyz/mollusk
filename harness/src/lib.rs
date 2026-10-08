@@ -806,6 +806,7 @@ impl Mollusk {
             &self.sysvars.rent,
             &self.config,
             self.feature_set.relax_post_exec_min_balance_check,
+            transaction_context,
             accounts,
             &resulting_accounts,
         );
