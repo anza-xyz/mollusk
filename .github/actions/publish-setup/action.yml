@@ -33,14 +33,9 @@ runs:
       with:
         toolchain: ${{ steps.nightly.outputs.version }}
         components: rustfmt, clippy
-    - name: Get Solana version
-      id: solana
+    - name: Install cargo-build-sbf
       shell: bash
-      run: echo "version=$(make solana-version)" >> "$GITHUB_OUTPUT"
-    - uses: solana-program/actions/install-solana@2db12a00105e5b260ac43746b69df1658a5dca24  # main
-      with:
-        cache: true
-        version: ${{ steps.solana.outputs.version }}
+      run: cargo install cargo-build-sbf --version "$(make cargo-build-sbf-version)" --locked
     - name: Install cargo-hack
       if: inputs.cargo-hack == 'true'
       uses: taiki-e/install-action@c3ec0de9ae7f1019cea21aa96aa0a895b9552063  # v2.87.9

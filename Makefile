@@ -1,11 +1,12 @@
 SHELL := /usr/bin/env bash
 NIGHTLY_TOOLCHAIN := nightly-2026-05-23
-SOLANA_VERSION := 4.3.0
+CARGO_BUILD_SBF_VERSION := 4.3.0
+PLATFORM_TOOLS_VERSION := v1.57
 
 
 .PHONY: \
 	nightly-version \
-	solana-version \
+	cargo-build-sbf-version \
 	format \
 	format-test-programs \
 	format-fix \
@@ -42,9 +43,9 @@ IGNORE_SECS := \
 nightly-version:
 	@echo $(NIGHTLY_TOOLCHAIN)
 
-# Print the Solana version for CI
-solana-version:
-	@echo $(SOLANA_VERSION)
+# Print the cargo-build-sbf version for CI
+cargo-build-sbf-version:
+	@echo $(CARGO_BUILD_SBF_VERSION)
 
 clean:
 	@cargo clean
@@ -78,7 +79,8 @@ build:
 	@cargo build
 
 build-test-programs:
-	@cargo build-sbf --manifest-path test-programs/Cargo.toml --sbf-out-dir target/deploy
+	@cargo build-sbf --manifest-path test-programs/Cargo.toml --sbf-out-dir target/deploy \
+		--tools-version $(PLATFORM_TOOLS_VERSION)
 
 build-test-elfs:
 	@set -e; \
@@ -87,7 +89,8 @@ build-test-elfs:
 	mkdir -p $$OUT_DIR $$TMP_DIR; \
 	for ARCH in v0 v1 v2 v3; do \
 		echo "Building test_program_cpi_target ($$ARCH)..."; \
-		cargo build-sbf --manifest-path test-programs/cpi-target/Cargo.toml --arch $$ARCH --sbf-out-dir $$TMP_DIR; \
+		cargo build-sbf --manifest-path test-programs/cpi-target/Cargo.toml --arch $$ARCH \
+			--sbf-out-dir $$TMP_DIR --tools-version $(PLATFORM_TOOLS_VERSION); \
 		mv $$TMP_DIR/test_program_cpi_target.so $$OUT_DIR/test_program_cpi_target_$${ARCH}.so; \
 	done; \
 	rm -rf $$TMP_DIR
