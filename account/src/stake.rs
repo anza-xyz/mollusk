@@ -1,5 +1,8 @@
 use {
-    crate::lamports::Lamports,
+    crate::{
+        error::{expect_owner, AccountError},
+        lamports::Lamports,
+    },
     solana_account::Account,
     solana_pubkey::Pubkey,
     solana_rent::Rent,
@@ -137,5 +140,19 @@ impl crate::AccountState for StakeStateV2 {
 
     fn space(&self, _encoded_len: usize) -> usize {
         StakeStateV2::size_of()
+    }
+}
+
+impl TryFrom<(Pubkey, Account)> for Stake {
+    type Error = AccountError;
+
+    fn try_from((address, account): (Pubkey, Account)) -> Result<Self, Self::Error> {
+        expect_owner(&account, solana_sdk_ids::stake::id())?;
+
+        Ok(Self {
+            address,
+            state: wincode::deserialize(&account.data).map_err(|_| AccountError::InvalidData)?,
+            lamports: Lamports::Exactly(account.lamports),
+        })
     }
 }

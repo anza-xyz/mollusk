@@ -2,7 +2,8 @@
 
 use {
     mollusk_svm::{result::Check, Mollusk},
-    mollusk_svm_account::{account, AccountState, Mint, Stake, System, TokenAccount},
+    mollusk_svm_account::{account, AccountError, AccountState, Mint, Stake, System, TokenAccount},
+    solana_account::Account,
     solana_instruction::{AccountMeta, Instruction},
     solana_pubkey::Pubkey,
     solana_system_program::system_processor::DEFAULT_COMPUTE_UNITS,
@@ -167,4 +168,59 @@ fn test_custom_state() {
         wincode::deserialize::<Counter>(&result.get_account(&counter).unwrap().data).unwrap(),
         updated
     );
+}
+
+#[test]
+fn test_round_trip() {
+    let alice = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
+    let vote = Pubkey::new_unique();
+
+    let system: (Pubkey, Account) = System::new(alice).lamports(10_000_000_000).space(64).into();
+    assert_eq!(
+        <(Pubkey, Account)>::from(System::try_from(system.clone()).unwrap()),
+        system
+    );
+
+    let stake: (Pubkey, Account) = Stake::initialized(Pubkey::new_unique())
+        .staker(alice)
+        .withdrawer(alice)
+        .delegated_to(vote)
+        .stake(5_000_000_000)
+        .into();
+    assert_eq!(
+        <(Pubkey, Account)>::from(Stake::try_from(stake.clone()).unwrap()),
+        stake
+    );
+
+    let mint_account: (Pubkey, Account) = Mint::initialized(mint)
+        .decimals(9)
+        .supply(1_000_000_000)
+        .mint_authority(alice)
+        .into();
+    assert_eq!(
+        <(Pubkey, Account)>::from(Mint::try_from(mint_account.clone()).unwrap()),
+        mint_account
+    );
+
+    let token_account: (Pubkey, Account) = TokenAccount::initialized(Pubkey::new_unique())
+        .mint(mint)
+        .owner(alice)
+        .balance(1_000)
+        .into();
+    assert_eq!(
+        <(Pubkey, Account)>::from(TokenAccount::try_from(token_account.clone()).unwrap()),
+        token_account
+    );
+}
+
+#[test]
+fn test_round_trip_rejects_wrong_owner() {
+    let address = Pubkey::new_unique();
+    let (_, account) = <(Pubkey, Account)>::from(System::new(address).lamports(1_000_000_000));
+
+    assert!(matches!(
+        Mint::try_from((address, account)),
+        Err(AccountError::WrongOwner { .. })
+    ));
 }

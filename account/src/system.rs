@@ -1,5 +1,11 @@
 use {
-    crate::lamports::Lamports, solana_account::Account, solana_pubkey::Pubkey, solana_rent::Rent,
+    crate::{
+        error::{expect_owner, AccountError},
+        lamports::Lamports,
+    },
+    solana_account::Account,
+    solana_pubkey::Pubkey,
+    solana_rent::Rent,
 };
 
 /// A System account.
@@ -55,5 +61,19 @@ impl From<System> for (Pubkey, Account) {
                 &solana_sdk_ids::system_program::id(),
             ),
         )
+    }
+}
+
+impl TryFrom<(Pubkey, Account)> for System {
+    type Error = AccountError;
+
+    fn try_from((address, account): (Pubkey, Account)) -> Result<Self, Self::Error> {
+        expect_owner(&account, solana_sdk_ids::system_program::id())?;
+
+        Ok(Self {
+            address,
+            space: account.data.len(),
+            lamports: Lamports::Exactly(account.lamports),
+        })
     }
 }

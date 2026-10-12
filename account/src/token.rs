@@ -1,5 +1,8 @@
 use {
-    crate::lamports::Lamports,
+    crate::{
+        error::{expect_owner, AccountError},
+        lamports::Lamports,
+    },
     solana_account::Account,
     solana_program_option::COption,
     solana_program_pack::Pack,
@@ -193,4 +196,34 @@ fn pack<T: Pack>(state: T) -> Vec<u8> {
 fn fund(mut account: Account, lamports: Lamports) -> Account {
     account.lamports = lamports.resolve(account.data.len());
     account
+}
+
+impl TryFrom<(Pubkey, Account)> for TokenAccount {
+    type Error = AccountError;
+
+    fn try_from((address, account): (Pubkey, Account)) -> Result<Self, Self::Error> {
+        expect_owner(&account, spl_token_interface::id())?;
+
+        Ok(Self {
+            address,
+            state: TokenState::unpack_unchecked(&account.data)
+                .map_err(|_| AccountError::InvalidData)?,
+            lamports: Lamports::Exactly(account.lamports),
+        })
+    }
+}
+
+impl TryFrom<(Pubkey, Account)> for Mint {
+    type Error = AccountError;
+
+    fn try_from((address, account): (Pubkey, Account)) -> Result<Self, Self::Error> {
+        expect_owner(&account, spl_token_interface::id())?;
+
+        Ok(Self {
+            address,
+            state: MintState::unpack_unchecked(&account.data)
+                .map_err(|_| AccountError::InvalidData)?,
+            lamports: Lamports::Exactly(account.lamports),
+        })
+    }
 }
