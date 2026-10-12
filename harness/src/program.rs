@@ -317,12 +317,12 @@ pub fn keyed_account_for_system_program() -> (Pubkey, Account) {
 
 /// Get the key and account for the BPF Loader v2 program.
 pub fn keyed_account_for_bpf_loader_v2_program() -> (Pubkey, Account) {
-    create_keyed_account_for_builtin_program(&BUILTINS[1].program_id, BUILTINS[1].name)
+    create_keyed_account_for_builtin_program(&BUILTINS[2].program_id, BUILTINS[2].name)
 }
 
 /// Get the key and account for the BPF Loader v3 (Upgradeable) program.
 pub fn keyed_account_for_bpf_loader_v3_program() -> (Pubkey, Account) {
-    create_keyed_account_for_builtin_program(&BUILTINS[2].program_id, BUILTINS[2].name)
+    create_keyed_account_for_builtin_program(&BUILTINS[3].program_id, BUILTINS[3].name)
 }
 
 /* ... */
@@ -408,4 +408,36 @@ pub fn create_program_account_pair_loader_v3(
         create_program_account_loader_v3(program_id),
         create_program_data_account_loader_v3(elf),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_builtin(keyed_account: (Pubkey, Account), program_id: Pubkey, name: &str) {
+        let (key, account) = keyed_account;
+        assert_eq!(key, program_id);
+        assert_eq!(account.data, name.as_bytes());
+        assert_eq!(account.owner, loader_keys::NATIVE_LOADER);
+        assert!(account.executable);
+    }
+
+    #[test]
+    fn test_keyed_account_for_builtin_programs() {
+        assert_builtin(
+            keyed_account_for_system_program(),
+            solana_system_program::id(),
+            "system_program",
+        );
+        assert_builtin(
+            keyed_account_for_bpf_loader_v2_program(),
+            loader_keys::LOADER_V2,
+            "solana_bpf_loader_program",
+        );
+        assert_builtin(
+            keyed_account_for_bpf_loader_v3_program(),
+            loader_keys::LOADER_V3,
+            "solana_bpf_loader_upgradeable_program",
+        );
+    }
 }
