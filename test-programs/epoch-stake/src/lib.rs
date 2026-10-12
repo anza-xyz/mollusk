@@ -2,9 +2,7 @@
 
 use {solana_account_info::AccountInfo, solana_program_error::ProgramError, solana_pubkey::Pubkey};
 
-extern "C" {
-    fn sol_get_epoch_stake(vote_address: *const u8) -> u64;
-}
+solana_define_syscall::define_syscall!(fn sol_get_epoch_stake(vote_address: *const u8) -> u64);
 
 unsafe fn get_epoch_total_stake() -> u64 {
     sol_get_epoch_stake(std::ptr::null::<Pubkey>() as *const u8)

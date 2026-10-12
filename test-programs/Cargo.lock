@@ -316,7 +316,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "solana-atomic-u64",
- "solana-define-syscall 5.1.0",
+ "solana-define-syscall 5.2.0",
  "solana-program-error",
  "solana-sanitize",
  "wincode",
@@ -353,9 +353,9 @@ checksum = "57e5b1c0bc1d4a4d10c88a4100499d954c09d3fecfae4912c1a074dff68b1738"
 
 [[package]]
 name = "solana-define-syscall"
-version = "5.1.0"
+version = "5.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e14a4f604117f379840956a8fc8695e4c84f5b0ebed192f31f60d9b85d581d"
+checksum = "bf8209ece2bd9f1450e672858ffc0e5c8c786ff6916d2a862b126dd0128f380f"
 
 [[package]]
 name = "solana-instruction"
@@ -365,7 +365,7 @@ checksum = "37ebb0ffd19263051bc3f683fcc086134b8ff23af894dcb63f7563c7137b42f1"
 dependencies = [
  "bincode",
  "serde",
- "solana-define-syscall 5.1.0",
+ "solana-define-syscall 5.2.0",
  "solana-instruction-error",
  "solana-pubkey",
 ]
@@ -403,7 +403,7 @@ version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "726b7cbbc6be6f1c6f29146ac824343b9415133eee8cce156452ad1db93f8008"
 dependencies = [
- "solana-define-syscall 5.1.0",
+ "solana-define-syscall 5.2.0",
 ]
 
 [[package]]
@@ -535,6 +535,7 @@ name = "test-program-custom-syscall"
 version = "0.1.0"
 dependencies = [
  "solana-account-info",
+ "solana-define-syscall 5.2.0",
  "solana-program-entrypoint",
  "solana-program-error",
  "solana-pubkey",
@@ -545,6 +546,7 @@ name = "test-program-epoch-stake"
 version = "0.1.0"
 dependencies = [
  "solana-account-info",
+ "solana-define-syscall 5.2.0",
  "solana-program-entrypoint",
  "solana-program-error",
  "solana-pubkey",
