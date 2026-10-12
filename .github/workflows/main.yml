@@ -90,13 +90,8 @@ jobs:
             cargo-build-sbf-
       - name: Install protoc
         run: sudo apt-get install -y protobuf-compiler
-      - name: Get Solana version
-        id: solana
-        run: echo "version=$(make solana-version)" >> $GITHUB_OUTPUT
-      - uses: solana-program/actions/install-solana@2db12a00105e5b260ac43746b69df1658a5dca24  # main
-        with:
-          cache: true
-          version: ${{ steps.solana.outputs.version }}
+      - name: Install cargo-build-sbf
+        run: cargo install cargo-build-sbf --version "$(make cargo-build-sbf-version)" --locked
       - name: Build test programs
         run: make build-test-programs
       - name: Test
