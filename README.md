@@ -347,6 +347,30 @@ impl AccountState for Counter {
 }
 
 let account = account(&Counter { count: 42 });
+```
+
+The built-in builders convert the other way as well.
+
+```rust
+let result = mollusk.process_and_validate_instruction(
+    &instruction,
+    &accounts,
+    &[Check::success()],
+);
+
+let token_account = TokenAccount::try_from((
+    alice_token_account,
+    result.get_account(&alice_token_account).unwrap().clone(),
+))
+.unwrap();
+
+mollusk.process_and_validate_instruction(
+    &next_instruction,
+    &[token_account.balance(500).into()],
+    &[Check::success()],
+);
+```
+
 ## Mollusk Config
 
 `Mollusk::config` controls how results are validated. It has three fields.
@@ -365,8 +389,6 @@ rent state the runtime would reject.
 ```rust
 let mut mollusk = Mollusk::default();
 mollusk.config.rent_exempt_checks = false;
-```
-
 ```
 
 ## Stateful Testing with MolluskContext

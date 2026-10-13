@@ -55,7 +55,6 @@ fn test_rent_exemption() {
         &[
             Check::success(),
             Check::account(&recipient)
-                // TODO: Then here, we could add a new check API for `.rent_exempt_plus(lamports)`
                 .lamports(rent_exempt_minimum + transfer_amount)
                 .space(space)
                 .owner(&solana_sdk_ids::system_program::id())
