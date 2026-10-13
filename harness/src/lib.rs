@@ -918,7 +918,10 @@ impl Mollusk {
                 invoke_context.process_precompile(
                     program_id,
                     &compiled_ix.data,
-                    std::iter::once(compiled_ix.data.as_ref()),
+                    sanitized_message
+                        .instructions()
+                        .iter()
+                        .map(|ix| ix.data.as_slice()),
                 )
             } else {
                 invoke_context
