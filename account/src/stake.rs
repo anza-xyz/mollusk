@@ -98,7 +98,7 @@ impl From<Stake> for (Pubkey, Account) {
             lamports,
         }: Stake,
     ) -> Self {
-        let rent_exempt_reserve = lamports.resolve(StakeStateV2::size_of());
+        let rent_exempt_reserve = lamports.rent_exempt_reserve(StakeStateV2::size_of());
 
         let delegated = match &mut state {
             StakeStateV2::Stake(meta, stake, _) => {
@@ -154,5 +154,36 @@ impl TryFrom<(Pubkey, Account)> for Stake {
             state: wincode::deserialize(&account.data).map_err(|_| AccountError::InvalidData)?,
             lamports: Lamports::Exactly(account.lamports),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[allow(deprecated)]
+    fn rent_exempt_reserve(stake: Stake) -> u64 {
+        let (_, account) = <(Pubkey, Account)>::from(stake);
+        let state: StakeStateV2 = wincode::deserialize(&account.data).unwrap();
+        state.meta().unwrap().rent_exempt_reserve
+    }
+
+    #[test]
+    fn test_reserve_is_rent_minimum_with_exact_lamports() {
+        let minimum = Rent::default().minimum_balance(StakeStateV2::size_of());
+
+        assert_eq!(
+            rent_exempt_reserve(Stake::initialized(Pubkey::new_unique()).lamports(10_000_000_000)),
+            minimum
+        );
+        assert_eq!(
+            rent_exempt_reserve(
+                Stake::initialized(Pubkey::new_unique())
+                    .delegated_to(Pubkey::new_unique())
+                    .stake(5_000_000_000)
+                    .lamports(10_000_000_000)
+            ),
+            minimum
+        );
     }
 }
