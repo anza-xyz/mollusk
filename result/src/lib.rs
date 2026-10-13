@@ -7,7 +7,6 @@
 //!
 //! * [`InstructionResult`] - The main result type containing execution details
 //! * [`ProgramResult`] - The program's execution outcome (success/failure)
-//! * [`ContextResult`] - Result type for use with `MolluskContext`
 //!
 //! # Validation
 //!

@@ -624,7 +624,7 @@ consumed.
 
 ```rust
 use {
-    mollusk_svm::{Mollusk, fuzz::check::FixtureCheck},
+    mollusk_svm::{Mollusk, result::Compare},
     solana_sdk::{account::Account, pubkey::Pubkey, system_instruction},
     std::{fs, path::Path},
 };
@@ -638,9 +638,9 @@ for file in fs::read_dir(Path::new("fixtures-dir"))? {
     mollusk.process_and_partially_validate_fixture(
        &fixture,
        &[
-           FixtureCheck::ProgramResult,
-           FixtureCheck::ReturnData,
-           FixtureCheck::all_resulting_accounts(),
+           Compare::ProgramResult,
+           Compare::ReturnData,
+           Compare::all_resulting_accounts(),
         ],
     );
 }
