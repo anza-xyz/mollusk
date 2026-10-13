@@ -1499,7 +1499,7 @@ impl Mollusk {
     ) -> InstructionResult {
         let result = self.process_fixture(fixture);
         let expected = InstructionResult::from(&fixture.output);
-        result.compare_with_config(&expected, checks, &self.config);
+        expected.compare_with_config(&result, checks, &self.config);
         result
     }
 
@@ -1627,7 +1627,7 @@ impl Mollusk {
             &fixture.output,
         );
 
-        result.compare_with_config(&expected, checks, &self.config);
+        expected.compare_with_config(&result, checks, &self.config);
         result
     }
 
