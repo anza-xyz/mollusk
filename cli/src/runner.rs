@@ -138,8 +138,8 @@ impl Runner {
                     println!();
                 }
 
-                pass &= ground_result.compare_with_config(
-                    &effects,
+                pass &= effects.compare_with_config(
+                    &ground_result,
                     &self.checks,
                     &Config {
                         panic: false,
@@ -193,8 +193,8 @@ impl Runner {
                 println!();
             }
 
-            pass &= target_result.compare_with_config(
-                &effects,
+            pass &= effects.compare_with_config(
+                &target_result,
                 &self.checks,
                 &Config {
                     panic: false,
