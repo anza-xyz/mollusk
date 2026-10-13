@@ -103,3 +103,36 @@ fn test_process_firedancer() {
 
     mollusk.process_and_validate_firedancer_fixture(&fixture);
 }
+
+#[cfg(feature = "fuzz-fd")]
+#[test]
+fn test_process_firedancer_accounts_not_in_message_order() {
+    let mut mollusk = Mollusk::default();
+
+    let sender = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
+
+    // The compiled message puts the sender (signer) first.
+    let accounts = vec![
+        (
+            recipient,
+            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+        ),
+        (
+            sender,
+            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+        ),
+    ];
+
+    let instruction = solana_system_interface::instruction::transfer(&sender, &recipient, 42_000);
+    let result = mollusk.process_instruction(&instruction, &accounts);
+
+    let fixture = mollusk_svm::fuzz::firedancer::build_fixture_from_mollusk_test(
+        &mollusk,
+        &instruction,
+        &accounts,
+        &result,
+    );
+
+    mollusk.process_and_validate_firedancer_fixture(&fixture);
+}

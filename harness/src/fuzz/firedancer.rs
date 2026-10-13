@@ -93,8 +93,12 @@ fn build_fixture_context(
         .iter()
         .map(|&index_in_transaction| {
             let index = index_in_transaction as usize;
+            // The fixture's accounts keep the caller's order, not the
+            // message's, so index into those.
+            let pubkey = &sanitized_message.account_keys()[index];
+            let index_of_account = accounts.iter().position(|(key, _)| key == pubkey).unwrap();
             InstructionAccount::new(
-                index_in_transaction as u16,
+                index_of_account as u16,
                 sanitized_message.is_signer(index),
                 sanitized_message.is_writable(index),
             )
