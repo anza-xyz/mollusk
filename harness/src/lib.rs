@@ -334,8 +334,8 @@
 //! * `process_and_validate_instruction_chain`: Process and validate an
 //!   instruction chain
 //!
-//! All methods return `ContextResult` instead of `InstructionResult`, which
-//! omits the `resulting_accounts` field since accounts are managed by the
+//! All methods return the same `InstructionResult` as `Mollusk`. When the
+//! instruction succeeds, its resulting accounts are also written back to the
 //! context's account store.
 //!
 //! Note that `HashMap<Pubkey, Account>` implements `AccountStore` directly,
@@ -414,7 +414,7 @@
 //!
 //! ```rust,ignore
 //! use {
-//!     mollusk_svm::{Mollusk, fuzz::check::FixtureCheck},
+//!     mollusk_svm::{Mollusk, result::Compare},
 //!     solana_sdk::{account::Account, pubkey::Pubkey, system_instruction},
 //!     std::{fs, path::Path},
 //! };
@@ -428,9 +428,9 @@
 //!     mollusk.process_and_partially_validate_fixture(
 //!        &fixture,
 //!        &[
-//!            FixtureCheck::ProgramResult,
-//!            FixtureCheck::ReturnData,
-//!            FixtureCheck::all_resulting_accounts(),
+//!            Compare::ProgramResult,
+//!            Compare::ReturnData,
+//!            Compare::all_resulting_accounts(),
 //!         ],
 //!     );
 //! }
@@ -1449,9 +1449,6 @@ impl Mollusk {
     /// Therefore, developers can provision a `Mollusk` instance, set up their
     /// desired program cache, and then run a series of fixtures against that
     /// `Mollusk` instance (and cache).
-    ///
-    /// Note: To compare the result against the entire fixture effects, pass
-    /// `&[FixtureCheck::All]` for `checks`.
     pub fn process_and_validate_fixture(
         &mut self,
         fixture: &mollusk_svm_fuzz_fixture::Fixture,
@@ -1491,7 +1488,7 @@ impl Mollusk {
     /// `Mollusk` instance (and cache).
     ///
     /// Note: To compare the result against the entire fixture effects, pass
-    /// `&[FixtureCheck::All]` for `checks`.
+    /// `&Compare::everything()` for `checks`.
     pub fn process_and_partially_validate_fixture(
         &mut self,
         fixture: &mollusk_svm_fuzz_fixture::Fixture,
@@ -1552,9 +1549,6 @@ impl Mollusk {
     /// Therefore, developers can provision a `Mollusk` instance, set up their
     /// desired program cache, and then run a series of fixtures against that
     /// `Mollusk` instance (and cache).
-    ///
-    /// Note: To compare the result against the entire fixture effects, pass
-    /// `&[FixtureCheck::All]` for `checks`.
     pub fn process_and_validate_firedancer_fixture(
         &mut self,
         fixture: &mollusk_svm_fuzz_fixture_firedancer::Fixture,
@@ -1603,7 +1597,7 @@ impl Mollusk {
     /// `Mollusk` instance (and cache).
     ///
     /// Note: To compare the result against the entire fixture effects, pass
-    /// `&[FixtureCheck::All]` for `checks`.
+    /// `&Compare::everything()` for `checks`.
     pub fn process_and_partially_validate_firedancer_fixture(
         &mut self,
         fixture: &mollusk_svm_fuzz_fixture_firedancer::Fixture,
