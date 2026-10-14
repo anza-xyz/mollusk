@@ -77,6 +77,35 @@ fn test_transfer_account_ordering() {
 }
 
 #[test]
+fn test_transfer_closes_account_with_rent_epoch() {
+    for rent_epoch in [0, u64::MAX] {
+        let sender = Pubkey::new_unique();
+        let recipient = Pubkey::new_unique();
+
+        let base_lamports = 100_000_000u64;
+
+        let instruction =
+            solana_system_interface::instruction::transfer(&sender, &recipient, base_lamports);
+        let accounts = [
+            (
+                sender,
+                Account {
+                    rent_epoch,
+                    ..Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id())
+                },
+            ),
+            (
+                recipient,
+                Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            ),
+        ];
+        let checks = vec![Check::success(), Check::account(&sender).closed().build()];
+
+        Mollusk::default().process_and_validate_instruction(&instruction, &accounts, &checks);
+    }
+}
+
+#[test]
 fn test_transfer_bad_owner() {
     let sender = Pubkey::new_unique();
     let recipient = Pubkey::new_unique();
