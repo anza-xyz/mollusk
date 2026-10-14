@@ -17,7 +17,7 @@ jobs:
       - name: Get nightly toolchain version
         id: nightly
         run: echo "version=$(make nightly-version)" >> $GITHUB_OUTPUT
-      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0  # master
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master
         with:
           toolchain: ${{ steps.nightly.outputs.version }}
           components: rustfmt
@@ -44,7 +44,7 @@ jobs:
       - name: Get nightly toolchain version
         id: nightly
         run: echo "version=$(make nightly-version)" >> $GITHUB_OUTPUT
-      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0  # master
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master
         with:
           toolchain: ${{ steps.nightly.outputs.version }}
           components: clippy
@@ -68,8 +68,8 @@ jobs:
             cargo-hack-
       - name: Install protoc
         run: sudo apt-get install -y protobuf-compiler
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
-      - uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1  # v2.85.13
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # stable
+      - uses: taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe  # v2.87.27
         with:
           tool: cargo-hack
       - name: Check all feature combinations
@@ -110,7 +110,7 @@ jobs:
           key: cargo-audit-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-audit-
-      - uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1  # v2.85.13
+      - uses: taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe  # v2.87.27
         with:
           tool: cargo-audit
       - name: Run cargo-audit
