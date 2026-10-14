@@ -73,6 +73,52 @@ fn test_ed25519() {
 }
 
 #[test]
+fn test_ed25519_offsets_into_another_instruction() {
+    use ed25519_dalek::Signer;
+    let mollusk = Mollusk::default();
+    let signing_key = ed25519_dalek::SigningKey::from_bytes(&thread_rng().gen());
+
+    let msg = b"hello";
+    let signature = signing_key.sign(msg).to_bytes();
+    let pubkey_bytes = signing_key.verifying_key().to_bytes();
+
+    let instr = solana_ed25519_program::new_ed25519_instruction_with_signature(
+        msg,
+        <&[u8; solana_ed25519_program::SIGNATURE_SERIALIZED_SIZE]>::try_from(&signature[..])
+            .unwrap(),
+        <&[u8; solana_ed25519_program::PUBKEY_SERIALIZED_SIZE]>::try_from(&pubkey_bytes[..])
+            .unwrap(),
+    );
+
+    // Verify the same signature again, reading the public key, signature and
+    // message out of the first instruction's data.
+    let public_key_offset = solana_ed25519_program::DATA_START;
+    let signature_offset = public_key_offset + solana_ed25519_program::PUBKEY_SERIALIZED_SIZE;
+    let message_data_offset = signature_offset + solana_ed25519_program::SIGNATURE_SERIALIZED_SIZE;
+    let offsets_instr = solana_ed25519_program::offsets_to_ed25519_instruction(&[
+        solana_ed25519_program::Ed25519SignatureOffsets {
+            signature_offset: signature_offset as u16,
+            signature_instruction_index: 0,
+            public_key_offset: public_key_offset as u16,
+            public_key_instruction_index: 0,
+            message_data_offset: message_data_offset as u16,
+            message_data_size: msg.len() as u16,
+            message_instruction_index: 0,
+        },
+    ]);
+
+    mollusk.process_and_validate_transaction_instructions(
+        &[instr, offsets_instr],
+        &[
+            (Pubkey::new_unique(), Account::default()),
+            (solana_sdk_ids::ed25519_program::id(), precompile_account()),
+        ],
+        &[Check::success()],
+        None,
+    );
+}
+
+#[test]
 fn test_secp256r1() {
     use openssl::{
         bn::BigNumContext,
