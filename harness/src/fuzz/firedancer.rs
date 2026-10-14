@@ -87,42 +87,25 @@ fn build_fixture_context(
         &fallbacks,
     );
 
-    // The fixture must be self-contained, so append the accounts the harness
-    // synthesized for the caller, keeping the caller's order first.
-    let mut fixture_accounts: Vec<(Pubkey, Account)> = accounts.to_vec();
-    for (key, account) in &transaction_accounts {
-        if !fixture_accounts.iter().any(|(key_, _)| key_ == key) {
-            fixture_accounts.push((*key, Account::from(account.clone())));
-        }
-    }
+    // The fixture's accounts are the message's accounts, in message order,
+    // which include the accounts the harness synthesized for the caller.
+    let accounts: Vec<_> = transaction_accounts
+        .into_iter()
+        .map(|(key, account)| (key, Account::from(account), None))
+        .collect();
 
     let compiled_ix = sanitized_message.instructions().first().unwrap();
     let instruction_accounts: Vec<InstructionAccount> = compiled_ix
         .accounts
         .iter()
         .map(|&index_in_transaction| {
-            let index = index_in_transaction as usize;
-            // The fixture's accounts keep the caller's order, not the
-            // message's, so index into those.
-            let pubkey = &sanitized_message.account_keys()[index];
-            let index_of_account = fixture_accounts
-                .iter()
-                .position(|(key, _)| key == pubkey)
-                .unwrap();
             InstructionAccount::new(
-                index_of_account as u16,
-                sanitized_message.is_signer(index),
-                sanitized_message.is_writable(index),
+                u16::from(index_in_transaction),
+                sanitized_message.is_signer(index_in_transaction as usize),
+                sanitized_message.is_writable(index_in_transaction as usize),
             )
         })
         .collect();
-
-    // Include unreferenced accounts as well in order for all sysvars to be
-    // well-formed.
-    let accounts = fixture_accounts
-        .into_iter()
-        .map(|(key, account)| (key, account, None))
-        .collect::<Vec<_>>();
 
     FuzzContext {
         program_id: instruction.program_id,
