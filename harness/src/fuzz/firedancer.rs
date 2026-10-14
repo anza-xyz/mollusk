@@ -81,11 +81,20 @@ fn build_fixture_context(
     .into_iter()
     .collect();
 
-    let (sanitized_message, _transaction_accounts) = compile_accounts(
+    let (sanitized_message, transaction_accounts) = compile_accounts(
         std::slice::from_ref(instruction),
         accounts.iter(),
         &fallbacks,
     );
+
+    // The fixture must be self-contained, so append the accounts the harness
+    // synthesized for the caller, keeping the caller's order first.
+    let mut fixture_accounts: Vec<(Pubkey, Account)> = accounts.to_vec();
+    for (key, account) in &transaction_accounts {
+        if !fixture_accounts.iter().any(|(key_, _)| key_ == key) {
+            fixture_accounts.push((*key, Account::from(account.clone())));
+        }
+    }
 
     let compiled_ix = sanitized_message.instructions().first().unwrap();
     let instruction_accounts: Vec<InstructionAccount> = compiled_ix
@@ -96,7 +105,10 @@ fn build_fixture_context(
             // The fixture's accounts keep the caller's order, not the
             // message's, so index into those.
             let pubkey = &sanitized_message.account_keys()[index];
-            let index_of_account = accounts.iter().position(|(key, _)| key == pubkey).unwrap();
+            let index_of_account = fixture_accounts
+                .iter()
+                .position(|(key, _)| key == pubkey)
+                .unwrap();
             InstructionAccount::new(
                 index_of_account as u16,
                 sanitized_message.is_signer(index),
@@ -107,9 +119,9 @@ fn build_fixture_context(
 
     // Include unreferenced accounts as well in order for all sysvars to be
     // well-formed.
-    let accounts = accounts
-        .iter()
-        .map(|(key, account)| (*key, account.clone(), None))
+    let accounts = fixture_accounts
+        .into_iter()
+        .map(|(key, account)| (key, account, None))
         .collect::<Vec<_>>();
 
     FuzzContext {
@@ -305,6 +317,26 @@ pub fn load_firedancer_fixture(
         &fixture.output,
     );
     (parsed, result)
+}
+
+#[test]
+fn test_build_fixture_context_with_synthesized_account_meta() {
+    // An instruction that takes its own program account as a meta, with the
+    // program account omitted from the accounts list, executes fine (the
+    // harness synthesizes it), so building a fixture for it must not panic.
+    let program_id = Pubkey::new_unique();
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &[],
+        vec![AccountMeta::new_readonly(program_id, false)],
+    );
+    let _context = build_fixture_context(
+        &[],
+        &ComputeBudget::new_with_defaults(true),
+        &SVMFeatureSet::all_enabled(),
+        &instruction,
+        0,
+    );
 }
 
 #[test]
