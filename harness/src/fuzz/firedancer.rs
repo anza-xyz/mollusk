@@ -87,25 +87,43 @@ fn build_fixture_context(
         &fallbacks,
     );
 
-    // The fixture's accounts are the message's accounts, in message order,
-    // which include the accounts the harness synthesized for the caller.
-    let accounts: Vec<_> = transaction_accounts
-        .into_iter()
-        .map(|(key, account)| (key, Account::from(account), None))
-        .collect();
+    // The fixture must be self-contained, so append any message accounts
+    // the caller did not provide (i.e. the ones the harness synthesized),
+    // keeping the caller's accounts first.
+    let mut fixture_accounts: Vec<(Pubkey, Account)> = accounts.to_vec();
+    for (key, account) in &transaction_accounts {
+        if !fixture_accounts.iter().any(|(key_, _)| key_ == key) {
+            fixture_accounts.push((*key, Account::from(account.clone())));
+        }
+    }
 
     let compiled_ix = sanitized_message.instructions().first().unwrap();
     let instruction_accounts: Vec<InstructionAccount> = compiled_ix
         .accounts
         .iter()
         .map(|&index_in_transaction| {
+            let index = index_in_transaction as usize;
+            // The fixture's accounts keep the caller's order, not the
+            // message's, so index into those.
+            let pubkey = &sanitized_message.account_keys()[index];
+            let index_of_account = fixture_accounts
+                .iter()
+                .position(|(key, _)| key == pubkey)
+                .expect("message account must exist in fixture accounts");
             InstructionAccount::new(
-                u16::from(index_in_transaction),
-                sanitized_message.is_signer(index_in_transaction as usize),
-                sanitized_message.is_writable(index_in_transaction as usize),
+                index_of_account as u16,
+                sanitized_message.is_signer(index),
+                sanitized_message.is_writable(index),
             )
         })
         .collect();
+
+    // Include unreferenced accounts as well in order for all sysvars to be
+    // well-formed.
+    let accounts = fixture_accounts
+        .into_iter()
+        .map(|(key, account)| (key, account, None))
+        .collect::<Vec<_>>();
 
     FuzzContext {
         program_id: instruction.program_id,
@@ -320,6 +338,50 @@ fn test_build_fixture_context_with_synthesized_account_meta() {
         &instruction,
         0,
     );
+}
+
+#[test]
+fn test_build_fixture_context_retains_unreferenced_accounts() {
+    // Accounts the caller provides but the instruction does not reference
+    // (e.g. sysvars, which the Firedancer runtime expects in order to be
+    // well-formed) must be retained in the fixture, in the caller's order.
+    // The instruction here references its account before the unreferenced
+    // one in the message, but the caller lists them the other way around.
+    let program_id = Pubkey::new_unique();
+    let referenced_key = Pubkey::new_unique();
+    let unreferenced_key = Pubkey::new_unique();
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &[],
+        vec![AccountMeta::new(referenced_key, false)],
+    );
+    let accounts = vec![
+        (referenced_key, Account::default()),
+        (unreferenced_key, Account::default()),
+    ];
+    let context = build_fixture_context(
+        &accounts,
+        &ComputeBudget::new_with_defaults(true),
+        &SVMFeatureSet::all_enabled(),
+        &instruction,
+        0,
+    );
+
+    // Caller's accounts first, in caller order, unreferenced ones included;
+    // the synthesized program account is appended last.
+    assert_eq!(context.accounts.len(), 3);
+    assert_eq!(context.accounts[0].0, referenced_key);
+    assert_eq!(context.accounts[1].0, unreferenced_key);
+    assert_eq!(context.accounts[2].0, program_id);
+    assert!(context.accounts[2].1.executable);
+    assert_eq!(context.accounts[2].1.owner, DEFAULT_LOADER_KEY);
+
+    // Instruction accounts index into the fixture's account list, not the
+    // message's.
+    assert_eq!(context.instruction_accounts.len(), 1);
+    assert_eq!(context.instruction_accounts[0].index_in_transaction, 0);
+    assert!(context.instruction_accounts[0].is_writable());
+    assert!(!context.instruction_accounts[0].is_signer());
 }
 
 #[test]
