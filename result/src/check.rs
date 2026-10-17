@@ -13,6 +13,13 @@ use {
     solana_pubkey::Pubkey,
 };
 
+fn is_account_closed(account: &Account) -> bool {
+    account.lamports == 0
+        && account.data.is_empty()
+        && account.owner == solana_sdk_ids::system_program::id()
+        && !account.executable
+}
+
 enum CheckType<'a> {
     /// Check the number of compute units consumed by the instruction.
     ComputeUnitsConsumed(u64),
@@ -235,7 +242,7 @@ fn run_checks(
                         c,
                         "account_closed",
                         true,
-                        resulting_account == &Default::default(),
+                        is_account_closed(resulting_account),
                     );
                 }
                 if let Some((offset, check_data_slice)) = account.check_data_slice {
