@@ -33,10 +33,11 @@ macro_rules! compare {
                 if $c.verbose {
                     println!("{}", msg);
                 }
-                return false;
+                false
             }
+        } else {
+            true
         }
-        true
     }};
 }
 
@@ -55,3 +56,32 @@ macro_rules! throw {
 }
 
 pub(crate) use {compare, throw};
+
+#[cfg(test)]
+mod tests {
+    use super::Config;
+
+    fn compare_all(config: &Config, pairs: &[(u64, u64)], compared: &mut usize) -> bool {
+        let mut pass = true;
+        for (left, right) in pairs {
+            *compared += 1;
+            pass &= compare!(config, "value", left, right);
+        }
+        pass
+    }
+
+    #[test]
+    fn compare_keeps_checking_after_a_mismatch() {
+        let config = Config {
+            panic: false,
+            ..Config::default()
+        };
+        let mut compared = 0;
+        assert!(!compare_all(
+            &config,
+            &[(1, 2), (3, 4), (5, 5)],
+            &mut compared
+        ));
+        assert_eq!(compared, 3);
+    }
+}
