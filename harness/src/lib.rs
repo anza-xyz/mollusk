@@ -1186,8 +1186,9 @@ impl Mollusk {
 
     /// Process multiple instructions using a single shared transaction context.
     ///
-    /// When a transaction fee `payer` is not provided, it is assumed to be the
-    /// first account in the `accounts` slice.
+    /// When a transaction fee `payer` is not provided, the message is compiled
+    /// without one, so accounts only get the signer and writable flags their
+    /// instructions give them.
     ///
     /// This API is the closest Mollusk offers to a transaction. All
     /// instructions are processed in the same message using the same
@@ -1375,8 +1376,9 @@ impl Mollusk {
     /// Process multiple instructions using a single shared transaction context,
     /// then perform checks on the result. Panics if any checks fail.
     ///
-    /// When a transaction fee `payer` is not provided, it is assumed to be the
-    /// first account in the `accounts` slice.
+    /// When a transaction fee `payer` is not provided, the message is compiled
+    /// without one, so accounts only get the signer and writable flags their
+    /// instructions give them.
     ///
     /// This API is the closest Mollusk offers to a transaction. All
     /// instructions are processed in the same message using the same
