@@ -56,6 +56,18 @@
 //! | bench2 | 1,204 | +754   |
 //! | bench3 | 2,811 | +2,361 |
 //! ```
+//!
+//! With the `cpi-compute-units` feature enabled, `cpi_breakdown(true)` adds
+//! two columns: the compute units consumed by the benched program itself, and
+//! by the CPIs it made (including their nested CPIs). Deltas are computed on
+//! the total.
+//!
+//! ```markdown
+//! | Name   | CUs   | Delta  | Program | CPIs  |
+//! |--------|-------|--------|---------|-------|
+//! | bench0 | 450   | --     | 450     | 0     |
+//! | bench1 | 2,811 | +2,361 | 1,204   | 1,607 |
+//! ```
 //! ### Matrix Benchmarking
 //!
 //! If you want to compare multiple program implementations (e.g., comparing
@@ -118,6 +130,8 @@ pub struct MolluskComputeUnitBencher<'a> {
     mollusk: Mollusk,
     must_pass: bool,
     out_dir: PathBuf,
+    #[cfg(feature = "cpi-compute-units")]
+    cpi_breakdown: bool,
 }
 
 impl<'a> MolluskComputeUnitBencher<'a> {
@@ -130,6 +144,8 @@ impl<'a> MolluskComputeUnitBencher<'a> {
             mollusk,
             must_pass: false,
             out_dir,
+            #[cfg(feature = "cpi-compute-units")]
+            cpi_breakdown: false,
         }
     }
 
@@ -142,6 +158,14 @@ impl<'a> MolluskComputeUnitBencher<'a> {
     /// Set whether the bencher should panic if a program execution fails.
     pub const fn must_pass(mut self, must_pass: bool) -> Self {
         self.must_pass = must_pass;
+        self
+    }
+
+    /// Set whether the results should break down compute units between the
+    /// benched program and its CPIs.
+    #[cfg(feature = "cpi-compute-units")]
+    pub const fn cpi_breakdown(mut self, cpi_breakdown: bool) -> Self {
+        self.cpi_breakdown = cpi_breakdown;
         self
     }
 
@@ -169,6 +193,10 @@ impl<'a> MolluskComputeUnitBencher<'a> {
                             );
                         }
                     }
+                }
+                #[cfg(feature = "cpi-compute-units")]
+                if self.cpi_breakdown {
+                    return MolluskComputeUnitBenchResult::new_with_cpi_breakdown(name, result);
                 }
                 MolluskComputeUnitBenchResult::new(name, result)
             })

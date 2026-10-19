@@ -103,6 +103,13 @@ impl ProgramCache {
             )
             .unwrap(),
         };
+        #[cfg(feature = "cpi-compute-units")]
+        let me = Self {
+            program_runtime_environment: crate::cpi_compute_units::instrument(
+                me.clone_program_runtime_environment(),
+            ),
+            ..me
+        };
         BUILTINS.iter().for_each(|builtin| {
             let program_id = builtin.program_id;
             let entry = builtin.program_cache_entry();

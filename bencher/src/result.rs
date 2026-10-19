@@ -9,12 +9,32 @@ use {
 pub struct MolluskComputeUnitBenchResult<'a> {
     name: &'a str,
     cus_consumed: u64,
+    cpi_cus_consumed: Option<u64>,
 }
 
 impl<'a> MolluskComputeUnitBenchResult<'a> {
     pub fn new(name: &'a str, result: InstructionResult) -> Self {
         let cus_consumed = result.compute_units_consumed;
-        Self { name, cus_consumed }
+        Self {
+            name,
+            cus_consumed,
+            cpi_cus_consumed: None,
+        }
+    }
+
+    #[cfg(feature = "cpi-compute-units")]
+    pub fn new_with_cpi_breakdown(name: &'a str, result: InstructionResult) -> Self {
+        let cpi_cus_consumed = result
+            .cpi_compute_units
+            .iter()
+            .filter(|cpi| cpi.stack_height == 2)
+            .map(|cpi| cpi.compute_units_consumed)
+            .sum();
+        Self {
+            name,
+            cus_consumed: result.compute_units_consumed,
+            cpi_cus_consumed: Some(cpi_cus_consumed),
+        }
     }
 }
 
@@ -57,7 +77,10 @@ pub fn write_results(
         .map(|content| parse_last_md_table(content));
 
     // Prepare to write a new table.
-    let mut md_table = md_header(table_header, solana_version);
+    let cpi_breakdown = results
+        .iter()
+        .any(|result| result.cpi_cus_consumed.is_some());
+    let mut md_table = md_header(table_header, solana_version, cpi_breakdown);
 
     // Evaluate the results against the previous table, if any.
     // If there are changes, write a new table.
@@ -69,6 +92,9 @@ pub fn write_results(
                 .find(|prev_result| prev_result.name == result.name)
         }) {
             Some(prev) => {
+                if prev.cpi_cus_consumed != result.cpi_cus_consumed {
+                    no_changes = false;
+                }
                 let delta = result.cus_consumed as i64 - prev.cus_consumed as i64;
                 if delta == 0 {
                     "--".to_string()
@@ -86,10 +112,20 @@ pub fn write_results(
                 "- new -".to_string()
             }
         };
-        md_table.push_str(&format!(
-            "| {} | {} | {} |\n",
-            result.name, result.cus_consumed, delta
-        ));
+        match result.cpi_cus_consumed {
+            Some(cpi_cus_consumed) => md_table.push_str(&format!(
+                "| {} | {} | {} | {} | {} |\n",
+                result.name,
+                result.cus_consumed,
+                delta,
+                result.cus_consumed.saturating_sub(cpi_cus_consumed),
+                cpi_cus_consumed
+            )),
+            None => md_table.push_str(&format!(
+                "| {} | {} | {} |\n",
+                result.name, result.cus_consumed, delta
+            )),
+        }
     }
 
     // Only create a new table if there were changes.
@@ -99,16 +135,21 @@ pub fn write_results(
     }
 }
 
-fn md_header(table_header: &str, solana_version: &str) -> String {
+fn md_header(table_header: &str, solana_version: &str, cpi_breakdown: bool) -> String {
+    let (cpi_columns, cpi_separators) = if cpi_breakdown {
+        (" Program | CPIs |", "---------|------|")
+    } else {
+        ("", "")
+    };
     format!(
         r#"#### {}
 
 Solana CLI Version: {}
 
-| Name | CUs | Delta |
-|------|------|-------|
+| Name | CUs | Delta |{}
+|------|------|-------|{}
 "#,
-        table_header, solana_version,
+        table_header, solana_version, cpi_columns, cpi_separators,
     )
 }
 
@@ -123,8 +164,13 @@ fn parse_last_md_table(content: &str) -> Vec<MolluskComputeUnitBenchResult<'_>> 
         let mut parts = line.split('|').skip(1).map(str::trim);
         let name = parts.next().unwrap();
         let cus_consumed = parts.next().unwrap().parse().unwrap();
+        let cpi_cus_consumed = parts.nth(2).and_then(|cpis| cpis.parse().ok());
 
-        results.push(MolluskComputeUnitBenchResult { name, cus_consumed });
+        results.push(MolluskComputeUnitBenchResult {
+            name,
+            cus_consumed,
+            cpi_cus_consumed,
+        });
     }
 
     results

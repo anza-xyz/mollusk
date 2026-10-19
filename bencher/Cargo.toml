@@ -9,6 +9,9 @@ license-file ={ workspace = true }
 edition = { workspace = true }
 version = { workspace = true }
 
+[features]
+cpi-compute-units = ["mollusk-svm/cpi-compute-units"]
+
 [dependencies]
 chrono = { workspace = true }
 num-format = { workspace = true }

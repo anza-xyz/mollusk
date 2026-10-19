@@ -16,6 +16,7 @@ all-builtins = [
     "dep:solana-vote-program",
     "dep:solana-zk-elgamal-proof-program",
 ]
+cpi-compute-units = ["mollusk-svm-result/cpi-compute-units"]
 fuzz = [
     "dep:agave-feature-set",
     "dep:mollusk-svm-fuzz-fixture",

@@ -33,6 +33,9 @@ pub(crate) struct MessageResult {
     /// fixtures don't contain the compiled message.
     #[cfg(feature = "inner-instructions")]
     pub message: Option<SanitizedMessage>,
+    /// Compute units consumed by each CPI, grouped by top-level instruction.
+    #[cfg(feature = "cpi-compute-units")]
+    pub cpi_compute_units: Vec<Vec<mollusk_svm_result::types::CpiComputeUnits>>,
 }
 
 impl MessageResult {

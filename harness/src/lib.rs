@@ -442,6 +442,8 @@
 pub mod account_store;
 mod callback;
 mod compile_accounts;
+#[cfg(feature = "cpi-compute-units")]
+mod cpi_compute_units;
 #[cfg(feature = "sbpf-debugger")]
 pub mod debugger;
 pub mod epoch_stake;
@@ -893,6 +895,11 @@ impl Mollusk {
 
         let mut raw_result = Ok(());
 
+        #[cfg(feature = "cpi-compute-units")]
+        crate::cpi_compute_units::clear();
+        #[cfg(feature = "cpi-compute-units")]
+        let mut cpi_compute_units = vec![Vec::new(); sanitized_message.instructions().len()];
+
         for (instruction_index, (program_id, compiled_ix)) in
             sanitized_message.program_instructions_iter().enumerate()
         {
@@ -929,6 +936,12 @@ impl Mollusk {
             };
             compute_units_consumed += compute_units_consumed_instruction;
 
+            #[cfg(feature = "cpi-compute-units")]
+            {
+                cpi_compute_units[instruction_index] =
+                    crate::cpi_compute_units::take(invoke_context.transaction_context);
+            }
+
             #[cfg(feature = "invocation-inspect-callback")]
             self.invocation_inspect_callback.after_invocation(
                 self,
@@ -959,6 +972,8 @@ impl Mollusk {
             inner_instructions,
             #[cfg(feature = "inner-instructions")]
             message: Some(sanitized_message.clone()),
+            #[cfg(feature = "cpi-compute-units")]
+            cpi_compute_units,
         }
     }
 
@@ -1013,6 +1028,12 @@ impl Mollusk {
                 .unwrap_or_default(),
             #[cfg(feature = "inner-instructions")]
             message: message_result.message,
+            #[cfg(feature = "cpi-compute-units")]
+            cpi_compute_units: message_result
+                .cpi_compute_units
+                .into_iter()
+                .next()
+                .unwrap_or_default(),
         };
 
         #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
@@ -1095,6 +1116,12 @@ impl Mollusk {
                 .unwrap_or_default(),
             #[cfg(feature = "inner-instructions")]
             message: message_result.message,
+            #[cfg(feature = "cpi-compute-units")]
+            cpi_compute_units: message_result
+                .cpi_compute_units
+                .into_iter()
+                .next()
+                .unwrap_or_default(),
         };
 
         #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
@@ -1260,6 +1287,8 @@ impl Mollusk {
             inner_instructions: message_result.inner_instructions,
             #[cfg(feature = "inner-instructions")]
             message: message_result.message,
+            #[cfg(feature = "cpi-compute-units")]
+            cpi_compute_units: message_result.cpi_compute_units,
         }
     }
 
