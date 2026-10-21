@@ -304,6 +304,8 @@ impl TransactionResult {
                 ProgramResult::Failure(ProgramError::AccountNotRentExempt)
             }
         };
+        #[cfg(feature = "inner-instructions")]
+        let inner_instructions = self.inner_instructions.concat();
         run_checks(
             checks,
             config,
@@ -313,10 +315,34 @@ impl TransactionResult {
             &self.return_data,
             &self.resulting_accounts,
             #[cfg(feature = "inner-instructions")]
-            self.inner_instructions
-                .first()
-                .map(Vec::as_slice)
-                .unwrap_or(&[]),
+            &inner_instructions,
         )
+    }
+}
+
+#[cfg(all(test, feature = "inner-instructions"))]
+mod tests {
+    use {super::*, solana_message::compiled_instruction::CompiledInstruction};
+
+    fn cpi() -> InnerInstruction {
+        InnerInstruction {
+            instruction: CompiledInstruction::new_from_raw_parts(1, vec![], vec![]),
+            stack_height: Some(2),
+        }
+    }
+
+    #[test]
+    fn transaction_inner_instruction_count_includes_every_instruction() {
+        let result = TransactionResult {
+            compute_units_consumed: 0,
+            execution_time: 0,
+            program_result: TransactionProgramResult::Success,
+            raw_result: Ok(()),
+            return_data: vec![],
+            resulting_accounts: vec![],
+            inner_instructions: vec![vec![cpi()], vec![cpi(), cpi()]],
+            message: None,
+        };
+        assert!(result.run_checks(&[Check::inner_instruction_count(3)], &Config::default()));
     }
 }
