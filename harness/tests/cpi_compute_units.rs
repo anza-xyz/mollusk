@@ -7,7 +7,8 @@ use {
         Mollusk,
     },
     solana_account::Account,
-    solana_instruction::{AccountMeta, Instruction},
+    solana_instruction::{error::InstructionError, AccountMeta, Instruction},
+    solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
 };
 
@@ -100,9 +101,57 @@ fn test_cpi_compute_units() {
         &[Check::success()],
     );
     assert!(direct_result.cpi_compute_units.is_empty());
-    assert!(
-        cpi.compute_units_consumed
-            >= direct_result.compute_units_consumed + mollusk.compute_budget.invoke_units
+    assert_eq!(
+        cpi.compute_units_consumed,
+        direct_result.compute_units_consumed + mollusk.compute_budget.invoke_units
+    );
+}
+
+#[test]
+fn test_failed_cpi_compute_units() {
+    let Setup {
+        mollusk,
+        program_id,
+        cpi_target_program_id,
+        key,
+        mut accounts,
+    } = setup();
+
+    let instruction = |signer: bool| {
+        Instruction::new_with_bytes(
+            program_id,
+            &invoke_data(4, &cpi_target_program_id, &[1, 2, 3, 4, 5]),
+            vec![
+                AccountMeta {
+                    pubkey: key,
+                    is_signer: signer,
+                    is_writable: true,
+                },
+                AccountMeta::new_readonly(cpi_target_program_id, false),
+            ],
+        )
+    };
+
+    let result = mollusk.process_and_validate_instruction(
+        &instruction(false),
+        &accounts,
+        &[Check::instruction_err(
+            InstructionError::PrivilegeEscalation,
+        )],
+    );
+    assert!(result.cpi_compute_units.is_empty());
+
+    accounts[0].1.owner = Pubkey::new_unique();
+    let result = mollusk.process_and_validate_instruction(
+        &instruction(true),
+        &accounts,
+        &[Check::err(ProgramError::IncorrectProgramId)],
+    );
+    assert_eq!(result.cpi_compute_units.len(), 1);
+    assert_eq!(result.cpi_compute_units[0].stack_height, 2);
+    assert_eq!(
+        result.cpi_compute_units[0].program_id,
+        cpi_target_program_id
     );
 }
 

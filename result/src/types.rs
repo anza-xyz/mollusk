@@ -97,7 +97,7 @@ pub struct InstructionResult {
     pub message: Option<SanitizedMessage>,
     /// Compute units consumed by each CPI, in invocation order.
     ///
-    /// CPIs that fail are not recorded.
+    /// CPIs that fail before invoking the callee are not recorded.
     #[cfg(feature = "cpi-compute-units")]
     pub cpi_compute_units: Vec<CpiComputeUnits>,
 }
@@ -211,7 +211,7 @@ pub struct TransactionResult {
     /// Compute units consumed by each CPI, grouped by top-level instruction,
     /// in invocation order.
     ///
-    /// CPIs that fail are not recorded.
+    /// CPIs that fail before invoking the callee are not recorded.
     #[cfg(feature = "cpi-compute-units")]
     pub cpi_compute_units: Vec<Vec<CpiComputeUnits>>,
 }

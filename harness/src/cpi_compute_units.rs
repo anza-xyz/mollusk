@@ -34,10 +34,17 @@ fn measure<'a, 'b>(
         .transaction_context
         .get_instruction_trace_length();
     let remaining = invoke_context.get_remaining();
-    let result = cpi(invoke_context)?;
-    let consumed = remaining.saturating_sub(invoke_context.get_remaining());
-    RECORDS.with_borrow_mut(|records| records.push((index_in_trace, consumed)));
-    Ok(result)
+    let result = cpi(invoke_context);
+    // A CPI that fails before invoking the callee has no trace entry.
+    if invoke_context
+        .transaction_context
+        .get_instruction_trace_length()
+        > index_in_trace
+    {
+        let consumed = remaining.saturating_sub(invoke_context.get_remaining());
+        RECORDS.with_borrow_mut(|records| records.push((index_in_trace, consumed)));
+    }
+    result
 }
 
 declare_builtin_function!(

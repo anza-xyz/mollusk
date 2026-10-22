@@ -526,8 +526,10 @@ The markdown file will contain entries according to the defined benchmarks.
 ```
 
 With the `cpi-compute-units` feature enabled, `cpi_breakdown(true)` adds two
-columns: the compute units consumed by the benched program itself, and by the
-CPIs it made (including their nested CPIs). Deltas are computed on the total.
+columns. `CPIs` is everything consumed inside the CPI syscalls the benched
+program made: the syscall's own cost (the `invoke_units` base cost and any
+per-byte charges) plus the invoked programs' execution, including their nested
+CPIs. `Program` is the rest. Deltas are computed on the total.
 
 ```markdown
 | Name   | CUs   | Delta  | Program | CPIs  |

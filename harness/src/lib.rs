@@ -896,9 +896,10 @@ impl Mollusk {
         let mut raw_result = Ok(());
 
         #[cfg(feature = "cpi-compute-units")]
-        crate::cpi_compute_units::clear();
-        #[cfg(feature = "cpi-compute-units")]
-        let mut cpi_compute_units = vec![Vec::new(); sanitized_message.instructions().len()];
+        let mut cpi_compute_units = {
+            crate::cpi_compute_units::clear();
+            vec![Vec::new(); sanitized_message.instructions().len()]
+        };
 
         for (instruction_index, (program_id, compiled_ix)) in
             sanitized_message.program_instructions_iter().enumerate()
