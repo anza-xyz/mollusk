@@ -22,7 +22,7 @@ runs:
           cargo-build-sbf-
     - name: Install protoc
       shell: bash
-      run: sudo apt-get install -y protobuf-compiler
+      run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
     - name: Get nightly toolchain version
       if: inputs.nightly == 'true'
       id: nightly
