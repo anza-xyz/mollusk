@@ -40,7 +40,7 @@ jobs:
           restore-keys: |
             cargo-clippy-
       - name: Install protoc
-        run: sudo apt-get install -y protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - name: Get nightly toolchain version
         id: nightly
         run: echo "version=$(make nightly-version)" >> $GITHUB_OUTPUT
@@ -67,7 +67,7 @@ jobs:
           restore-keys: |
             cargo-hack-
       - name: Install protoc
-        run: sudo apt-get install -y protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
       - uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1  # v2.85.13
         with:
@@ -89,7 +89,7 @@ jobs:
           restore-keys: |
             cargo-build-sbf-
       - name: Install protoc
-        run: sudo apt-get install -y protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - name: Install cargo-build-sbf
         run: cargo install cargo-build-sbf --version "$(make cargo-build-sbf-version)" --locked
       - name: Build test programs
