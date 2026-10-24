@@ -6,7 +6,12 @@ use {
     solana_transaction_error::TransactionError,
 };
 #[cfg(feature = "inner-instructions")]
-use {solana_message::SanitizedMessage, solana_transaction_status_client_types::InnerInstruction};
+use {
+    solana_instruction::{AccountMeta, Instruction},
+    solana_message::{LegacyMessage, Message, SanitizedMessage},
+    solana_transaction_status_client_types::InnerInstruction,
+    std::collections::HashSet,
+};
 
 /// The result code of the program's execution.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -91,6 +96,9 @@ pub struct InstructionResult {
     /// This can be used to map account indices in inner instructions back to
     /// their corresponding pubkeys via `message.account_keys()`.
     ///
+    /// For an instruction chain, this is compiled from every instruction in
+    /// the chain.
+    ///
     /// This is `None` when the result is loaded from a fuzz fixture, since
     /// fixtures don't contain the compiled message.
     #[cfg(feature = "inner-instructions")]
@@ -138,13 +146,80 @@ impl InstructionResult {
         self.return_data = other.return_data;
         self.resulting_accounts = other.resulting_accounts;
         #[cfg(feature = "inner-instructions")]
-        {
-            self.inner_instructions = other.inner_instructions;
-            self.message = other.message;
-        }
+        self.absorb_inner_instructions(other.inner_instructions, other.message);
         #[cfg(feature = "cpi-compute-units")]
         self.cpi_compute_units.extend(other.cpi_compute_units);
     }
+
+    #[cfg(feature = "inner-instructions")]
+    fn absorb_inner_instructions(
+        &mut self,
+        mut inner_instructions: Vec<InnerInstruction>,
+        message: Option<SanitizedMessage>,
+    ) {
+        match (self.message.take(), message) {
+            (Some(this_message), Some(other_message)) => {
+                let combined = combine_messages(&this_message, &other_message);
+                for inner_ix in self.inner_instructions.iter_mut() {
+                    remap_inner_instruction(inner_ix, &this_message, &combined);
+                }
+                for inner_ix in inner_instructions.iter_mut() {
+                    remap_inner_instruction(inner_ix, &other_message, &combined);
+                }
+                self.inner_instructions.extend(inner_instructions);
+                self.message = Some(combined);
+            }
+            (None, message) if self.inner_instructions.is_empty() => {
+                self.inner_instructions = inner_instructions;
+                self.message = message;
+            }
+            _ => self.inner_instructions.extend(inner_instructions),
+        }
+    }
+}
+
+#[cfg(feature = "inner-instructions")]
+fn combine_messages(a: &SanitizedMessage, b: &SanitizedMessage) -> SanitizedMessage {
+    let instructions: Vec<Instruction> = [a, b]
+        .into_iter()
+        .flat_map(|message| {
+            let account_keys = message.account_keys();
+            message.instructions().iter().map(move |ix| Instruction {
+                program_id: account_keys[ix.program_id_index as usize],
+                accounts: ix
+                    .accounts
+                    .iter()
+                    .map(|&index| AccountMeta {
+                        pubkey: account_keys[index as usize],
+                        is_signer: message.is_signer(index as usize),
+                        is_writable: message.is_writable(index as usize),
+                    })
+                    .collect(),
+                data: ix.data.clone(),
+            })
+        })
+        .collect();
+    let message = Message::new(&instructions, None);
+    SanitizedMessage::Legacy(LegacyMessage::new(message, &HashSet::new()))
+}
+
+#[cfg(feature = "inner-instructions")]
+fn remap_inner_instruction(
+    inner_ix: &mut InnerInstruction,
+    from: &SanitizedMessage,
+    to: &SanitizedMessage,
+) {
+    let from_keys = from.account_keys();
+    let to_keys = to.account_keys();
+    let remap = |index: &mut u8| {
+        let key = from_keys[*index as usize];
+        *index = to_keys
+            .iter()
+            .position(|k| *k == key)
+            .expect("combined message is missing an inner instruction key") as u8;
+    };
+    remap(&mut inner_ix.instruction.program_id_index);
+    inner_ix.instruction.accounts.iter_mut().for_each(remap);
 }
 
 /// The result code of the last program's execution and its index.

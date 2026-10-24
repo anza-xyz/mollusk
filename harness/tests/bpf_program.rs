@@ -520,6 +520,77 @@ fn test_inner_instructions_transfer() {
 }
 
 #[test]
+#[cfg(feature = "inner-instructions")]
+fn test_inner_instructions_chain() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+
+    let program_id = Pubkey::new_unique();
+    let mollusk = Mollusk::new(&program_id, "test_program_primary");
+
+    let payer = Pubkey::new_unique();
+    let payer_lamports = 100_000_000;
+    let payer_account = Account::new(payer_lamports, 0, &solana_sdk_ids::system_program::id());
+
+    let recipient_a = Pubkey::new_unique();
+    let recipient_b = Pubkey::new_unique();
+    let recipient_account = Account::new(0, 0, &solana_sdk_ids::system_program::id());
+
+    let transfer_amount = 2_000_000_u64;
+
+    let transfer_instruction = |recipient: Pubkey| {
+        let mut instruction_data = vec![2];
+        instruction_data.extend_from_slice(&transfer_amount.to_le_bytes());
+        Instruction::new_with_bytes(
+            program_id,
+            &instruction_data,
+            vec![
+                AccountMeta::new(payer, true),
+                AccountMeta::new(recipient, false),
+                AccountMeta::new_readonly(solana_sdk_ids::system_program::id(), false),
+            ],
+        )
+    };
+
+    let result = mollusk.process_and_validate_instruction_chain(
+        &[
+            (&transfer_instruction(recipient_a), &[Check::success()]),
+            (&transfer_instruction(recipient_b), &[Check::success()]),
+        ],
+        &[
+            (payer, payer_account),
+            (recipient_a, recipient_account.clone()),
+            (recipient_b, recipient_account),
+            keyed_account_for_system_program(),
+        ],
+    );
+
+    assert!(result.run_checks(&[Check::inner_instruction_count(2)], &mollusk.config));
+
+    let message = result.message.as_ref().unwrap();
+    let account_keys = message.account_keys();
+
+    for (inner_ix, recipient) in result
+        .inner_instructions
+        .iter()
+        .zip([recipient_a, recipient_b])
+    {
+        assert_eq!(inner_ix.stack_height, Some(2));
+        assert_eq!(
+            account_keys[inner_ix.instruction.program_id_index as usize],
+            solana_sdk_ids::system_program::id(),
+        );
+        assert_eq!(
+            account_keys[inner_ix.instruction.accounts[0] as usize],
+            payer
+        );
+        assert_eq!(
+            account_keys[inner_ix.instruction.accounts[1] as usize],
+            recipient
+        );
+    }
+}
+
+#[test]
 fn test_account_dedupe() {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
 
