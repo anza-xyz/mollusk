@@ -87,7 +87,8 @@ impl ProgramCache {
         compute_budget: &ComputeBudget,
         enable_register_tracing: bool,
     ) -> Self {
-        let me = Self {
+        #[cfg_attr(not(feature = "cpi-compute-units"), allow(unused_mut))]
+        let mut me = Self {
             // Programs are deployed at slot 0, and a loaded entry only becomes
             // effective `DELAY_VISIBILITY_SLOT_OFFSET` slots after deployment.
             // Execute the batch at that slot so added programs are visible.
@@ -103,6 +104,11 @@ impl ProgramCache {
             )
             .unwrap(),
         };
+        #[cfg(feature = "cpi-compute-units")]
+        {
+            me.program_runtime_environment =
+                crate::cpi_compute_units::instrument(me.clone_program_runtime_environment());
+        }
         BUILTINS.iter().for_each(|builtin| {
             let program_id = builtin.program_id;
             let entry = builtin.program_cache_entry();

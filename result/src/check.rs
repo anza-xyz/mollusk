@@ -342,6 +342,8 @@ mod tests {
             resulting_accounts: vec![],
             inner_instructions: vec![vec![cpi()], vec![cpi(), cpi()]],
             message: None,
+            #[cfg(feature = "cpi-compute-units")]
+            cpi_compute_units: vec![],
         };
         assert!(result.run_checks(&[Check::inner_instruction_count(3)], &Config::default()));
     }

@@ -128,6 +128,27 @@ fn process_instruction(
                 .ok_or(ProgramError::ArithmeticOverflow)?;
             **source_info.try_borrow_mut_lamports()? = 0;
         }
+        Some((7, rest)) if rest.len() >= PUBKEY_BYTES => {
+            // Invoke the provided program with the rest of the input data,
+            // forwarding all accounts.
+            let (program_id_bytes, data) = rest.split_at(PUBKEY_BYTES);
+
+            let program_id = Pubkey::new_from_array(program_id_bytes.try_into().unwrap());
+            let instruction = Instruction::new_with_bytes(
+                program_id,
+                data,
+                accounts
+                    .iter()
+                    .map(|info| AccountMeta {
+                        pubkey: *info.key,
+                        is_signer: info.is_signer,
+                        is_writable: info.is_writable,
+                    })
+                    .collect(),
+            );
+
+            invoke(&instruction, accounts)?;
+        }
         _ => return Err(ProgramError::InvalidInstructionData),
     }
 

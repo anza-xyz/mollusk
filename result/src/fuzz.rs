@@ -55,6 +55,8 @@ impl From<&mollusk_svm_fuzz_fixture::effects::Effects> for InstructionResult {
             inner_instructions: vec![],
             #[cfg(feature = "inner-instructions")]
             message: None,
+            #[cfg(feature = "cpi-compute-units")]
+            cpi_compute_units: vec![],
         }
     }
 }

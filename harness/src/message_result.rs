@@ -1,5 +1,7 @@
 //! The intermediate result of executing a transaction message.
 
+#[cfg(feature = "cpi-compute-units")]
+use mollusk_svm_result::types::CpiComputeUnits;
 use {
     mollusk_svm_result::types::TransactionProgramResult,
     solana_instruction_error::InstructionError, solana_program_error::ProgramError,
@@ -33,6 +35,9 @@ pub(crate) struct MessageResult {
     /// fixtures don't contain the compiled message.
     #[cfg(feature = "inner-instructions")]
     pub message: Option<SanitizedMessage>,
+    /// Compute units consumed by each CPI, grouped by top-level instruction.
+    #[cfg(feature = "cpi-compute-units")]
+    pub cpi_compute_units: Vec<Vec<CpiComputeUnits>>,
 }
 
 impl MessageResult {

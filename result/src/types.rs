@@ -46,6 +46,20 @@ impl From<Result<(), InstructionError>> for ProgramResult {
     }
 }
 
+/// Compute units consumed by a single cross-program invocation.
+#[cfg(feature = "cpi-compute-units")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CpiComputeUnits {
+    /// The stack height of the invoked instruction (2 for a CPI made by the
+    /// top-level program).
+    pub stack_height: usize,
+    /// The program invoked by the CPI.
+    pub program_id: Pubkey,
+    /// The compute units consumed from CPI syscall entry to return,
+    /// including the CPI's own overhead and any nested CPIs.
+    pub compute_units_consumed: u64,
+}
+
 /// The overall result of the instruction.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InstructionResult {
@@ -81,6 +95,11 @@ pub struct InstructionResult {
     /// fixtures don't contain the compiled message.
     #[cfg(feature = "inner-instructions")]
     pub message: Option<SanitizedMessage>,
+    /// Compute units consumed by each CPI, in invocation order.
+    ///
+    /// CPIs that fail before invoking the callee are not recorded.
+    #[cfg(feature = "cpi-compute-units")]
+    pub cpi_compute_units: Vec<CpiComputeUnits>,
 }
 
 impl Default for InstructionResult {
@@ -96,6 +115,8 @@ impl Default for InstructionResult {
             inner_instructions: vec![],
             #[cfg(feature = "inner-instructions")]
             message: None,
+            #[cfg(feature = "cpi-compute-units")]
+            cpi_compute_units: vec![],
         }
     }
 }
@@ -121,6 +142,8 @@ impl InstructionResult {
             self.inner_instructions = other.inner_instructions;
             self.message = other.message;
         }
+        #[cfg(feature = "cpi-compute-units")]
+        self.cpi_compute_units.extend(other.cpi_compute_units);
     }
 }
 
@@ -185,6 +208,12 @@ pub struct TransactionResult {
     /// fixtures don't contain the compiled message.
     #[cfg(feature = "inner-instructions")]
     pub message: Option<SanitizedMessage>,
+    /// Compute units consumed by each CPI, grouped by top-level instruction,
+    /// in invocation order.
+    ///
+    /// CPIs that fail before invoking the callee are not recorded.
+    #[cfg(feature = "cpi-compute-units")]
+    pub cpi_compute_units: Vec<Vec<CpiComputeUnits>>,
 }
 
 impl TransactionResult {
