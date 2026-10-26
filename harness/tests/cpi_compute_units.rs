@@ -222,13 +222,17 @@ fn test_instruction_chain_cpi_compute_units() {
         &accounts,
     );
 
-    assert_eq!(
-        result.cpi_compute_units,
-        [
-            single.cpi_compute_units[0].clone(),
-            single.cpi_compute_units[0].clone()
-        ]
+    assert_eq!(result.cpi_compute_units, single.cpi_compute_units);
+
+    let result = mollusk.process_and_validate_instruction_chain(
+        &[
+            (&cpi_instruction, &[Check::success()]),
+            (&noop_instruction, &[Check::success()]),
+        ],
+        &accounts,
     );
+
+    assert!(result.cpi_compute_units.is_empty());
 }
 
 #[test]
