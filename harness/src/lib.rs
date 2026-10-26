@@ -692,7 +692,11 @@ impl Mollusk {
 
     /// Warp the test environment to a slot by updating sysvars.
     pub fn warp_to_slot(&mut self, slot: u64) {
-        self.sysvars.warp_to_slot(slot)
+        self.sysvars.warp_to_slot(slot);
+        #[cfg(feature = "fuzz-fd")]
+        {
+            self.slot = slot;
+        }
     }
 
     fn get_loader_key(&self, program_id: &Pubkey) -> Pubkey {

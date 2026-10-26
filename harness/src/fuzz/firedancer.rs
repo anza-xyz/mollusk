@@ -337,6 +337,18 @@ fn test_parse_fixture_context_honors_fixture_feature_set() {
 }
 
 #[test]
+fn test_fixture_slot_follows_warp_to_slot() {
+    let mut mollusk = Mollusk::default();
+    mollusk.warp_to_slot(100);
+
+    let instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
+    let fixture =
+        build_fixture_from_mollusk_test(&mollusk, &instruction, &[], &InstructionResult::default());
+
+    assert_eq!(fixture.input.slot_context.slot, mollusk.sysvars.clock.slot);
+}
+
+#[test]
 fn test_num_to_instr_err() {
     [
         InstructionError::InvalidArgument,
