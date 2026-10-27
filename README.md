@@ -33,6 +33,7 @@ a handful of helpers.
   - [Loading and Executing Fixtures](#loading-and-executing-fixtures)
 - [Inner Instructions Tracking](#inner-instructions-tracking)
 - [Register tracing](#register-tracing)
+- [Interactive Debugging](#interactive-debugging)
 
 ## Single Instructions
 
@@ -744,10 +745,8 @@ SHA-256 identifier is that files may grow in number, and consumers need a
 deterministic way to evaluate which shared object should be used when
 analyzing the tracing data.
 
-When the `sbpf-debugger` feature is enabled and `SBF_DEBUG_PORT` is set, the
-VM will start a GDB remote stub on the specified TCP port. A debugger client
-can then connect to inspect registers, memory, set
-breakpoints, and step through SBPF execution.
+Register tracing also powers Mollusk's interactive debugger. See
+[Interactive Debugging](#interactive-debugging).
 
 Once enabled register tracing can't be changed afterwards because in nature
 it's baked into the program executables at load time. Yet a user may want a
@@ -783,3 +782,175 @@ mollusk.invocation_inspect_callback =
             .unwrap_or_default(),
     });
 ```
+
+## Interactive Debugging
+
+Mollusk can pause a program mid-execution and hand it to a debugger, so you
+can step through your program's source, set breakpoints, and inspect
+registers, memory, and local variables - all from an ordinary Mollusk test,
+with no validator involved.
+
+Every program invocation gets its own debug session, including each CPI. A
+session reports which program is running, how deep it sits in the CPI
+stack, and who called it, so you can follow an instruction across program
+boundaries.
+
+### Try It
+
+The repository ships a walkthrough built on two of its test programs:
+`test_program_primary` CPIs into `test_program_cpi_target`, which writes
+some data to an account. You need `cargo build-sbf`, which downloads the
+platform tools that ship `solana-lldb`, and Python 3.10's shared library
+(`libpython3.10`), which `solana-lldb` links against.
+
+In one terminal, build the programs with debug info and run the
+walkthrough:
+
+```sh
+make debugger-demo
+```
+
+Execution stops before the first instruction of `test_program_primary`:
+
+```
+Debugging executable with metadata (program_id=239vxAL9Q7e3uLoinJpJ873r3bvT9sPFxH7yekwPppNF;cpi_level=0;caller=none)
+Waiting for a Debugger connection on "127.0.0.1:9001"...
+```
+
+In a second terminal, attach `solana-lldb` with the program's symbols
+loaded:
+
+```sh
+make debugger-attach
+```
+
+Stop at the program's entrypoint and look around:
+
+```
+(lldb) process plugin packet monitor metadata
+program_id=239vxAL9Q7e3uLoinJpJ873r3bvT9sPFxH7yekwPppNF;cpi_level=0;caller=none
+(lldb) breakpoint set --name process_instruction
+(lldb) continue
+(lldb) frame variable input
+(lldb) register read pc icount_remain
+```
+
+`icount_remain` is the compute budget left. Next, break on the CPI call in
+`test-programs/primary/src/lib.rs`, inspect the data it's about to send,
+and let the CPI happen:
+
+```
+(lldb) breakpoint set --file lib.rs --line 98
+(lldb) continue
+(lldb) frame variable data
+(lldb) breakpoint disable
+(lldb) continue
+```
+
+The caller now waits inside the CPI while a second session opens on the
+same port for the callee. The first terminal prints its metadata:
+
+```
+Debugging executable with metadata (program_id=MD24T7azhc2q9ZXaeskbLpmVA41k7StzTGgcfvGcpHj;cpi_level=1;caller=239vxAL9Q7e3uLoinJpJ873r3bvT9sPFxH7yekwPppNF)
+Waiting for a Debugger connection on "127.0.0.1:9001"...
+```
+
+Attach to it from a third terminal, loading the callee's symbols:
+
+```sh
+make debugger-attach DEBUG_PROGRAM=test_program_cpi_target
+```
+
+```
+(lldb) breakpoint set --name process_instruction
+(lldb) continue
+(lldb) frame variable input
+(lldb) continue
+```
+
+Once the callee exits, the caller's `continue` returns too, and the
+walkthrough finishes with `Instruction succeeded`. Use
+`SBF_DEBUG_PORT=<port>` with both make targets to pick a different port.
+
+### Debugging Your Own Program
+
+1. Enable the `sbpf-debugger` feature, which also enables
+   `register-tracing`:
+
+   ```toml
+   [dev-dependencies]
+   mollusk-svm = { version = "0.16", features = ["sbpf-debugger"] }
+   ```
+
+2. Build the program with debug info, targeting sBPF v2:
+
+   ```sh
+   cargo build-sbf --debug --arch v2
+   ```
+
+   This writes `target/deploy/debug/<program>.so`, a stripped object for
+   the VM to run, and `target/deploy/debug/<program>.so.debug`, which holds
+   the symbols for the debugger.
+
+   Breakpoints don't hit in sBPF v3 programs (the `cargo build-sbf`
+   default) until Mollusk picks up sbpf 0.26 with Agave 4.5, which fixes
+   the debugger's v3 program counters
+   ([anza-xyz/sbpf#224](https://github.com/anza-xyz/sbpf/pull/224)).
+
+3. Run a single test with register tracing on and a debug port set. Point
+   `SBF_OUT_DIR` at the debug build so Mollusk loads the object that
+   matches the symbols:
+
+   ```sh
+   SBF_OUT_DIR=target/deploy/debug SBF_TRACE_DIR=target/sbf/trace SBF_DEBUG_PORT=9001 \
+       cargo test my_test -- --nocapture --test-threads=1
+   ```
+
+   Setting `SBF_TRACE_DIR` turns register tracing on with no code changes
+   (trace files are written there as well). Alternatively, construct
+   Mollusk with `Mollusk::new_debuggable(&program_id, "my_program", true)`.
+
+4. Attach from another terminal. `solana-lldb` ships with the platform
+   tools; point `PYTHONPATH` at its bundled Python module:
+
+   ```sh
+   LLVM=~/.cache/solana/<version>/platform-tools/llvm
+   PYTHONPATH=$LLVM/lib/python3.10/dist-packages $LLVM/bin/solana-lldb
+   (lldb) target create target/deploy/debug/my_program.so.debug
+   (lldb) gdb-remote 127.0.0.1:9001
+   ```
+
+### How It Works
+
+When the debug port is set, each sBPF invocation runs in the interpreter
+(the JIT is bypassed) and opens a GDB Remote Serial Protocol stub on
+`127.0.0.1:<port>`. The invocation blocks until a client connects, then
+runs under the client's control. When a program makes a CPI, the callee
+opens its own stub on the same port while the caller waits inside the CPI,
+so the callee must run to completion before the caller can continue.
+
+Each stub answers the `metadata` monitor command with the program ID, the
+CPI level, and the caller's program ID (`none` at the top level). In lldb,
+that's `process plugin packet monitor metadata`.
+
+Mollusk also writes `program_ids.map` to the trace directory, mapping each
+program ID in the instruction (including CPI targets) to the SHA-256 hash of
+the ELF it loaded. Tooling can use this to find the right `.so.debug` for a
+session automatically.
+
+The `mollusk_svm::debugger` module exposes the protocol helpers Mollusk's
+own tests use, for building scripted clients. See `test_debugger` in
+`harness/tests/register_tracing.rs` for an example that reads registers,
+memory, and metadata across a CPI.
+
+### Things to Know
+
+- **Each invocation blocks until a debugger attaches.** Run one test at a
+  time (`--test-threads=1`). Parallel tests contend for the same port.
+- **Use `--nocapture`.** Otherwise the test harness hides the "Waiting for
+  a Debugger connection" message.
+- **Continue to completion before detaching.** Disconnecting stops
+  execution where it stands, so the instruction result won't reflect a full
+  run.
+- **Step with `step`, `si`, and breakpoints.** `next` (step over) currently
+  runs the program to completion, and `bt` only shows the current frame.

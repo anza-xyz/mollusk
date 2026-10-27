@@ -3,6 +3,11 @@
 //! Provides low-level packet construction, parsing, and convenience wrappers
 //! for communicating with the GDB stub exposed by the SBPF VM when the
 //! `sbpf-debugger` feature is enabled.
+//!
+//! Interactive debugging doesn't need these: attach `solana-lldb` to the
+//! stub instead (see "Interactive Debugging" in the README). These helpers
+//! are for scripted clients, such as tests that assert on registers, memory,
+//! or invocation metadata while a program runs.
 
 use std::{
     collections::HashMap,
