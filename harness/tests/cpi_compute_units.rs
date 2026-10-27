@@ -210,25 +210,19 @@ fn test_instruction_chain_cpi_compute_units() {
             AccountMeta::new_readonly(cpi_target_program_id, false),
         ],
     );
-    let noop_instruction = Instruction::new_with_bytes(program_id, &[0], vec![]);
 
     let single = mollusk.process_instruction(&cpi_instruction, &accounts);
     let result = mollusk.process_and_validate_instruction_chain(
         &[
             (&cpi_instruction, &[Check::success()]),
-            (&noop_instruction, &[Check::success()]),
             (&cpi_instruction, &[Check::success()]),
         ],
         &accounts,
     );
 
-    assert_eq!(
-        result.cpi_compute_units,
-        [
-            single.cpi_compute_units[0].clone(),
-            single.cpi_compute_units[0].clone()
-        ]
-    );
+    // Each instruction of the chain is standalone, so the CPIs reset
+    // instead of building onto the previous instruction's.
+    assert_eq!(result.cpi_compute_units, single.cpi_compute_units);
 }
 
 #[test]

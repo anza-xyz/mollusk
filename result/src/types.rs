@@ -143,7 +143,9 @@ impl InstructionResult {
             self.message = other.message;
         }
         #[cfg(feature = "cpi-compute-units")]
-        self.cpi_compute_units.extend(other.cpi_compute_units);
+        {
+            self.cpi_compute_units = other.cpi_compute_units;
+        }
     }
 }
 
