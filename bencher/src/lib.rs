@@ -85,9 +85,9 @@
 //!
 //! /* Instruction & accounts setup ... */
 //!
-//! let mollusk = Mollusk::new(&program_id, "program_v1");
+//! let mut mollusk = Mollusk::new(&program_id, "program_v1");
 //!
-//! MolluskComputeUnitMatrixBencher::new(mollusk)
+//! MolluskComputeUnitMatrixBencher::new(&mut mollusk)
 //!     .programs(&["program_v1", "program_v2", "program_v3"])
 //!     .bench(("bench0", &instruction0, &accounts0))
 //!     .bench(("bench1", &instruction1, &accounts1))
