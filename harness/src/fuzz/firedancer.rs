@@ -345,6 +345,7 @@ fn test_fixture_slot_follows_warp_to_slot() {
     let fixture =
         build_fixture_from_mollusk_test(&mollusk, &instruction, &[], &InstructionResult::default());
 
+    assert_eq!(mollusk.slot, 100);
     assert_eq!(fixture.input.slot_context.slot, mollusk.sysvars.clock.slot);
 }
 
