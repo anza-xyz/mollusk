@@ -11,9 +11,22 @@ use {
 
 const DEFAULT_PATH: &str = "target/sbf/trace";
 
+/// Invocation callback that persists register traces to disk and, with the
+/// `sbpf-debugger` feature, attaches each invocation to a debugger.
+///
+/// Installed automatically when register tracing is enabled. The
+/// [`Default`] implementation reads its configuration from the
+/// `SBF_TRACE_DIR`, `SBF_TRACE_DISASSEMBLE`, and `SBF_DEBUG_PORT` environment
+/// variables.
 pub struct DefaultRegisterTracingCallback {
+    /// Directory, relative to the working directory, that trace files are
+    /// written to.
     pub sbf_trace_dir: String,
+    /// Also write a disassembled trace (`.trace`) for each register trace.
     pub sbf_trace_disassemble: bool,
+    /// When set, each sBPF invocation (including CPIs) runs in the
+    /// interpreter and blocks until a GDB remote debugger connects to
+    /// `127.0.0.1` on this port.
     #[cfg(feature = "sbpf-debugger")]
     pub sbf_debug_port: Option<u16>,
 }

@@ -646,6 +646,8 @@ impl Mollusk {
     /// - A default [`DefaultRegisterTracingCallback`] is installed
     /// - Trace data is written to `SBF_TRACE_DIR` (or `target/sbf/trace` by
     ///   default)
+    /// - With the `sbpf-debugger` feature, setting `SBF_DEBUG_PORT` makes each
+    ///   program invocation wait for a debugger on that port
     #[cfg(feature = "register-tracing")]
     pub fn new_debuggable(
         program_id: &Pubkey,

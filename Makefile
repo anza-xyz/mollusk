@@ -2,6 +2,9 @@ SHELL := /usr/bin/env bash
 NIGHTLY_TOOLCHAIN := nightly-2026-05-23
 CARGO_BUILD_SBF_VERSION := 4.3.0
 PLATFORM_TOOLS_VERSION := v1.57
+PLATFORM_TOOLS_LLVM_DIR := $(HOME)/.cache/solana/$(PLATFORM_TOOLS_VERSION)/platform-tools/llvm
+SBF_DEBUG_PORT ?= 9001
+DEBUG_PROGRAM ?= test_program_primary
 
 
 .PHONY: \
@@ -17,6 +20,7 @@ PLATFORM_TOOLS_VERSION := v1.57
 	clippy-fix-test-programs \
 	build \
 	build-test-programs \
+	build-debug-test-programs \
 	build-test-elfs \
 	test \
 	audit \
@@ -24,7 +28,9 @@ PLATFORM_TOOLS_VERSION := v1.57
 	prepublish \
 	verify-crate-owners \
 	package \
-	publish
+	publish \
+	debugger-demo \
+	debugger-attach
 
 # Advisories to ignore for audit.
 # - RUSTSEC-2022-0093: ed25519-dalek: Double Public Key Signing Function Oracle Attack
@@ -82,6 +88,12 @@ build-test-programs:
 	@cargo build-sbf --manifest-path test-programs/Cargo.toml --sbf-out-dir target/deploy \
 		--tools-version $(PLATFORM_TOOLS_VERSION)
 
+build-debug-test-programs:
+	@for PROGRAM in primary cpi-target; do \
+		cargo build-sbf --manifest-path test-programs/$$PROGRAM/Cargo.toml --debug --arch v2 \
+			--sbf-out-dir target/deploy --tools-version $(PLATFORM_TOOLS_VERSION) || exit 1; \
+	done
+
 build-test-elfs:
 	@set -e; \
 	OUT_DIR=target/deploy; \
@@ -125,3 +137,13 @@ package:
 DRY_RUN ?=
 publish:
 	@cargo publish --workspace $(DRY_RUN) $(ARGS)
+
+debugger-demo: build-debug-test-programs
+	@SBF_OUT_DIR=target/deploy/debug SBF_DEBUG_PORT=$(SBF_DEBUG_PORT) \
+		cargo run -p mollusk-svm --example debugger --features sbpf-debugger
+
+debugger-attach:
+	@PYTHONPATH=$(wildcard $(PLATFORM_TOOLS_LLVM_DIR)/lib/python3*/dist-packages) \
+		$(PLATFORM_TOOLS_LLVM_DIR)/bin/solana-lldb \
+		-o "target create target/deploy/debug/$(DEBUG_PROGRAM).so.debug" \
+		-o "gdb-remote 127.0.0.1:$(SBF_DEBUG_PORT)"

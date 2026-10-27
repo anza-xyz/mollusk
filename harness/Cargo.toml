@@ -116,3 +116,7 @@ wincode = { workspace = true, features = ["derive"] }
 [[bench]]
 name = "ips"
 harness = false
+
+[[example]]
+name = "debugger"
+required-features = ["sbpf-debugger"]
