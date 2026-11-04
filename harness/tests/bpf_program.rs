@@ -25,7 +25,7 @@ fn test_write_data() {
     let lamports = mollusk.sysvars.rent.minimum_balance(space);
 
     let key = Pubkey::new_unique();
-    let account = Account::new(lamports, space, &program_id);
+    let account = Account::new_with_data(lamports, vec![0; space], &program_id);
 
     let instruction = {
         let mut instruction_data = vec![1];
@@ -88,12 +88,12 @@ fn test_transfer() {
 
     let payer = Pubkey::new_unique();
     let payer_lamports = 100_000_000;
-    let payer_account = Account::new(payer_lamports, 0, &solana_sdk_ids::system_program::id());
+    let payer_account = Account::empty(payer_lamports, &solana_sdk_ids::system_program::id());
 
     let recipient = Pubkey::new_unique();
     let recipient_lamports = 0;
     let recipient_account =
-        Account::new(recipient_lamports, 0, &solana_sdk_ids::system_program::id());
+        Account::empty(recipient_lamports, &solana_sdk_ids::system_program::id());
 
     let transfer_amount = 2_000_000_u64;
 
@@ -172,7 +172,7 @@ fn test_close_account() {
     let mollusk = Mollusk::new(&program_id, "test_program_primary");
 
     let key = Pubkey::new_unique();
-    let account = Account::new(50_000_000, 50, &program_id);
+    let account = Account::new_with_data(50_000_000, vec![0; 50], &program_id);
 
     let instruction = Instruction::new_with_bytes(
         program_id,
@@ -236,7 +236,7 @@ fn test_cpi() {
     let lamports = mollusk.sysvars.rent.minimum_balance(space);
 
     let key = Pubkey::new_unique();
-    let account = Account::new(lamports, space, &cpi_target_program_id);
+    let account = Account::new_with_data(lamports, vec![0; space], &cpi_target_program_id);
 
     let instruction = {
         let mut instruction_data = vec![4];
@@ -362,7 +362,7 @@ fn test_inner_instructions_cpi() {
     let lamports = mollusk.sysvars.rent.minimum_balance(space);
 
     let key = Pubkey::new_unique();
-    let account = Account::new(lamports, space, &cpi_target_program_id);
+    let account = Account::new_with_data(lamports, vec![0; space], &cpi_target_program_id);
 
     let instruction = {
         let mut instruction_data = vec![4];
@@ -445,12 +445,12 @@ fn test_inner_instructions_transfer() {
 
     let payer = Pubkey::new_unique();
     let payer_lamports = 100_000_000;
-    let payer_account = Account::new(payer_lamports, 0, &solana_sdk_ids::system_program::id());
+    let payer_account = Account::empty(payer_lamports, &solana_sdk_ids::system_program::id());
 
     let recipient = Pubkey::new_unique();
     let recipient_lamports = 0;
     let recipient_account =
-        Account::new(recipient_lamports, 0, &solana_sdk_ids::system_program::id());
+        Account::empty(recipient_lamports, &solana_sdk_ids::system_program::id());
 
     let transfer_amount = 2_000_000_u64;
 

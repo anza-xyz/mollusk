@@ -132,22 +132,22 @@ mod tests {
         let accounts = vec![
             (
                 Pubkey::new_unique(),
-                Account::new(42, 42, &Pubkey::default()),
+                Account::new_with_data(42, vec![0; 42], &Pubkey::default()),
                 None,
             ),
             (
                 Pubkey::new_unique(),
-                Account::new(42, 42, &Pubkey::default()),
+                Account::new_with_data(42, vec![0; 42], &Pubkey::default()),
                 None,
             ),
             (
                 Pubkey::new_unique(),
-                Account::new(42, 42, &Pubkey::default()),
+                Account::new_with_data(42, vec![0; 42], &Pubkey::default()),
                 None,
             ),
             (
                 Pubkey::new_unique(),
-                Account::new(42, 42, &Pubkey::default()),
+                Account::new_with_data(42, vec![0; 42], &Pubkey::default()),
                 None,
             ),
         ];

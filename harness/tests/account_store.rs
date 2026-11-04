@@ -24,11 +24,11 @@ fn test_transfer_with_context() {
     // Initialize accounts in the store
     account_store.insert(
         sender,
-        Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+        Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
     );
     account_store.insert(
         recipient,
-        Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+        Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
     );
 
     let context = mollusk.with_context(account_store);
@@ -75,15 +75,15 @@ fn test_multiple_transfers_with_persistent_state() {
     // Initialize accounts
     account_store.insert(
         alice,
-        Account::new(initial_lamports, 0, &solana_sdk_ids::system_program::id()),
+        Account::empty(initial_lamports, &solana_sdk_ids::system_program::id()),
     );
     account_store.insert(
         bob,
-        Account::new(initial_lamports, 0, &solana_sdk_ids::system_program::id()),
+        Account::empty(initial_lamports, &solana_sdk_ids::system_program::id()),
     );
     account_store.insert(
         charlie,
-        Account::new(initial_lamports, 0, &solana_sdk_ids::system_program::id()),
+        Account::empty(initial_lamports, &solana_sdk_ids::system_program::id()),
     );
 
     let context = mollusk.with_context(account_store);
@@ -159,10 +159,10 @@ fn test_account_store_sysvars_and_programs() {
 
     // Use the "close account" test from our BPF program.
     let key = Pubkey::new_unique();
-    context
-        .account_store
-        .borrow_mut()
-        .insert(key, Account::new(50_000_000, 50, &program_id));
+    context.account_store.borrow_mut().insert(
+        key,
+        Account::new_with_data(50_000_000, vec![0; 50], &program_id),
+    );
     let instruction = Instruction::new_with_bytes(
         program_id,
         &[3],

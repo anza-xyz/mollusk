@@ -126,7 +126,12 @@ mod tests {
         let instruction_data = vec![4; 24];
         let accounts = instruction_accounts
             .iter()
-            .map(|meta| (meta.pubkey, Account::new(42, 42, &Pubkey::default())))
+            .map(|meta| {
+                (
+                    meta.pubkey,
+                    Account::new_with_data(42, vec![0; 42], &Pubkey::default()),
+                )
+            })
             .collect::<Vec<_>>();
 
         let context = Context {

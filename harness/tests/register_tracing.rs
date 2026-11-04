@@ -144,7 +144,7 @@ fn test_custom_register_tracing_callback() {
 
     let base_lamports = 100_000_000u64;
     let accounts = vec![
-        (payer_pk, Account::new(base_lamports, 0, &system_program_id)),
+        (payer_pk, Account::empty(base_lamports, &system_program_id)),
         (system_program_id, system_account),
     ];
 
@@ -262,7 +262,7 @@ fn test_debugger() {
     let lamports = mollusk.sysvars.rent.minimum_balance(space);
 
     let key = Pubkey::new_unique();
-    let account = Account::new(lamports, space, &cpi_target_program_id);
+    let account = Account::new_with_data(lamports, vec![0; space], &cpi_target_program_id);
     let (instruction, instruction_data_len) = {
         let mut instruction_data = vec![4];
         instruction_data.extend_from_slice(cpi_target_program_id.as_ref());

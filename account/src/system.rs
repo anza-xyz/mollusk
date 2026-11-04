@@ -55,9 +55,9 @@ impl From<System> for (Pubkey, Account) {
     ) -> Self {
         (
             address,
-            Account::new(
+            Account::new_with_data(
                 lamports.resolve(space),
-                space,
+                vec![0; space],
                 &solana_sdk_ids::system_program::id(),
             ),
         )

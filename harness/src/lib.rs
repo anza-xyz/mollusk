@@ -101,11 +101,11 @@
 //! let accounts = [
 //!     (
 //!         sender,
-//!         Account::new(base_lamports, 0, &system_program::id()),
+//!         Account::empty(base_lamports, &system_program::id()),
 //!     ),
 //!     (
 //!         recipient,
-//!         Account::new(base_lamports, 0, &system_program::id()),
+//!         Account::empty(base_lamports, &system_program::id()),
 //!     ),
 //! ];
 //! let checks = vec![

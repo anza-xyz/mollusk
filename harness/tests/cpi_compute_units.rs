@@ -39,7 +39,10 @@ fn setup() -> Setup {
     let key = Pubkey::new_unique();
 
     let accounts = vec![
-        (key, Account::new(lamports, space, &cpi_target_program_id)),
+        (
+            key,
+            Account::new_with_data(lamports, vec![0; space], &cpi_target_program_id),
+        ),
         (
             cpi_target_program_id,
             create_program_account_loader_v3(&cpi_target_program_id),

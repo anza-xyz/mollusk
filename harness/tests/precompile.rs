@@ -6,7 +6,7 @@ use {
 };
 
 fn precompile_account() -> Account {
-    let mut account = Account::new(1, 0, &solana_sdk_ids::native_loader::id());
+    let mut account = Account::empty(1, &solana_sdk_ids::native_loader::id());
     account.set_executable(true);
     account
 }

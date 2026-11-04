@@ -80,11 +80,11 @@ impl<'a> TestSetup<'a> {
         let accounts = vec![
             (
                 *sender,
-                Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+                Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
             ),
             (
                 *recipient,
-                Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+                Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
             ),
         ];
         let checks = vec![

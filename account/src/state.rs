@@ -51,7 +51,11 @@ pub fn account<S: AccountState>(state: &S) -> Account {
     let encoded = state.encode();
     let space = state.space(encoded.len());
 
-    let mut account = Account::new(Rent::default().minimum_balance(space), space, &S::owner());
+    let mut account = Account::new_with_data(
+        Rent::default().minimum_balance(space),
+        vec![0; space],
+        &S::owner(),
+    );
     let len = encoded.len().min(space);
     account.data[..len].copy_from_slice(&encoded[..len]);
     account
