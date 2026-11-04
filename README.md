@@ -748,10 +748,11 @@ analyzing the tracing data.
 Register tracing also powers Mollusk's interactive debugger. See
 [Interactive Debugging](#interactive-debugging).
 
-Once enabled register tracing can't be changed afterwards because in nature
-it's baked into the program executables at load time. Yet a user may want a
-more fine-grained control over when register tracing data should be
-collected - for example, only for a specific instruction. Such control could
+The `register-tracing` feature compiles sbpf's `tracer` support in, so the VM
+records registers for every invocation in that build. Whether Mollusk collects
+that data is decided at construction and can't be changed afterwards. Yet a
+user may want a more fine-grained control over when register tracing data
+should be collected - for example, only for a specific instruction. Such control could
 be achieved by resetting the invocation callback to
 `EmptyInvocationInspectCallback` and later by restoring it to
 `DefaultRegisterTracingCallback`.
@@ -892,10 +893,11 @@ walkthrough finishes with `Instruction succeeded`. Use
    the VM to run, and `target/deploy/debug/<program>.so.debug`, which holds
    the symbols for the debugger.
 
-   Breakpoints don't hit in sBPF v3 programs (the `cargo build-sbf`
-   default) until Mollusk picks up sbpf 0.26 with Agave 4.5, which fixes
-   the debugger's v3 program counters
-   ([anza-xyz/sbpf#224](https://github.com/anza-xyz/sbpf/pull/224)).
+   sBPF v3 programs (the `cargo build-sbf` default) also hit breakpoints
+   and report correct program counters, but `frame variable` shows locals
+   as zero until the platform tools pick up
+   [anza-xyz/llvm-project#195](https://github.com/anza-xyz/llvm-project/pull/195).
+   Target v2 when you need to inspect variables.
 
 3. Run a single test with register tracing on and a debug port set. Point
    `SBF_OUT_DIR` at the debug build so Mollusk loads the object that
