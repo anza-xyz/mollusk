@@ -1,7 +1,7 @@
 //! Core result types for SVM program execution.
 
 use {
-    solana_account::Account, solana_instruction::error::InstructionError,
+    solana_account::Account, solana_instruction_error::InstructionError,
     solana_program_error::ProgramError, solana_pubkey::Pubkey,
     solana_transaction_error::TransactionError,
 };

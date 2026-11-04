@@ -18,7 +18,6 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
     }
     gate! {
         move_precompile_verification_to_svm,
-        syscall_parameter_address_restrictions,
         virtual_address_space_adjustments,
         account_data_direct_mapping,
         enable_bpf_loader_set_authority_checked_ix,
@@ -67,6 +66,7 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
         block_revenue_sharing,
         vote_account_initialize_v2,
         direct_account_pointers_in_program_input,
+        loader_v3_set_program_data_to_elf_length,
     }
     fs
 }

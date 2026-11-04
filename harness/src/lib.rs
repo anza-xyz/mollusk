@@ -481,7 +481,8 @@ use {
     solana_account::{Account, AccountSharedData, ReadableAccount},
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
-    solana_instruction::{error::InstructionError, AccountMeta, Instruction},
+    solana_instruction::{AccountMeta, Instruction},
+    solana_instruction_error::InstructionError,
     solana_message::SanitizedMessage,
     solana_program_runtime::{
         invoke_context::{EnvironmentConfig, InvokeContext},

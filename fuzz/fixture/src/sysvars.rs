@@ -16,7 +16,7 @@ use {
     solana_keccak_hasher::Hasher,
     solana_rent::Rent,
     solana_slot_hashes::{SlotHash, SlotHashes},
-    solana_stake_history::{StakeHistory, StakeHistoryEntry},
+    solana_stake_history::{StakeHistory, StakeHistoryEntry, StakeHistoryItem},
     solana_sysvar::recent_blockhashes::RecentBlockhashes,
 };
 
@@ -178,7 +178,7 @@ impl From<ProtoSlotHashes> for SlotHashes {
                     let hash_bytes: [u8; 32] =
                         hash_bytes.try_into().expect("Invalid bytes for slot hash");
                     let hash = Hash::new_from_array(hash_bytes);
-                    (slot, hash)
+                    SlotHash { slot, hash }
                 },
             )
             .collect();
@@ -189,7 +189,7 @@ impl From<SlotHashes> for ProtoSlotHashes {
     fn from(value: SlotHashes) -> Self {
         let slot_hashes = value
             .iter()
-            .map(|(slot, hash)| ProtoSlotHashEntry {
+            .map(|SlotHash { slot, hash }| ProtoSlotHashEntry {
                 slot: *slot,
                 hash: hash.to_bytes().to_vec(),
             })
@@ -219,7 +219,7 @@ impl From<StakeHistory> for ProtoStakeHistory {
     fn from(value: StakeHistory) -> Self {
         let stake_history = value
             .iter()
-            .map(|(epoch, entry)| ProtoStakeHistoryEntry {
+            .map(|StakeHistoryItem { epoch, entry }| ProtoStakeHistoryEntry {
                 epoch: *epoch,
                 effective: entry.effective,
                 activating: entry.activating,

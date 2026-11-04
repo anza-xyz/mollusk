@@ -13,7 +13,7 @@ version = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true, optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 solana-account = { workspace = true }
-solana-instruction = { workspace = true }
+solana-instruction-error = { workspace = true }
 solana-message = { workspace = true, optional = true }
 solana-program-error = { workspace = true }
 solana-pubkey = { workspace = true }

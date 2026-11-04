@@ -8,7 +8,7 @@ use {
         types::{InstructionResult, ProgramResult, TransactionProgramResult, TransactionResult},
     },
     solana_account::{Account, ReadableAccount},
-    solana_instruction::error::InstructionError,
+    solana_instruction_error::InstructionError,
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
 };
