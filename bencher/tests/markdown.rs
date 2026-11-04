@@ -76,9 +76,9 @@ fn test_markdown_cpi_breakdown() {
         vec![
             (
                 key,
-                Account::new(
+                Account::new_with_data(
                     mollusk.sysvars.rent.minimum_balance(5),
-                    5,
+                    vec![0; 5],
                     &cpi_target_program_id,
                 ),
             ),

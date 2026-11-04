@@ -2,9 +2,9 @@ name: Main
 
 on:
   push:
-    branches: [main]
+    branches: [main, v4.5]
   pull_request:
-    branches: [main]
+    branches: [main, v4.5]
 
 env: {}
 

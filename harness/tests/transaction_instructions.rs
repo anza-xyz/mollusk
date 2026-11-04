@@ -7,7 +7,7 @@ use {
 };
 
 fn system_account_with_lamports(lamports: u64) -> Account {
-    Account::new(lamports, 0, &solana_sdk_ids::system_program::id())
+    Account::empty(lamports, &solana_sdk_ids::system_program::id())
 }
 
 fn exempt_minimum() -> u64 {

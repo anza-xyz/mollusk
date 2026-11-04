@@ -39,9 +39,9 @@ fn main() {
 
     let data = b"mollusk";
     let key = Pubkey::new_unique();
-    let account = Account::new(
+    let account = Account::new_with_data(
         mollusk.sysvars.rent.minimum_balance(data.len()),
-        data.len(),
+        vec![0; data.len()],
         &cpi_target_program_id,
     );
 

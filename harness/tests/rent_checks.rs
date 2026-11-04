@@ -15,7 +15,7 @@ use {
 };
 
 fn system_account(lamports: u64) -> Account {
-    Account::new(lamports, 0, &solana_sdk_ids::system_program::id())
+    Account::empty(lamports, &solana_sdk_ids::system_program::id())
 }
 
 fn exempt_minimum() -> u64 {
@@ -191,7 +191,10 @@ fn test_draining_rent_exempt_account_with_data_passes() {
     mollusk.process_and_validate_instruction(
         &instruction,
         &[
-            (source, Account::new(source_lamports, data_len, &program_id)),
+            (
+                source,
+                Account::new_with_data(source_lamports, vec![0; data_len], &program_id),
+            ),
             (destination, system_account(destination_lamports)),
         ],
         &[

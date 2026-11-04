@@ -33,7 +33,7 @@ fn test_epoch_stake() {
 
         mollusk.process_and_validate_instruction(
             &instruction,
-            &[(key, Account::new(1_000, 16, &program_id))],
+            &[(key, Account::new_with_data(1_000, vec![0; 16], &program_id))],
             &[
                 Check::success(),
                 Check::account(&key)

@@ -22,11 +22,11 @@ fn test_process_mollusk() {
     let accounts = vec![
         (
             sender,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
         (
             recipient,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
     ];
 
@@ -70,11 +70,11 @@ fn test_partially_validate_mollusk_reports_fixture_as_expected() {
     let accounts = vec![
         (
             sender,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
         (
             recipient,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
     ];
 
@@ -107,11 +107,11 @@ fn test_process_firedancer() {
     let accounts = vec![
         (
             sender,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
         (
             recipient,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
     ];
 
@@ -155,11 +155,11 @@ fn test_process_firedancer_accounts_not_in_message_order() {
     let accounts = vec![
         (
             recipient,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
         (
             sender,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
     ];
 
@@ -188,11 +188,11 @@ fn test_partially_validate_firedancer_reports_fixture_as_expected() {
     let accounts = vec![
         (
             sender,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
         (
             recipient,
-            Account::new(BASE_LAMPORTS, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(BASE_LAMPORTS, &solana_sdk_ids::system_program::id()),
         ),
     ];
 

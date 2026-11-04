@@ -19,11 +19,11 @@ fn test_transfer() {
     let accounts = [
         (
             sender,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
         (
             recipient,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
     ];
     let checks = vec![
@@ -55,11 +55,11 @@ fn test_transfer_account_ordering() {
     let accounts = [
         (
             recipient,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
         (
             sender,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
     ];
     let checks = vec![
@@ -91,12 +91,12 @@ fn test_transfer_closes_account_with_rent_epoch() {
                 sender,
                 Account {
                     rent_epoch,
-                    ..Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id())
+                    ..Account::empty(base_lamports, &solana_sdk_ids::system_program::id())
                 },
             ),
             (
                 recipient,
-                Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+                Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
             ),
         ];
         let checks = vec![Check::success(), Check::account(&sender).closed().build()];
@@ -118,11 +118,11 @@ fn test_transfer_bad_owner() {
     let accounts = [
         (
             sender,
-            Account::new(base_lamports, 0, &Pubkey::new_unique()), // <-- Bad owner.
+            Account::empty(base_lamports, &Pubkey::new_unique()), // <-- Bad owner.
         ),
         (
             recipient,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
     ];
     let checks = vec![
@@ -145,17 +145,17 @@ fn test_transfer_swap_program_account() {
         solana_system_interface::instruction::transfer(&sender, &recipient, transfer_amount);
 
     // Provide a custom program account instead of letting it be stubbed.
-    let mut program_account = Account::new(1_000_000, 0, &solana_sdk_ids::native_loader::id());
+    let mut program_account = Account::empty(1_000_000, &solana_sdk_ids::native_loader::id());
     program_account.set_executable(true);
 
     let accounts = [
         (
             sender,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
         (
             recipient,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
         (solana_sdk_ids::system_program::id(), program_account),
     ];

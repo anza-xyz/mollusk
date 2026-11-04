@@ -24,8 +24,6 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
         deplete_cu_meter_on_vm_failure,
         abort_on_invalid_curve,
         blake3_syscall_enabled,
-        curve25519_syscall_enabled,
-        define_ltds_fee_only_semantics,
         disable_fees_sysvar,
         disable_sbpf_v0_execution,
         disable_sbpf_v0_v1_v2_deployment,
@@ -37,7 +35,6 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
         enable_sha512_syscall,
         get_sysvar_syscall_enabled,
         last_restart_slot_sysvar,
-        loader_v3_minimum_extend_program_size,
         reenable_sbpf_v0_execution,
         relax_fee_payer_constraint,
         relax_post_exec_min_balance_check,
@@ -62,11 +59,13 @@ pub fn svm_feature_set_to_feature_set(svm: &SVMFeatureSet) -> FeatureSet {
         enable_alt_bn128_g2_syscalls,
         commission_rate_in_basis_points,
         custom_commission_collector,
-        enable_bls12_381_syscall,
         block_revenue_sharing,
         vote_account_initialize_v2,
         direct_account_pointers_in_program_input,
         loader_v3_set_program_data_to_elf_length,
+        early_instruction_trace_overflow_detection,
+        unbound_loader_v3_instruction_data,
+        pass_input_metadata_in_vm_r3_r5,
     }
     fs
 }

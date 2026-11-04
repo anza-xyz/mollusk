@@ -20,11 +20,11 @@ fn transfer_checked_unchecked(c: &mut Criterion) {
     let accounts = vec![
         (
             sender,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
         (
             recipient,
-            Account::new(base_lamports, 0, &solana_sdk_ids::system_program::id()),
+            Account::empty(base_lamports, &solana_sdk_ids::system_program::id()),
         ),
     ];
     let checks = vec![

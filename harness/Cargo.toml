@@ -40,7 +40,8 @@ precompiles = [
 register-tracing = [
     "invocation-inspect-callback",
     "dep:hex",
-    "dep:sha2"
+    "dep:sha2",
+    "dep:solana-sbpf",
 ]
 sbpf-debugger = ["register-tracing", "solana-program-runtime/sbpf-debugger"]
 serde = [
@@ -79,6 +80,7 @@ solana-program-error = { workspace = true }
 solana-program-runtime = { workspace = true, features = ["agave-unstable-api", "dev-context-only-utils", "metrics"] }
 solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
+solana-sbpf = { workspace = true, features = ["tracer"], optional = true }
 solana-sdk-ids = { workspace = true }
 solana-slot-hashes = { workspace = true }
 solana-stake-history = { workspace = true, features = ["serde"] }
@@ -89,7 +91,7 @@ solana-svm-log-collector = { workspace = true, features = ["agave-unstable-api"]
 solana-svm-timings = { workspace = true, features = ["agave-unstable-api"] }
 solana-syscalls = { workspace = true, features = ["agave-unstable-api"] }
 solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
-solana-sysvar = { workspace = true }
+solana-sysvar = { workspace = true, features = ["serde"] }
 solana-sysvar-id = { workspace = true }
 solana-transaction-context = { workspace = true, features = ["agave-unstable-api", "dev-context-only-utils"] }
 solana-transaction-error = { workspace = true }

@@ -101,11 +101,11 @@
 //! let accounts = [
 //!     (
 //!         sender,
-//!         Account::new(base_lamports, 0, &system_program::id()),
+//!         Account::empty(base_lamports, &system_program::id()),
 //!     ),
 //!     (
 //!         recipient,
-//!         Account::new(base_lamports, 0, &system_program::id()),
+//!         Account::empty(base_lamports, &system_program::id()),
 //!     ),
 //! ];
 //! let checks = vec![
@@ -639,11 +639,11 @@ impl Mollusk {
     /// Create a new Mollusk instance with configurable debugging features.
     ///
     /// This constructor allows enabling low-level VM debugging capabilities,
-    /// such as register tracing, which are baked into program executables at
-    /// load time and cannot be changed afterwards.
+    /// such as register tracing, which are configured at construction and
+    /// cannot be changed afterwards.
     ///
     /// When `enable_register_tracing` is `true`:
-    /// - Programs are loaded with register tracing support
+    /// - Programs are loaded with debugging symbols
     /// - A default [`DefaultRegisterTracingCallback`] is installed
     /// - Trace data is written to `SBF_TRACE_DIR` (or `target/sbf/trace` by
     ///   default)

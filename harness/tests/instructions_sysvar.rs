@@ -93,7 +93,7 @@ fn test_single_instruction() {
         &[
             (
                 output_pubkey,
-                Account::new(output_lamports, ENTRY_SIZE, &program_id),
+                Account::new_with_data(output_lamports, vec![0; ENTRY_SIZE], &program_id),
             ),
             (extra_pubkey1, Account::default()),
             (extra_pubkey2, Account::default()),
@@ -177,7 +177,7 @@ fn test_transaction_instructions() {
 
     let mut accounts = vec![(
         output_pubkey,
-        Account::new(output_lamports, output_space, &program_id),
+        Account::new_with_data(output_lamports, vec![0; output_space], &program_id),
     )];
     accounts.extend(extra_accounts);
 
@@ -296,8 +296,11 @@ fn test_override_sysvar_actual() {
     // Mock out the sysvar account and provide it to the test environment.
     let ix_sysvar_account_data =
         construct_instructions_data(&[as_borrowed_instruction(&instruction)]).unwrap();
-    let mut ix_sysvar_account =
-        Account::new(0, ix_sysvar_account_data.len(), &solana_sdk_ids::sysvar::ID);
+    let mut ix_sysvar_account = Account::new_with_data(
+        0,
+        vec![0; ix_sysvar_account_data.len()],
+        &solana_sdk_ids::sysvar::ID,
+    );
     ix_sysvar_account.data = ix_sysvar_account_data.clone();
 
     // Now intentionally flip one of the is_writable flags in the instruction
@@ -309,7 +312,7 @@ fn test_override_sysvar_actual() {
         &[
             (
                 output_pubkey,
-                Account::new(output_lamports, ENTRY_SIZE, &program_id),
+                Account::new_with_data(output_lamports, vec![0; ENTRY_SIZE], &program_id),
             ),
             (extra_pubkey1, Account::default()),
             (solana_instructions_sysvar::ID, ix_sysvar_account),
@@ -382,7 +385,7 @@ fn test_instruction_chain() {
     let accounts = [
         (
             output_pubkey,
-            Account::new(output_lamports, output_space, &program_id),
+            Account::new_with_data(output_lamports, vec![0; output_space], &program_id),
         ),
         (extra_pubkey, Account::default()),
     ];
