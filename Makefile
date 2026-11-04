@@ -88,6 +88,8 @@ build-test-programs:
 	@cargo build-sbf --manifest-path test-programs/Cargo.toml --sbf-out-dir target/deploy \
 		--tools-version $(PLATFORM_TOOLS_VERSION)
 
+# Targets sBPF v2 because lldb shows v3 locals as zero until the platform tools
+# pick up https://github.com/anza-xyz/llvm-project/pull/195.
 build-debug-test-programs:
 	@for PROGRAM in primary cpi-target; do \
 		cargo build-sbf --manifest-path test-programs/$$PROGRAM/Cargo.toml --debug --arch v2 \
