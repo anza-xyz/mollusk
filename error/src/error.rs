@@ -34,6 +34,9 @@ pub enum MolluskError<'a> {
     /// execution.
     #[error("    [MOLLUSK]: Failed to prepare instructions for execution")]
     InstructionPreparationFailed,
+    /// Serialized instructions exceed the Instructions sysvar's size limit.
+    #[error("    [MOLLUSK]: Instructions are too large for the Instructions sysvar")]
+    InstructionsSysvarOverflow,
 }
 
 pub trait MolluskPanic<T> {

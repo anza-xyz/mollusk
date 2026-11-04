@@ -1,4 +1,5 @@
 use {
+    mollusk_svm_error::error::{MolluskError, MolluskPanic},
     solana_account::Account,
     solana_instruction::{BorrowedAccountMeta, BorrowedInstruction},
     solana_instructions_sysvar::construct_instructions_data,
@@ -29,7 +30,9 @@ pub fn keyed_account(message: &SanitizedMessage) -> (Pubkey, Account) {
             })
             .collect::<Vec<_>>()
             .as_slice(),
-    );
+    )
+    .ok()
+    .or_panic_with(MolluskError::InstructionsSysvarOverflow);
 
     (
         solana_instructions_sysvar::ID,

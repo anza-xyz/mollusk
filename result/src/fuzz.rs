@@ -28,7 +28,7 @@ impl From<&InstructionResult> for mollusk_svm_fuzz_fixture::effects::Effects {
 
 impl From<&mollusk_svm_fuzz_fixture::effects::Effects> for InstructionResult {
     fn from(input: &mollusk_svm_fuzz_fixture::effects::Effects) -> Self {
-        use solana_instruction::error::InstructionError;
+        use solana_instruction_error::InstructionError;
 
         let compute_units_consumed = input.compute_units_consumed;
         let execution_time = input.execution_time;

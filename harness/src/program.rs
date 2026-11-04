@@ -254,7 +254,7 @@ pub struct Builtin {
 
 impl Builtin {
     fn program_cache_entry(&self) -> Arc<ProgramCacheEntry> {
-        Arc::new(ProgramCacheEntry::new_builtin(0, self.register_fn))
+        Arc::new(ProgramCacheEntry::new_builtin(self.register_fn))
     }
 }
 

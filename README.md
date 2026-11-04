@@ -879,7 +879,7 @@ walkthrough finishes with `Instruction succeeded`. Use
 
    ```toml
    [dev-dependencies]
-   mollusk-svm = { version = "0.16", features = ["sbpf-debugger"] }
+   mollusk-svm = { version = "0.17", features = ["sbpf-debugger"] }
    ```
 
 2. Build the program with debug info, targeting sBPF v2:

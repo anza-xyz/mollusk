@@ -19,7 +19,7 @@ declare_builtin_function!(
         _arg4: u64,
         _arg5: u64,
     ) -> Result<u64, Box<dyn std::error::Error>> {
-        invoke_context.compute_meter.consume_checked(to_burn)?;
+        invoke_context.consume_checked(to_burn)?;
         Ok(0)
     }
 );

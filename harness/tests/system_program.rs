@@ -1,7 +1,7 @@
 use {
     mollusk_svm::{result::Check, Mollusk},
     solana_account::{Account, WritableAccount},
-    solana_instruction::error::InstructionError,
+    solana_instruction_error::InstructionError,
     solana_pubkey::Pubkey,
     solana_system_program::system_processor::DEFAULT_COMPUTE_UNITS,
 };

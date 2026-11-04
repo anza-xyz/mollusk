@@ -295,7 +295,7 @@ fn test_override_sysvar_actual() {
 
     // Mock out the sysvar account and provide it to the test environment.
     let ix_sysvar_account_data =
-        construct_instructions_data(&[as_borrowed_instruction(&instruction)]);
+        construct_instructions_data(&[as_borrowed_instruction(&instruction)]).unwrap();
     let mut ix_sysvar_account =
         Account::new(0, ix_sysvar_account_data.len(), &solana_sdk_ids::sysvar::ID);
     ix_sysvar_account.data = ix_sysvar_account_data.clone();

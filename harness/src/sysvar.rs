@@ -10,7 +10,7 @@ use {
     solana_pubkey::Pubkey,
     solana_rent::{Rent, DEFAULT_LAMPORTS_PER_BYTE},
     solana_sdk_ids::sysvar::stake_history,
-    solana_slot_hashes::{SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
+    solana_slot_hashes::{SlotHash, SlotHashes, MAX_ENTRIES as SLOT_HASHES_MAX_ENTRIES},
     solana_stake_history::{StakeHistory, StakeHistoryEntry},
     solana_sysvar::{
         self, last_restart_slot::LastRestartSlot, recent_blockhashes::RecentBlockhashes,
@@ -41,8 +41,8 @@ impl Default for Sysvars {
         let rent = Rent::with_lamports_per_byte(DEFAULT_LAMPORTS_PER_BYTE);
 
         let slot_hashes = {
-            let mut default_slot_hashes = vec![(0, Hash::default()); SLOT_HASHES_MAX_ENTRIES];
-            default_slot_hashes[0] = (clock.slot, Hash::default());
+            let mut default_slot_hashes = vec![SlotHash::default(); SLOT_HASHES_MAX_ENTRIES];
+            default_slot_hashes[0].slot = clock.slot;
             SlotHashes::new(&default_slot_hashes)
         };
 
@@ -231,13 +231,16 @@ impl Sysvars {
 
             let slot_hash_entries = (final_hash_slot..slot)
                 .rev()
-                .map(|slot| (slot, Hash::default()))
+                .map(|slot| SlotHash {
+                    slot,
+                    hash: Hash::default(),
+                })
                 .collect::<Vec<_>>();
 
             self.slot_hashes = SlotHashes::new(&slot_hash_entries);
         } else {
             let i = if let Some(most_recent_slot_hash) = self.slot_hashes.first() {
-                most_recent_slot_hash.0
+                most_recent_slot_hash.slot
             } else {
                 // By default, this zero is never used, but a user can overwrite
                 // `SlotHashes`.
@@ -339,7 +342,7 @@ mod tests {
         assert_eq!(sysvars.clock.epoch, sysvars.epoch_schedule.get_epoch(slot));
         assert_eq!(
             sysvars.slot_hashes.as_slice(),
-            &[(slot, Hash::default()); SLOT_HASHES_MAX_ENTRIES]
+            vec![SlotHash::from((slot, Hash::default())); SLOT_HASHES_MAX_ENTRIES].as_slice()
         );
         assert_eq!(sysvars.slot_hashes.len(), SLOT_HASHES_MAX_ENTRIES);
 
@@ -349,7 +352,7 @@ mod tests {
             assert_eq!(sysvars.clock.epoch, sysvars.epoch_schedule.get_epoch(slot));
             assert_eq!(
                 sysvars.slot_hashes.first(),
-                Some(&(slot - 1, Hash::default())),
+                Some(&SlotHash::from((slot - 1, Hash::default()))),
             );
             assert_eq!(sysvars.slot_hashes.len(), SLOT_HASHES_MAX_ENTRIES);
         };
@@ -382,7 +385,7 @@ mod tests {
             lamports_per_byte: 7,
             ..Default::default()
         };
-        let slot_hashes = SlotHashes::new(&[(8, Hash::default())]);
+        let slot_hashes = SlotHashes::new(&[(8, Hash::default()).into()]);
         let stake_history = {
             let mut stake_history = StakeHistory::default();
             stake_history.add(9, StakeHistoryEntry::default());

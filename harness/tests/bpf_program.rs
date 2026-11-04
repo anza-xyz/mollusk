@@ -5,7 +5,8 @@ use {
         Mollusk,
     },
     solana_account::Account,
-    solana_instruction::{error::InstructionError, AccountMeta, Instruction},
+    solana_instruction::{AccountMeta, Instruction},
+    solana_instruction_error::InstructionError,
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
     solana_system_interface::error::SystemError,
@@ -66,7 +67,7 @@ fn test_write_data() {
         &[(key, account.clone())],
         &[
             Check::success(),
-            Check::compute_units(337),
+            Check::compute_units(329),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
@@ -151,7 +152,7 @@ fn test_transfer() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2344),
+            Check::compute_units(2324),
             Check::account(&payer)
                 .lamports(payer_lamports - transfer_amount)
                 .build(),
@@ -209,7 +210,7 @@ fn test_close_account() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2416),
+            Check::compute_units(2396),
             Check::account(&key)
                 .closed() // The rest is unnecessary, just testing.
                 .data(&[])
@@ -329,7 +330,7 @@ fn test_cpi() {
         ],
         &[
             Check::success(),
-            Check::compute_units(2129),
+            Check::compute_units(2107),
             Check::account(&key)
                 .data(data)
                 .lamports(lamports)
