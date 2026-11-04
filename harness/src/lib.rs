@@ -747,13 +747,19 @@ impl Mollusk {
         transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
         number_of_top_level_instructions: usize,
     ) -> TransactionContext<'_> {
-        TransactionContext::new(
+        let context = TransactionContext::new(
             transaction_accounts,
             self.sysvars.rent.clone(),
             self.compute_budget.max_instruction_stack_depth,
             self.compute_budget.max_instruction_trace_length,
             number_of_top_level_instructions,
-        )
+        );
+
+        // Agave 4.4 moved the meter into the context; honor the configured budget.
+        context
+            .compute_meter
+            .mock_set_remaining(self.compute_budget.compute_unit_limit);
+        context
     }
 
     #[cfg(feature = "inner-instructions")]
