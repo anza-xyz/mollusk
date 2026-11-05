@@ -494,7 +494,10 @@ use {
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
     solana_syscalls::create_program_runtime_environment,
-    solana_transaction_context::transaction::TransactionContext,
+    solana_transaction_context::{
+        transaction::{ComputeMeter, TransactionContext},
+        DropOnBailOut,
+    },
     solana_transaction_error::TransactionError,
     std::{
         cell::RefCell,
@@ -747,12 +750,14 @@ impl Mollusk {
         transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
         number_of_top_level_instructions: usize,
     ) -> TransactionContext<'_> {
-        TransactionContext::new(
+        TransactionContext::new_with_feature_flags(
             transaction_accounts,
             self.sysvars.rent.clone(),
             self.compute_budget.max_instruction_stack_depth,
             self.compute_budget.max_instruction_trace_length,
             number_of_top_level_instructions,
+            ComputeMeter::new(self.compute_budget.compute_unit_limit),
+            DropOnBailOut::Disabled,
         )
     }
 
