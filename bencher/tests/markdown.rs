@@ -153,6 +153,106 @@ Solana CLI Version: Unknown
 }
 
 #[test]
+fn test_markdown_marks_failed_bench() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+    solana_logger::setup_with("");
+
+    let program_id = Pubkey::new_unique();
+    let no_accounts = vec![];
+
+    // [0] succeeds, [255] fails (InvalidInstructionData)
+    let pass = Instruction::new_with_bytes(program_id, &[0], vec![]);
+    let fail = Instruction::new_with_bytes(program_id, &[255], vec![]);
+
+    let (pass_cus, fail_cus) = {
+        let mollusk = Mollusk::new(&program_id, "test_program_primary");
+        (
+            mollusk
+                .process_instruction(&pass, &no_accounts)
+                .compute_units_consumed,
+            mollusk
+                .process_instruction(&fail, &no_accounts)
+                .compute_units_consumed,
+        )
+    };
+
+    let out_dir = std::env::temp_dir().join(format!("mollusk-bencher-{}", Pubkey::new_unique()));
+    let _ = std::fs::remove_dir_all(&out_dir);
+    std::fs::create_dir_all(&out_dir).unwrap();
+    let path = out_dir.join("compute_units.md");
+
+    let run = |instruction: &Instruction| {
+        let mollusk = Mollusk::new(&program_id, "test_program_primary");
+        MolluskComputeUnitBencher::new(mollusk)
+            .bench(("bench0", instruction, &no_accounts))
+            .must_pass(false)
+            .out_dir(out_dir.to_str().unwrap())
+            .execute();
+    };
+
+    run(&pass);
+    run(&fail);
+    run(&pass);
+
+    let content = std::fs::read_to_string(&path).unwrap();
+    let rows: Vec<&str> = content
+        .lines()
+        .filter(|l| l.starts_with("| bench0"))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            format!(
+                "| bench0 | {pass_cus} | {} |",
+                pass_cus as i64 - fail_cus as i64
+            ),
+            format!("| bench0 | {fail_cus} | failed |"),
+            format!("| bench0 | {pass_cus} | - new - |"),
+        ]
+    );
+
+    std::fs::remove_dir_all(&out_dir).unwrap();
+}
+
+#[cfg(feature = "cpi-compute-units")]
+#[test]
+fn test_markdown_cpi_breakdown_marks_failed_bench() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+    solana_logger::setup_with("");
+
+    let program_id = Pubkey::new_unique();
+    let no_accounts = vec![];
+    let fail = Instruction::new_with_bytes(program_id, &[255], vec![]);
+
+    let fail_cus = Mollusk::new(&program_id, "test_program_primary")
+        .process_instruction(&fail, &no_accounts)
+        .compute_units_consumed;
+
+    let out_dir = std::env::temp_dir().join(format!("mollusk-bencher-{}", Pubkey::new_unique()));
+    let _ = std::fs::remove_dir_all(&out_dir);
+    std::fs::create_dir_all(&out_dir).unwrap();
+
+    MolluskComputeUnitBencher::new(Mollusk::new(&program_id, "test_program_primary"))
+        .bench(("bench0", &fail, &no_accounts))
+        .must_pass(false)
+        .cpi_breakdown(true)
+        .out_dir(out_dir.to_str().unwrap())
+        .execute();
+
+    let content = std::fs::read_to_string(out_dir.join("compute_units.md")).unwrap();
+    let rows: Vec<&str> = content
+        .lines()
+        .filter(|l| l.starts_with("| bench0"))
+        .collect();
+    assert_eq!(
+        rows,
+        [format!("| bench0 | {fail_cus} | failed | {fail_cus} | 0 |")]
+    );
+
+    std::fs::remove_dir_all(&out_dir).unwrap();
+}
+
+#[test]
 fn mx_test_markdown() {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
     solana_logger::setup_with("");
