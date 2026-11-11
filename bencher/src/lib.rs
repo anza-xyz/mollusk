@@ -34,8 +34,9 @@
 //! ```
 //!
 //! The `must_pass` argument can be provided to trigger a panic if any defined
-//! benchmark tests do not pass. `out_dir` specifies the directory where the
-//! markdown file will be written.
+//! benchmark tests do not pass. Without it, failed benches are still recorded
+//! and marked `failed` in the Delta column. `out_dir` specifies the directory
+//! where the markdown file will be written.
 //!
 //! Developers can invoke this benchmark test with `cargo bench`. They may need
 //! to add a bench to the project's `Cargo.toml`.
