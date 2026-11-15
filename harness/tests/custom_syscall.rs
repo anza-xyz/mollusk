@@ -64,3 +64,40 @@ fn test_custom_syscall() {
         );
     }
 }
+
+#[test]
+fn test_custom_syscall_survives_environment_rebuild() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+
+    let program_id = Pubkey::new_unique();
+
+    let mut mollusk = Mollusk::default();
+    mollusk
+        .program_cache
+        .register_builtin_function("sol_burn_cus", SyscallBurnCus::register)
+        .unwrap();
+    mollusk.add_program_with_loader(
+        &program_id,
+        "test_program_custom_syscall",
+        &mollusk_svm::program::loader_keys::LOADER_V3,
+    );
+
+    // Setting the feature set rebuilds the environment and reloads the
+    // program. The custom syscall must be registered again, or the program
+    // would no longer verify.
+    let feature_set = *mollusk.feature_set();
+    mollusk.set_feature_set(feature_set);
+
+    let base_cus = mollusk
+        .process_and_validate_instruction(
+            &instruction_burn_cus(&program_id, 0),
+            &[],
+            &[Check::success()],
+        )
+        .compute_units_consumed;
+    mollusk.process_and_validate_instruction(
+        &instruction_burn_cus(&program_id, 1_000),
+        &[],
+        &[Check::success(), Check::compute_units(base_cus + 1_000)],
+    );
+}

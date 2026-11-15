@@ -154,7 +154,7 @@ fn test_inner_instructions_attributed_to_instruction() {
 #[test]
 fn test_compute_units_tracked() {
     let mut mollusk = Mollusk::default();
-    mollusk.compute_budget.compute_unit_limit = 1000;
+    mollusk.set_compute_unit_limit(1000);
 
     let sender = Pubkey::new_unique();
     let recipient = Pubkey::new_unique();

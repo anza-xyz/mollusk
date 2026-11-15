@@ -39,7 +39,7 @@ fn test_compute_unit_limit_below_default() {
     ];
 
     // Fail - One compute unit short.
-    mollusk.compute_budget.compute_unit_limit = DEFAULT_COMPUTE_UNITS - 1;
+    mollusk.set_compute_unit_limit(DEFAULT_COMPUTE_UNITS - 1);
     mollusk.process_and_validate_instruction(
         &instruction,
         &accounts,
@@ -49,7 +49,7 @@ fn test_compute_unit_limit_below_default() {
     );
 
     // Success
-    mollusk.compute_budget.compute_unit_limit = DEFAULT_COMPUTE_UNITS;
+    mollusk.set_compute_unit_limit(DEFAULT_COMPUTE_UNITS);
     mollusk.process_and_validate_instruction(
         &instruction,
         &accounts,
@@ -74,7 +74,7 @@ fn test_compute_unit_limit_above_default() {
     let instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
 
     // Fail - One compute unit short.
-    mollusk.compute_budget.compute_unit_limit = EXPENSIVE_BUILTIN_COMPUTE_UNITS - 1;
+    mollusk.set_compute_unit_limit(EXPENSIVE_BUILTIN_COMPUTE_UNITS - 1);
     mollusk.process_and_validate_instruction(
         &instruction,
         &[],
@@ -84,7 +84,7 @@ fn test_compute_unit_limit_above_default() {
     );
 
     // Success
-    mollusk.compute_budget.compute_unit_limit = EXPENSIVE_BUILTIN_COMPUTE_UNITS;
+    mollusk.set_compute_unit_limit(EXPENSIVE_BUILTIN_COMPUTE_UNITS);
     mollusk.process_and_validate_instruction(
         &instruction,
         &[],
