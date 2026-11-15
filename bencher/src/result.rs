@@ -10,6 +10,7 @@ pub struct MolluskComputeUnitBenchResult<'a> {
     name: &'a str,
     cus_consumed: u64,
     cpi_cus_consumed: Option<u64>,
+    success: bool,
 }
 
 impl<'a> MolluskComputeUnitBenchResult<'a> {
@@ -19,6 +20,7 @@ impl<'a> MolluskComputeUnitBenchResult<'a> {
             name,
             cus_consumed,
             cpi_cus_consumed: None,
+            success: result.program_result.is_ok(),
         }
     }
 
@@ -34,6 +36,7 @@ impl<'a> MolluskComputeUnitBenchResult<'a> {
             name,
             cus_consumed: result.compute_units_consumed,
             cpi_cus_consumed: Some(cpi_cus_consumed),
+            success: result.program_result.is_ok(),
         }
     }
 }
@@ -86,30 +89,35 @@ pub fn write_results(
     // If there are changes, write a new table.
     // If there are no changes, break out and abort gracefully.
     for result in results {
-        let delta = match previous.as_ref().and_then(|prev_results| {
-            prev_results
-                .iter()
-                .find(|prev_result| prev_result.name == result.name)
-        }) {
-            Some(prev) => {
-                if prev.cpi_cus_consumed != result.cpi_cus_consumed {
-                    no_changes = false;
-                }
-                let delta = result.cus_consumed as i64 - prev.cus_consumed as i64;
-                if delta == 0 {
-                    "--".to_string()
-                } else {
-                    no_changes = false;
-                    if delta > 0 {
-                        format!("+{}", delta.to_formatted_string(&Locale::en))
+        let delta = if !result.success {
+            no_changes = false;
+            "failed".to_string()
+        } else {
+            match previous.as_ref().and_then(|prev_results| {
+                prev_results
+                    .iter()
+                    .find(|prev_result| prev_result.name == result.name)
+            }) {
+                Some(prev) => {
+                    if prev.cpi_cus_consumed != result.cpi_cus_consumed {
+                        no_changes = false;
+                    }
+                    let delta = result.cus_consumed as i64 - prev.cus_consumed as i64;
+                    if delta == 0 {
+                        "--".to_string()
                     } else {
-                        delta.to_formatted_string(&Locale::en)
+                        no_changes = false;
+                        if delta > 0 {
+                            format!("+{}", delta.to_formatted_string(&Locale::en))
+                        } else {
+                            delta.to_formatted_string(&Locale::en)
+                        }
                     }
                 }
-            }
-            None => {
-                no_changes = false;
-                "- new -".to_string()
+                None => {
+                    no_changes = false;
+                    "- new -".to_string()
+                }
             }
         };
         match result.cpi_cus_consumed {
@@ -170,6 +178,7 @@ fn parse_last_md_table(content: &str) -> Vec<MolluskComputeUnitBenchResult<'_>> 
             name,
             cus_consumed,
             cpi_cus_consumed,
+            success: true,
         });
     }
 
