@@ -282,7 +282,9 @@ impl Sysvars {
                 set_sysvar(&bincode::serialize(&self.rent).unwrap());
             }
             if pubkey.eq(&SlotHashes::id()) {
-                set_sysvar(&bincode::serialize(&self.slot_hashes).unwrap());
+                // Encoded the same as bincode, but much faster for the 512
+                // entries, which matters since this runs for every instruction.
+                set_sysvar(&wincode::serialize(&self.slot_hashes).unwrap());
             }
             if pubkey.eq(&stake_history::id()) {
                 set_sysvar(&bincode::serialize(&self.stake_history).unwrap());
