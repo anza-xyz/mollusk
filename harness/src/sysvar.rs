@@ -79,14 +79,14 @@ impl Sysvars {
     pub(crate) fn maybe_create_sysvar_account(&self, pubkey: &Pubkey) -> Option<Account> {
         if pubkey.eq(&Clock::id()) {
             Some(
-                self.sysvar_account(Clock::id(), bincode::serialize(&self.clock).unwrap())
+                self.sysvar_account(Clock::id(), wincode::serialize(&self.clock).unwrap())
                     .1,
             )
         } else if pubkey.eq(&EpochRewards::id()) {
             Some(
                 self.sysvar_account(
                     EpochRewards::id(),
-                    bincode::serialize(&self.epoch_rewards).unwrap(),
+                    wincode::serialize(&self.epoch_rewards).unwrap(),
                 )
                 .1,
             )
@@ -94,7 +94,7 @@ impl Sysvars {
             Some(
                 self.sysvar_account(
                     EpochSchedule::id(),
-                    bincode::serialize(&self.epoch_schedule).unwrap(),
+                    wincode::serialize(&self.epoch_schedule).unwrap(),
                 )
                 .1,
             )
@@ -102,20 +102,20 @@ impl Sysvars {
             Some(
                 self.sysvar_account(
                     LastRestartSlot::id(),
-                    bincode::serialize(&self.last_restart_slot).unwrap(),
+                    wincode::serialize(&self.last_restart_slot).unwrap(),
                 )
                 .1,
             )
         } else if pubkey.eq(&Rent::id()) {
             Some(
-                self.sysvar_account(Rent::id(), bincode::serialize(&self.rent).unwrap())
+                self.sysvar_account(Rent::id(), wincode::serialize(&self.rent).unwrap())
                     .1,
             )
         } else if pubkey.eq(&SlotHashes::id()) {
             Some(
                 self.sysvar_account(
                     SlotHashes::id(),
-                    bincode::serialize(&self.slot_hashes).unwrap(),
+                    wincode::serialize(&self.slot_hashes).unwrap(),
                 )
                 .1,
             )
@@ -123,7 +123,7 @@ impl Sysvars {
             Some(
                 self.sysvar_account(
                     stake_history::id(),
-                    bincode::serialize(&self.stake_history).unwrap(),
+                    wincode::serialize(&self.stake_history).unwrap(),
                 )
                 .1,
             )
@@ -131,7 +131,7 @@ impl Sysvars {
             Some(
                 self.sysvar_account(
                     RecentBlockhashes::id(),
-                    bincode::serialize(&self.recent_blockhashes).unwrap(),
+                    wincode::serialize(&self.recent_blockhashes).unwrap(),
                 )
                 .1,
             )
@@ -142,14 +142,14 @@ impl Sysvars {
 
     /// Get the key and account for the clock sysvar.
     pub fn keyed_account_for_clock_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(Clock::id(), bincode::serialize(&self.clock).unwrap())
+        self.sysvar_account(Clock::id(), wincode::serialize(&self.clock).unwrap())
     }
 
     /// Get the key and account for the epoch rewards sysvar.
     pub fn keyed_account_for_epoch_rewards_sysvar(&self) -> (Pubkey, Account) {
         self.sysvar_account(
             EpochRewards::id(),
-            bincode::serialize(&self.epoch_rewards).unwrap(),
+            wincode::serialize(&self.epoch_rewards).unwrap(),
         )
     }
 
@@ -157,7 +157,7 @@ impl Sysvars {
     pub fn keyed_account_for_epoch_schedule_sysvar(&self) -> (Pubkey, Account) {
         self.sysvar_account(
             EpochSchedule::id(),
-            bincode::serialize(&self.epoch_schedule).unwrap(),
+            wincode::serialize(&self.epoch_schedule).unwrap(),
         )
     }
 
@@ -165,20 +165,20 @@ impl Sysvars {
     pub fn keyed_account_for_last_restart_slot_sysvar(&self) -> (Pubkey, Account) {
         self.sysvar_account(
             LastRestartSlot::id(),
-            bincode::serialize(&self.last_restart_slot).unwrap(),
+            wincode::serialize(&self.last_restart_slot).unwrap(),
         )
     }
 
     /// Get the key and account for the rent sysvar.
     pub fn keyed_account_for_rent_sysvar(&self) -> (Pubkey, Account) {
-        self.sysvar_account(Rent::id(), bincode::serialize(&self.rent).unwrap())
+        self.sysvar_account(Rent::id(), wincode::serialize(&self.rent).unwrap())
     }
 
     /// Get the key and account for the slot hashes sysvar.
     pub fn keyed_account_for_slot_hashes_sysvar(&self) -> (Pubkey, Account) {
         self.sysvar_account(
             SlotHashes::id(),
-            bincode::serialize(&self.slot_hashes).unwrap(),
+            wincode::serialize(&self.slot_hashes).unwrap(),
         )
     }
 
@@ -186,7 +186,7 @@ impl Sysvars {
     pub fn keyed_account_for_stake_history_sysvar(&self) -> (Pubkey, Account) {
         self.sysvar_account(
             stake_history::id(),
-            bincode::serialize(&self.stake_history).unwrap(),
+            wincode::serialize(&self.stake_history).unwrap(),
         )
     }
 
@@ -194,7 +194,7 @@ impl Sysvars {
     pub fn keyed_account_for_recent_blockhashes_sysvar(&self) -> (Pubkey, Account) {
         self.sysvar_account(
             RecentBlockhashes::id(),
-            bincode::serialize(&self.recent_blockhashes).unwrap(),
+            wincode::serialize(&self.recent_blockhashes).unwrap(),
         )
     }
 
@@ -267,30 +267,28 @@ impl Sysvars {
         // Then fill the rest with the entries from `self`.
         sysvar_cache.fill_missing_entries(|pubkey, set_sysvar| {
             if pubkey.eq(&Clock::id()) {
-                set_sysvar(&bincode::serialize(&self.clock).unwrap());
+                set_sysvar(&wincode::serialize(&self.clock).unwrap());
             }
             if pubkey.eq(&EpochRewards::id()) {
-                set_sysvar(&bincode::serialize(&self.epoch_rewards).unwrap());
+                set_sysvar(&wincode::serialize(&self.epoch_rewards).unwrap());
             }
             if pubkey.eq(&EpochSchedule::id()) {
-                set_sysvar(&bincode::serialize(&self.epoch_schedule).unwrap());
+                set_sysvar(&wincode::serialize(&self.epoch_schedule).unwrap());
             }
             if pubkey.eq(&LastRestartSlot::id()) {
-                set_sysvar(&bincode::serialize(&self.last_restart_slot).unwrap());
+                set_sysvar(&wincode::serialize(&self.last_restart_slot).unwrap());
             }
             if pubkey.eq(&Rent::id()) {
-                set_sysvar(&bincode::serialize(&self.rent).unwrap());
+                set_sysvar(&wincode::serialize(&self.rent).unwrap());
             }
             if pubkey.eq(&SlotHashes::id()) {
-                // Encoded the same as bincode, but much faster for the 512
-                // entries, which matters since this runs for every instruction.
                 set_sysvar(&wincode::serialize(&self.slot_hashes).unwrap());
             }
             if pubkey.eq(&stake_history::id()) {
-                set_sysvar(&bincode::serialize(&self.stake_history).unwrap());
+                set_sysvar(&wincode::serialize(&self.stake_history).unwrap());
             }
             if pubkey.eq(&RecentBlockhashes::id()) {
-                set_sysvar(&bincode::serialize(&self.recent_blockhashes).unwrap());
+                set_sysvar(&wincode::serialize(&self.recent_blockhashes).unwrap());
             }
         });
 
@@ -303,28 +301,28 @@ impl From<&Sysvars> for SysvarCache {
         let mut sysvar_cache = SysvarCache::default();
         sysvar_cache.fill_missing_entries(|pubkey, set_sysvar| {
             if pubkey.eq(&Clock::id()) {
-                set_sysvar(&bincode::serialize(&mollusk_cache.clock).unwrap());
+                set_sysvar(&wincode::serialize(&mollusk_cache.clock).unwrap());
             }
             if pubkey.eq(&EpochRewards::id()) {
-                set_sysvar(&bincode::serialize(&mollusk_cache.epoch_rewards).unwrap());
+                set_sysvar(&wincode::serialize(&mollusk_cache.epoch_rewards).unwrap());
             }
             if pubkey.eq(&EpochSchedule::id()) {
-                set_sysvar(&bincode::serialize(&mollusk_cache.epoch_schedule).unwrap());
+                set_sysvar(&wincode::serialize(&mollusk_cache.epoch_schedule).unwrap());
             }
             if pubkey.eq(&LastRestartSlot::id()) {
-                set_sysvar(&bincode::serialize(&mollusk_cache.last_restart_slot).unwrap());
+                set_sysvar(&wincode::serialize(&mollusk_cache.last_restart_slot).unwrap());
             }
             if pubkey.eq(&Rent::id()) {
-                set_sysvar(&bincode::serialize(&mollusk_cache.rent).unwrap());
+                set_sysvar(&wincode::serialize(&mollusk_cache.rent).unwrap());
             }
             if pubkey.eq(&SlotHashes::id()) {
-                set_sysvar(&bincode::serialize(&mollusk_cache.slot_hashes).unwrap());
+                set_sysvar(&wincode::serialize(&mollusk_cache.slot_hashes).unwrap());
             }
             if pubkey.eq(&stake_history::id()) {
-                set_sysvar(&bincode::serialize(&mollusk_cache.stake_history).unwrap());
+                set_sysvar(&wincode::serialize(&mollusk_cache.stake_history).unwrap());
             }
             if pubkey.eq(&RecentBlockhashes::id()) {
-                set_sysvar(&bincode::serialize(&mollusk_cache.recent_blockhashes).unwrap());
+                set_sysvar(&wincode::serialize(&mollusk_cache.recent_blockhashes).unwrap());
             }
         });
         sysvar_cache
@@ -362,6 +360,55 @@ mod tests {
         warp_and_check(200);
         warp_and_check(4_000);
         warp_and_check(800_000);
+    }
+
+    #[test]
+    fn test_wincode_encoding_matches_bincode() {
+        // Sysvars are serialized with wincode, which must produce the same
+        // bytes as bincode (what the runtime and programs expect).
+        let hashes = [1u8, 2, 3].map(|i| Hash::new_from_array([i; 32]));
+        let recent_blockhashes = hashes
+            .iter()
+            .enumerate()
+            .map(|(i, hash)| solana_sysvar::recent_blockhashes::IterItem(i as u64, hash, 5_000))
+            .collect::<RecentBlockhashes>();
+        let mut sysvars = Sysvars {
+            recent_blockhashes,
+            ..Default::default()
+        };
+        sysvars.warp_to_slot(1_000_000);
+        sysvars.epoch_rewards.total_rewards = 4;
+        sysvars.epoch_rewards.active = true;
+        sysvars.last_restart_slot.last_restart_slot = 6;
+        sysvars.stake_history.add(
+            9,
+            StakeHistoryEntry {
+                effective: 10,
+                activating: 11,
+                deactivating: 12,
+            },
+        );
+
+        macro_rules! check {
+            ($($sysvar:expr),* $(,)?) => {$(
+                assert_eq!(
+                    wincode::serialize(&$sysvar).unwrap(),
+                    bincode::serialize(&$sysvar).unwrap(),
+                    "{}",
+                    stringify!($sysvar),
+                );
+            )*};
+        }
+        check!(
+            sysvars.clock,
+            sysvars.epoch_rewards,
+            sysvars.epoch_schedule,
+            sysvars.last_restart_slot,
+            sysvars.rent,
+            sysvars.slot_hashes,
+            sysvars.stake_history,
+            sysvars.recent_blockhashes,
+        );
     }
 
     #[test]
