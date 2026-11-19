@@ -101,3 +101,36 @@ fn test_custom_syscall_survives_environment_rebuild() {
         &[Check::success(), Check::compute_units(base_cus + 1_000)],
     );
 }
+
+#[test]
+fn test_custom_syscall_registered_after_adding_program() {
+    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+
+    let program_id = Pubkey::new_unique();
+
+    // The program is added before the syscall it calls is registered.
+    // Registering it reloads the program, so the call resolves.
+    let mut mollusk = Mollusk::default();
+    mollusk.add_program_with_loader(
+        &program_id,
+        "test_program_custom_syscall",
+        &mollusk_svm::program::loader_keys::LOADER_V3,
+    );
+    mollusk
+        .program_cache
+        .register_builtin_function("sol_burn_cus", SyscallBurnCus::register)
+        .unwrap();
+
+    let base_cus = mollusk
+        .process_and_validate_instruction(
+            &instruction_burn_cus(&program_id, 0),
+            &[],
+            &[Check::success()],
+        )
+        .compute_units_consumed;
+    mollusk.process_and_validate_instruction(
+        &instruction_burn_cus(&program_id, 1_000),
+        &[],
+        &[Check::success(), Check::compute_units(base_cus + 1_000)],
+    );
+}

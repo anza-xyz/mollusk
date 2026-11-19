@@ -7,9 +7,7 @@ use {
     solana_program_runtime::{
         invoke_context::{BuiltinFunctionRegisterer, InvokeContext},
         loaded_programs::{ProgramCacheForTxBatch, ProgramRuntimeEnvironment},
-        program_cache_entry::{
-            ProgramCacheEntry, ProgramCacheEntryOwner, DELAY_VISIBILITY_SLOT_OFFSET,
-        },
+        program_cache_entry::{ProgramCacheEntry, DELAY_VISIBILITY_SLOT_OFFSET},
         program_metrics::LoadProgramMetrics,
         solana_sbpf::{
             elf::ElfError,
@@ -105,6 +103,7 @@ impl ProgramCache {
                 feature_set,
                 compute_budget,
                 enable_register_tracing,
+                &[],
             ),
             enable_register_tracing,
             custom_syscalls: Vec::new(),
@@ -121,6 +120,7 @@ impl ProgramCache {
         feature_set: &SVMFeatureSet,
         compute_budget: &ComputeBudget,
         enable_register_tracing: bool,
+        custom_syscalls: &[(String, BuiltinFunctionRegisterer)],
     ) -> ProgramRuntimeEnvironment {
         let environment = create_program_runtime_environment(
             feature_set,
@@ -129,9 +129,19 @@ impl ProgramCache {
             /* debugging_features */ enable_register_tracing,
         )
         .unwrap();
+        if !cfg!(feature = "cpi-compute-units") && custom_syscalls.is_empty() {
+            return environment;
+        }
+        // The environment comes back already behind an `Arc`, so changing its
+        // syscalls takes one copy of the loader.
+        let mut loader = clone_environment(&environment);
         #[cfg(feature = "cpi-compute-units")]
-        let environment = crate::cpi_compute_units::instrument(clone_environment(&environment));
-        environment
+        crate::cpi_compute_units::instrument(&mut loader);
+        for (name, register_fn) in custom_syscalls {
+            // Each one was registered successfully when it was added.
+            register_fn(&mut loader, name).unwrap();
+        }
+        ProgramRuntimeEnvironment::from(loader)
     }
 
     /// Rebuild the program runtime environment for a new feature set or
@@ -142,20 +152,18 @@ impl ProgramCache {
         feature_set: &SVMFeatureSet,
         compute_budget: &ComputeBudget,
     ) {
-        let mut environment =
-            Self::create_environment(feature_set, compute_budget, self.enable_register_tracing);
-        if !self.custom_syscalls.is_empty() {
-            let mut loader = clone_environment(&environment);
-            for (name, register_fn) in &self.custom_syscalls {
-                // Already registered once against the previous environment.
-                register_fn(&mut loader, name).unwrap();
-            }
-            environment = ProgramRuntimeEnvironment::from(loader);
-        }
-        self.program_runtime_environment = environment;
+        self.program_runtime_environment = Self::create_environment(
+            feature_set,
+            compute_budget,
+            self.enable_register_tracing,
+            &self.custom_syscalls,
+        );
+        self.reload_programs();
+    }
 
-        // Builtins don't depend on the environment; programs loaded from ELFs
-        // do, so load them again.
+    /// Load every program added from an ELF again, against the current
+    /// program runtime environment. Builtins don't depend on it.
+    fn reload_programs(&mut self) {
         let programs: Vec<(Pubkey, Pubkey, Vec<u8>)> = self
             .entries_cache
             .borrow()
@@ -166,29 +174,27 @@ impl ProgramCache {
             })
             .collect();
         for (program_id, loader_key, elf) in programs {
-            let environment = ProgramRuntimeEnvironment::from(clone_environment(
-                &self.program_runtime_environment,
-            ));
-            let entry = ProgramCacheEntry::load(
-                &loader_key,
-                environment.clone(),
+            self.replenish(program_id, self.load_elf(&loader_key, &elf), Some(&elf));
+        }
+    }
+
+    fn load_elf(&self, loader_key: &Pubkey, elf: &[u8]) -> Arc<ProgramCacheEntry> {
+        Arc::new(
+            ProgramCacheEntry::load(
+                loader_key,
+                self.program_runtime_environment.clone(),
                 0,
-                &elf,
+                elf,
                 &mut LoadProgramMetrics::default(),
             )
-            .unwrap_or_else(|_| {
-                // As in the runtime, a program that doesn't verify under the
-                // new environment (e.g. it uses a syscall the feature set
-                // disables) is cached as a failed-verification tombstone. Its
-                // ELF is kept, so it loads again if the environment changes back.
-                ProgramCacheEntry::new_failed_verification_tombstone(
-                    0,
-                    ProgramCacheEntryOwner::try_from(&loader_key).unwrap(),
-                    environment,
-                )
-            });
-            self.replenish(program_id, Arc::new(entry), Some(&elf));
-        }
+            .expect("Failed to load program ELF with the current program runtime environment"),
+        )
+    }
+
+    /// Whether the environment was built with register tracing enabled.
+    #[cfg(feature = "invocation-inspect-callback")]
+    pub(crate) fn enable_register_tracing(&self) -> bool {
+        self.enable_register_tracing
     }
 
     /// The program runtime environment instructions execute against.
@@ -226,9 +232,10 @@ impl ProgramCache {
     /// Register an additional builtin function (ie. a custom syscall) into
     /// the program runtime environment.
     ///
-    /// Programs added to the cache afterwards are verified and loaded against
-    /// the updated environment. The function stays registered when the
-    /// environment is rebuilt for a new feature set or compute budget.
+    /// Programs already added are reloaded against the updated environment,
+    /// so the function can be registered before or after adding them. It
+    /// stays registered when the environment is rebuilt for a new feature set
+    /// or compute budget.
     pub fn register_builtin_function(
         &mut self,
         name: &str,
@@ -238,27 +245,13 @@ impl ProgramCache {
         register_fn(&mut loader, name)?;
         self.program_runtime_environment = ProgramRuntimeEnvironment::from(loader);
         self.custom_syscalls.push((name.to_string(), register_fn));
+        self.reload_programs();
         Ok(())
     }
 
     /// Add a program to the cache.
     pub fn add_program(&mut self, program_id: &Pubkey, loader_key: &Pubkey, elf: &[u8]) {
-        let environment =
-            ProgramRuntimeEnvironment::from(clone_environment(&self.program_runtime_environment));
-        self.replenish(
-            *program_id,
-            Arc::new(
-                ProgramCacheEntry::load(
-                    loader_key,
-                    environment,
-                    0,
-                    elf,
-                    &mut LoadProgramMetrics::default(),
-                )
-                .unwrap(),
-            ),
-            Some(elf),
-        );
+        self.replenish(*program_id, self.load_elf(loader_key, elf), Some(elf));
     }
 
     /// Load a program from the cache.

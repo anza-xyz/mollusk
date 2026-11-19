@@ -518,9 +518,7 @@ pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgrade
 ///
 /// All fields can be manipulated through a handful of helper methods, but
 /// users can also directly access and modify most of them if they desire more
-/// control. The compute budget and feature set go through setters
-/// ([`Mollusk::set_compute_budget`], [`Mollusk::set_feature_set`]), since
-/// changing them rebuilds the program runtime environment.
+/// control.
 pub struct Mollusk {
     pub config: Config,
     compute_budget: ComputeBudget,
@@ -535,12 +533,6 @@ pub struct Mollusk {
     /// context, detailed timings, etc.
     #[cfg(feature = "invocation-inspect-callback")]
     pub invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
-
-    /// Dictates whether or not register tracing was enabled.
-    /// Provided as input to the invocation inspect callback for potential
-    /// register trace consumption.
-    #[cfg(feature = "invocation-inspect-callback")]
-    enable_register_tracing: bool,
 
     /// This field stores the slot only to be able to convert to and from FD
     /// fixtures and a Mollusk instance, since FD fixtures have a
@@ -603,9 +595,6 @@ impl Mollusk {
 
             #[cfg(feature = "invocation-inspect-callback")]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
-
-            #[cfg(feature = "invocation-inspect-callback")]
-            enable_register_tracing,
 
             #[cfg(feature = "fuzz-fd")]
             slot: DEFAULT_CLOCK_SLOT,
@@ -713,8 +702,8 @@ impl Mollusk {
         self.rebuild_program_runtime_environment();
     }
 
-    /// Set the compute unit limit for each instruction (or each transaction,
-    /// for multi-instruction processing).
+    /// Set the compute unit limit for each instruction or transaction,
+    /// depending on the API method invoked.
     ///
     /// The limit is enforced per invocation and doesn't affect the program
     /// runtime environment, so nothing is rebuilt.
@@ -739,8 +728,7 @@ impl Mollusk {
 
     /// Set the compute budget and feature set together, rebuilding the program
     /// runtime environment once.
-    #[cfg(any(feature = "fuzz", feature = "fuzz-fd"))]
-    fn set_compute_budget_and_feature_set(
+    pub fn set_compute_budget_and_feature_set(
         &mut self,
         compute_budget: ComputeBudget,
         feature_set: SVMFeatureSet,
@@ -924,8 +912,6 @@ impl Mollusk {
             epoch_stake: &self.epoch_stake,
             feature_set: &self.feature_set,
         };
-        // Built once and rebuilt only when the feature set or compute budget
-        // changes, rather than for every instruction.
         let program_runtime_environment = self.program_cache.program_runtime_environment();
         let program_runtime_environments = ProgramRuntimeEnvironments::new(
             /* execution */ program_runtime_environment.clone(),
@@ -978,7 +964,7 @@ impl Mollusk {
                     &compiled_ix.data,
                     &instruction_accounts,
                     &mut invoke_context,
-                    self.enable_register_tracing,
+                    self.program_cache.enable_register_tracing(),
                 );
             }
 
@@ -1008,7 +994,7 @@ impl Mollusk {
             self.invocation_inspect_callback.after_invocation(
                 self,
                 &invoke_context,
-                self.enable_register_tracing,
+                self.program_cache.enable_register_tracing(),
             );
 
             if let Err(err) = invoke_result {

@@ -48,6 +48,9 @@ fn test_set_feature_set_reloads_added_programs() {
 }
 
 #[test]
+#[should_panic(
+    expected = "Failed to load program ELF with the current program runtime environment"
+)]
 fn test_set_feature_set_program_that_no_longer_verifies() {
     std::env::set_var("SBF_OUT_DIR", "../target/deploy");
 
@@ -55,31 +58,10 @@ fn test_set_feature_set_program_that_no_longer_verifies() {
     let mut mollusk = Mollusk::default();
     mollusk.add_program(&program_id, "test_program_cpi_target_v0");
 
-    // The program writes the instruction data to a signer account it owns.
-    let key = Pubkey::new_unique();
-    let instruction =
-        Instruction::new_with_bytes(program_id, &[], vec![AccountMeta::new(key, true)]);
-    let accounts = [(key, Account::new(1_000, 0, &program_id))];
-
-    mollusk.process_and_validate_instruction(&instruction, &accounts, &[Check::success()]);
-
-    // Disabling SBPF v0 execution means the ELF fails verification when it's
-    // reloaded. Like the runtime, it stays cached as a tombstone that can't be
-    // invoked, instead of panicking.
+    // Disabling SBPF v0 execution means the ELF no longer loads when it's
+    // reloaded, which panics like adding it under that feature set would.
     let mut feature_set = *mollusk.feature_set();
     feature_set.disable_sbpf_v0_execution = true;
     feature_set.reenable_sbpf_v0_execution = false;
     mollusk.set_feature_set(feature_set);
-    mollusk.process_and_validate_instruction(
-        &instruction,
-        &accounts,
-        &[Check::instruction_err(
-            InstructionError::UnsupportedProgramId,
-        )],
-    );
-
-    // Re-enabling it loads the program again from its ELF.
-    feature_set.reenable_sbpf_v0_execution = true;
-    mollusk.set_feature_set(feature_set);
-    mollusk.process_and_validate_instruction(&instruction, &accounts, &[Check::success()]);
 }

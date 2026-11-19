@@ -7,7 +7,6 @@ use {
     mollusk_svm_result::types::CpiComputeUnits,
     solana_program_runtime::{
         invoke_context::InvokeContext,
-        loaded_programs::ProgramRuntimeEnvironment,
         solana_sbpf::{
             declare_builtin_function,
             program::{BuiltinFunctionDefinition, BuiltinProgram},
@@ -93,14 +92,11 @@ declare_builtin_function!(
     }
 );
 
-pub(crate) fn instrument(
-    mut loader: BuiltinProgram<InvokeContext<'static, 'static>>,
-) -> ProgramRuntimeEnvironment {
+pub(crate) fn instrument(loader: &mut BuiltinProgram<InvokeContext<'static, 'static>>) {
     loader.unregister_function("sol_invoke_signed_c");
     loader.unregister_function("sol_invoke_signed_rust");
-    SyscallInvokeSignedCMetered::register(&mut loader, "sol_invoke_signed_c").unwrap();
-    SyscallInvokeSignedRustMetered::register(&mut loader, "sol_invoke_signed_rust").unwrap();
-    ProgramRuntimeEnvironment::from(loader)
+    SyscallInvokeSignedCMetered::register(loader, "sol_invoke_signed_c").unwrap();
+    SyscallInvokeSignedRustMetered::register(loader, "sol_invoke_signed_rust").unwrap();
 }
 
 pub(crate) fn clear() {
