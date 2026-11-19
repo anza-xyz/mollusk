@@ -107,10 +107,10 @@ impl<'a> TestSetup<'a> {
 
     #[cfg(feature = "fuzz")]
     fn check_fixture_mollusk(&self, fixture: mollusk_svm_fuzz_fixture::Fixture) {
-        assert_eq!(fixture.input.compute_budget, self.mollusk.compute_budget);
+        assert_eq!(fixture.input.compute_budget, *self.mollusk.compute_budget());
         compare_svm_feature_sets(
             &fixture.input.feature_set.runtime_features(),
-            &self.mollusk.feature_set,
+            self.mollusk.feature_set(),
         );
         assert_eq!(fixture.input.sysvars.clock, self.mollusk.sysvars.clock);
         assert_eq!(fixture.input.sysvars.rent, self.mollusk.sysvars.rent);
@@ -135,7 +135,7 @@ impl<'a> TestSetup<'a> {
         assert_eq!(fixture.input.instruction_data, self.instruction.data);
         assert_eq!(
             fixture.input.compute_units_available,
-            self.mollusk.compute_budget.compute_unit_limit,
+            self.mollusk.compute_budget().compute_unit_limit,
         );
         assert_eq!(
             fixture.input.slot_context.slot,
@@ -143,13 +143,13 @@ impl<'a> TestSetup<'a> {
         );
         compare_svm_feature_sets(
             &fixture.input.epoch_context.feature_set.runtime_features(),
-            &self.mollusk.feature_set,
+            self.mollusk.feature_set(),
         );
         // Outputs:
         assert_eq!(
             fixture.output.compute_units_available,
             self.mollusk
-                .compute_budget
+                .compute_budget()
                 .compute_unit_limit
                 .saturating_sub(result.compute_units_consumed),
         );

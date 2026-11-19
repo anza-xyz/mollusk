@@ -104,7 +104,7 @@ fn test_cpi_compute_units() {
     assert!(direct_result.cpi_compute_units.is_empty());
     assert_eq!(
         cpi.compute_units_consumed,
-        direct_result.compute_units_consumed + mollusk.compute_budget.invoke_units
+        direct_result.compute_units_consumed + mollusk.compute_budget().invoke_units
     );
 }
 

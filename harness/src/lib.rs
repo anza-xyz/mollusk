@@ -493,7 +493,6 @@ use {
     solana_svm_feature_set::SVMFeatureSet,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
-    solana_syscalls::create_program_runtime_environment,
     solana_transaction_context::{
         transaction::{ComputeMeter, TransactionContext},
         DropOnBailOut,
@@ -518,12 +517,13 @@ pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgrade
 /// The Mollusk API, providing a simple interface for testing Solana programs.
 ///
 /// All fields can be manipulated through a handful of helper methods, but
-/// users can also directly access and modify them if they desire more control.
+/// users can also directly access and modify most of them if they desire more
+/// control.
 pub struct Mollusk {
     pub config: Config,
-    pub compute_budget: ComputeBudget,
+    compute_budget: ComputeBudget,
     pub epoch_stake: EpochStake,
-    pub feature_set: SVMFeatureSet,
+    feature_set: SVMFeatureSet,
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     pub sysvars: Sysvars,
@@ -533,12 +533,6 @@ pub struct Mollusk {
     /// context, detailed timings, etc.
     #[cfg(feature = "invocation-inspect-callback")]
     pub invocation_inspect_callback: Box<dyn InvocationInspectCallback>,
-
-    /// Dictates whether or not register tracing was enabled.
-    /// Provided as input to the invocation inspect callback for potential
-    /// register trace consumption.
-    #[cfg(feature = "invocation-inspect-callback")]
-    enable_register_tracing: bool,
 
     /// This field stores the slot only to be able to convert to and from FD
     /// fixtures and a Mollusk instance, since FD fixtures have a
@@ -601,9 +595,6 @@ impl Mollusk {
 
             #[cfg(feature = "invocation-inspect-callback")]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
-
-            #[cfg(feature = "invocation-inspect-callback")]
-            enable_register_tracing,
 
             #[cfg(feature = "fuzz-fd")]
             slot: DEFAULT_CLOCK_SLOT,
@@ -694,6 +685,62 @@ impl Mollusk {
         elf: &[u8],
     ) {
         self.program_cache.add_program(program_id, loader_key, elf);
+    }
+
+    /// The compute budget instructions are processed with.
+    pub fn compute_budget(&self) -> &ComputeBudget {
+        &self.compute_budget
+    }
+
+    /// Set the compute budget.
+    ///
+    /// The program runtime environment depends on the compute budget, so this
+    /// rebuilds it and reloads every added program against it. To change only
+    /// the compute unit limit, use [`Mollusk::set_compute_unit_limit`].
+    pub fn set_compute_budget(&mut self, compute_budget: ComputeBudget) {
+        self.compute_budget = compute_budget;
+        self.rebuild_program_runtime_environment();
+    }
+
+    /// Set the compute unit limit for each instruction or transaction,
+    /// depending on the API method invoked.
+    ///
+    /// The limit is enforced per invocation and doesn't affect the program
+    /// runtime environment, so nothing is rebuilt.
+    pub fn set_compute_unit_limit(&mut self, compute_unit_limit: u64) {
+        self.compute_budget.compute_unit_limit = compute_unit_limit;
+    }
+
+    /// The feature set instructions are processed with.
+    pub fn feature_set(&self) -> &SVMFeatureSet {
+        &self.feature_set
+    }
+
+    /// Set the feature set.
+    ///
+    /// The program runtime environment (e.g. which syscalls are available)
+    /// depends on the feature set, so this rebuilds it and reloads every added
+    /// program against it.
+    pub fn set_feature_set(&mut self, feature_set: SVMFeatureSet) {
+        self.feature_set = feature_set;
+        self.rebuild_program_runtime_environment();
+    }
+
+    /// Set the compute budget and feature set together, rebuilding the program
+    /// runtime environment once.
+    pub fn set_compute_budget_and_feature_set(
+        &mut self,
+        compute_budget: ComputeBudget,
+        feature_set: SVMFeatureSet,
+    ) {
+        self.compute_budget = compute_budget;
+        self.feature_set = feature_set;
+        self.rebuild_program_runtime_environment();
+    }
+
+    fn rebuild_program_runtime_environment(&mut self) {
+        self.program_cache
+            .rebuild_environment(&self.feature_set, &self.compute_budget);
     }
 
     /// Warp the test environment to a slot by updating sysvars.
@@ -865,19 +912,7 @@ impl Mollusk {
             epoch_stake: &self.epoch_stake,
             feature_set: &self.feature_set,
         };
-        let execution_budget = self.compute_budget.to_budget();
-
-        let _enable_register_tracing = false;
-        #[cfg(feature = "register-tracing")]
-        let _enable_register_tracing = self.enable_register_tracing;
-
-        let program_runtime_environment = create_program_runtime_environment(
-            &self.feature_set,
-            &execution_budget,
-            /* reject_deployment_of_broken_elfs */ false,
-            /* debugging_features */ _enable_register_tracing,
-        )
-        .unwrap();
+        let program_runtime_environment = self.program_cache.program_runtime_environment();
         let program_runtime_environments = ProgramRuntimeEnvironments::new(
             /* execution */ program_runtime_environment.clone(),
             /* deployment */ program_runtime_environment,
@@ -929,7 +964,7 @@ impl Mollusk {
                     &compiled_ix.data,
                     &instruction_accounts,
                     &mut invoke_context,
-                    self.enable_register_tracing,
+                    self.program_cache.enable_register_tracing(),
                 );
             }
 
@@ -959,7 +994,7 @@ impl Mollusk {
             self.invocation_inspect_callback.after_invocation(
                 self,
                 &invoke_context,
-                self.enable_register_tracing,
+                self.program_cache.enable_register_tracing(),
             );
 
             if let Err(err) = invoke_result {
@@ -1474,8 +1509,7 @@ impl Mollusk {
             instruction,
             sysvars,
         } = fuzz::mollusk::parse_fixture_context(&fixture.input);
-        self.compute_budget = compute_budget;
-        self.feature_set = feature_set;
+        self.set_compute_budget_and_feature_set(compute_budget, feature_set);
         self.sysvars = sysvars;
         self.process_instruction(&instruction, &accounts)
     }
@@ -1573,8 +1607,7 @@ impl Mollusk {
             instruction,
             slot,
         } = fuzz::firedancer::parse_fixture_context(&fixture.input);
-        self.compute_budget = compute_budget;
-        self.feature_set = feature_set;
+        self.set_compute_budget_and_feature_set(compute_budget, feature_set);
         self.slot = slot;
         self.process_instruction(&instruction, &accounts)
     }
@@ -1607,8 +1640,7 @@ impl Mollusk {
             instruction,
             slot,
         } = fuzz::firedancer::parse_fixture_context(&fixture.input);
-        self.compute_budget = compute_budget;
-        self.feature_set = feature_set;
+        self.set_compute_budget_and_feature_set(compute_budget, feature_set);
         self.slot = slot;
 
         let result = self.process_instruction(&instruction, &accounts);
@@ -1657,8 +1689,7 @@ impl Mollusk {
             instruction,
             slot,
         } = fuzz::firedancer::parse_fixture_context(&fixture.input);
-        self.compute_budget = compute_budget;
-        self.feature_set = feature_set;
+        self.set_compute_budget_and_feature_set(compute_budget, feature_set);
         self.slot = slot;
 
         let result = self.process_instruction(&instruction, &accounts);
