@@ -3399,6 +3399,7 @@ dependencies = [
  "solana-sdk-ids",
  "solana-sdk-macro",
  "solana-sysvar-id",
+ "wincode",
 ]
 
 [[package]]
@@ -3542,6 +3543,7 @@ dependencies = [
  "solana-sdk-ids",
  "solana-sdk-macro",
  "solana-sysvar-id",
+ "wincode",
 ]
 
 [[package]]
@@ -3730,6 +3732,7 @@ dependencies = [
  "solana-sdk-ids",
  "solana-sdk-macro",
  "solana-sysvar-id",
+ "wincode",
 ]
 
 [[package]]
@@ -3999,6 +4002,7 @@ dependencies = [
  "solana-sdk-ids",
  "solana-sdk-macro",
  "solana-sysvar-id",
+ "wincode",
 ]
 
 [[package]]
@@ -4232,6 +4236,7 @@ dependencies = [
  "solana-get-sysvar",
  "solana-sdk-ids",
  "solana-sysvar-id",
+ "wincode",
 ]
 
 [[package]]
@@ -4518,6 +4523,7 @@ dependencies = [
  "solana-slot-history",
  "solana-stake-history",
  "solana-sysvar-id",
+ "wincode",
 ]
 
 [[package]]
@@ -5372,6 +5378,7 @@ version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063b5affe63fb4e584a33101d8808f01f2348b4f533db6223bf27263a0fdb9e9"
 dependencies = [
+ "bv",
  "pastey",
  "proc-macro2",
  "quote",

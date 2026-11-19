@@ -62,11 +62,11 @@ mollusk-svm-result = { workspace = true }
 sha2 = { workspace = true, optional = true }
 solana-account = { workspace = true }
 solana-bpf-loader-program = { workspace = true, features = ["agave-unstable-api"] }
-solana-clock = { workspace = true }
+solana-clock = { workspace = true, features = ["wincode"] }
 solana-compute-budget = { workspace = true, features = ["agave-unstable-api"] }
 solana-compute-budget-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
-solana-epoch-rewards = { workspace = true }
-solana-epoch-schedule = { workspace = true }
+solana-epoch-rewards = { workspace = true, features = ["wincode"] }
+solana-epoch-schedule = { workspace = true, features = ["wincode"] }
 solana-hash = { workspace = true }
 solana-instruction = { workspace = true }
 solana-instruction-error = { workspace = true, features = ["serde"] }
@@ -78,10 +78,10 @@ solana-precompile-error = { workspace = true }
 solana-program-error = { workspace = true }
 solana-program-runtime = { workspace = true, features = ["agave-unstable-api", "dev-context-only-utils", "metrics"] }
 solana-pubkey = { workspace = true }
-solana-rent = { workspace = true }
+solana-rent = { workspace = true, features = ["wincode"] }
 solana-sdk-ids = { workspace = true }
-solana-slot-hashes = { workspace = true }
-solana-stake-history = { workspace = true, features = ["serde"] }
+solana-slot-hashes = { workspace = true, features = ["wincode"] }
+solana-stake-history = { workspace = true, features = ["serde", "wincode"] }
 solana-svm = { workspace = true, features = ["agave-unstable-api"] }
 solana-svm-callback = { workspace = true, features = ["agave-unstable-api"] }
 solana-svm-feature-set = { workspace = true, features = ["agave-unstable-api"] }
@@ -89,13 +89,14 @@ solana-svm-log-collector = { workspace = true, features = ["agave-unstable-api"]
 solana-svm-timings = { workspace = true, features = ["agave-unstable-api"] }
 solana-syscalls = { workspace = true, features = ["agave-unstable-api"] }
 solana-system-program = { workspace = true, features = ["agave-unstable-api"] }
-solana-sysvar = { workspace = true }
+solana-sysvar = { workspace = true, features = ["wincode"] }
 solana-sysvar-id = { workspace = true }
 solana-transaction-context = { workspace = true, features = ["agave-unstable-api", "dev-context-only-utils"] }
 solana-transaction-error = { workspace = true }
 solana-transaction-status-client-types = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-vote-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
 solana-zk-elgamal-proof-program = { workspace = true, features = ["agave-unstable-api"], optional = true }
+wincode = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
