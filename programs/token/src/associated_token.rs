@@ -69,7 +69,7 @@ pub fn create_account_for_associated_token_2022_account(
     // space for immutable owner extension and account type
     const EXTENDED_ACCOUNT_LEN: usize = TokenAccount::LEN + 5;
     let mut data = vec![0u8; EXTENDED_ACCOUNT_LEN];
-    TokenAccount::pack(token_account_data, &mut data).unwrap();
+    TokenAccount::pack(token_account_data, &mut data[..TokenAccount::LEN]).unwrap();
     data[TokenAccount::LEN] = 2; // AccountType::Account
     data[TokenAccount::LEN + 1] = 7; // ExtensionType::ImmutableOwner
 
@@ -82,4 +82,20 @@ pub fn create_account_for_associated_token_2022_account(
     };
 
     (associated_token_address, account)
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, spl_token_interface::state::AccountState};
+
+    #[test]
+    fn token_2022_associated_token_account() {
+        let token = TokenAccount {
+            state: AccountState::Initialized,
+            ..Default::default()
+        };
+        let (_, account) = create_account_for_associated_token_2022_account(token);
+        let base = TokenAccount::unpack(&account.data[..TokenAccount::LEN]);
+        assert_eq!(base, Ok(token));
+    }
 }
