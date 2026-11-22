@@ -146,6 +146,12 @@ fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std:
     Ok(result)
 }
 
+fn new_mollusk() -> Mollusk {
+    let mut mollusk = Mollusk::default();
+    mollusk.config.rent_exempt_checks = false;
+    mollusk
+}
+
 fn add_elf_to_mollusk(mollusk: &mut Mollusk, elf_path: &str, program_id: &Pubkey) {
     let elf = mollusk_svm::file::read_file(elf_path);
     mollusk.add_program_with_loader_and_elf(
@@ -172,7 +178,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             proto,
             verbose,
         } => {
-            let mut mollusk = Mollusk::default();
+            let mut mollusk = new_mollusk();
             apply_program_load_args(&mut mollusk, &program_load_args);
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
@@ -216,12 +222,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             verbose,
         } => {
             // First, set up a Mollusk instance with the ground truth program.
-            let mut mollusk_ground = Mollusk::default();
+            let mut mollusk_ground = new_mollusk();
             apply_program_load_args(&mut mollusk_ground, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_ground, &elf_path_source, &program_id);
 
             // Next, set up a Mollusk instance with the test program.
-            let mut mollusk_test = Mollusk::default();
+            let mut mollusk_test = new_mollusk();
             apply_program_load_args(&mut mollusk_test, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_test, &elf_path_target, &program_id);
 
@@ -252,4 +258,68 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::new_mollusk,
+        mollusk_svm::result::types::ProgramResult,
+        mollusk_svm_fuzz_fixture::{
+            proto::{AcctState, InstrAcct, InstrContext, InstrEffects, InstrFixture},
+            Fixture,
+        },
+    };
+
+    fn system_account(address: u8, lamports: u64) -> AcctState {
+        AcctState {
+            address: vec![address; 32],
+            lamports,
+            owner: solana_sdk_ids::system_program::id().to_bytes().to_vec(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn executes_fixture_that_leaves_an_account_below_rent_exemption() {
+        let mut mollusk = new_mollusk();
+        let minimum = mollusk.sysvars.rent.minimum_balance(0);
+
+        let transfer_amount = 2_000u64;
+        let mut data = 2u32.to_le_bytes().to_vec();
+        data.extend_from_slice(&transfer_amount.to_le_bytes());
+
+        let fixture = Fixture::from(InstrFixture {
+            input: Some(InstrContext {
+                program_id: solana_sdk_ids::system_program::id().to_bytes().to_vec(),
+                instr_accounts: vec![
+                    InstrAcct {
+                        index: 0,
+                        is_signer: true,
+                        is_writable: true,
+                    },
+                    InstrAcct {
+                        index: 1,
+                        is_signer: false,
+                        is_writable: true,
+                    },
+                ],
+                data,
+                accounts: vec![
+                    system_account(1, minimum + 1_000),
+                    system_account(2, minimum),
+                ],
+                ..Default::default()
+            }),
+            output: Some(InstrEffects::default()),
+        });
+
+        let result = mollusk.process_fixture(&fixture);
+
+        assert_eq!(result.program_result, ProgramResult::Success);
+        assert_eq!(
+            result.resulting_accounts[0].1.lamports,
+            minimum + 1_000 - transfer_amount
+        );
+    }
 }
