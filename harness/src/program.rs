@@ -163,18 +163,15 @@ impl ProgramCache {
 
     /// Load every program added from an ELF again, against the current
     /// program runtime environment. Builtins don't depend on it.
-    fn reload_programs(&mut self) {
-        let programs: Vec<(Pubkey, Pubkey, Vec<u8>)> = self
-            .entries_cache
-            .borrow()
-            .iter()
-            .filter_map(|(program_id, entry)| {
-                let elf = entry.elf_bytes.as_ref()?;
-                Some((*program_id, entry.loader_key, elf.clone()))
-            })
-            .collect();
-        for (program_id, loader_key, elf) in programs {
-            self.replenish(program_id, self.load_elf(&loader_key, &elf), Some(&elf));
+    fn reload_programs(&self) {
+        // The entries cache already has each program's ELF and loader, so
+        // only the `ProgramCacheForTxBatch` needs the reloaded entries.
+        let entries_cache = self.entries_cache.borrow();
+        let mut cache = self.cache.borrow_mut();
+        for (program_id, entry) in entries_cache.iter() {
+            if let Some(elf) = &entry.elf_bytes {
+                cache.replenish(*program_id, self.load_elf(&entry.loader_key, elf));
+            }
         }
     }
 
