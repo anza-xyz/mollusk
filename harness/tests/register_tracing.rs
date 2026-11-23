@@ -259,7 +259,7 @@ fn test_debugger() {
 
     let data = &[1, 2, 3, 4, 5];
     let space = data.len();
-    let lamports = mollusk.sysvars.rent.minimum_balance(space);
+    let lamports = mollusk.sysvars().rent.minimum_balance(space);
 
     let key = Pubkey::new_unique();
     let account = Account::new(lamports, space, &cpi_target_program_id);

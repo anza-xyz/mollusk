@@ -32,6 +32,22 @@ pub struct Sysvars {
     pub recent_blockhashes: RecentBlockhashes,
 }
 
+// `SlotHashes` doesn't implement `Clone`, so this can't be derived.
+impl Clone for Sysvars {
+    fn clone(&self) -> Self {
+        Self {
+            clock: self.clock.clone(),
+            epoch_rewards: self.epoch_rewards.clone(),
+            epoch_schedule: self.epoch_schedule.clone(),
+            last_restart_slot: self.last_restart_slot.clone(),
+            rent: self.rent.clone(),
+            slot_hashes: SlotHashes::new(&self.slot_hashes),
+            stake_history: self.stake_history.clone(),
+            recent_blockhashes: self.recent_blockhashes.clone(),
+        }
+    }
+}
+
 impl Default for Sysvars {
     fn default() -> Self {
         let clock = Clock::default();
@@ -294,6 +310,18 @@ impl Sysvars {
 
         sysvar_cache
     }
+}
+
+/// Whether `accounts` contains any sysvar the runtime's sysvar cache reads.
+/// Their data takes precedence over [`Sysvars`] when building the cache.
+pub(crate) fn contains_sysvar_account(accounts: &[(Pubkey, Account)]) -> bool {
+    // Let the sysvar cache ask for each sysvar it reads, so this matches
+    // exactly the accounts `setup_sysvar_cache` would use.
+    let mut found = false;
+    SysvarCache::default().fill_missing_entries(|pubkey, _| {
+        found |= accounts.iter().any(|(key, _)| key == pubkey);
+    });
+    found
 }
 
 impl From<&Sysvars> for SysvarCache {

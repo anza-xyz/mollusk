@@ -176,7 +176,7 @@ fn test_draining_rent_exempt_account_with_data_passes() {
     let destination = Pubkey::new_unique();
 
     let data_len = 100;
-    let source_lamports = mollusk.sysvars.rent.minimum_balance(data_len);
+    let source_lamports = mollusk.sysvars().rent.minimum_balance(data_len);
     let destination_lamports = exempt_minimum();
 
     let instruction = Instruction::new_with_bytes(

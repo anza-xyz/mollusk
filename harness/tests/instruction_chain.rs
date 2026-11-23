@@ -114,7 +114,7 @@ fn test_mixed() {
 
     let data = &[12; 8];
     let space = data.len();
-    let lamports = mollusk.sysvars.rent.minimum_balance(space);
+    let lamports = mollusk.sysvars().rent.minimum_balance(space);
 
     let ix_transfer_to_1 =
         solana_system_interface::instruction::transfer(&payer, &target1, lamports);

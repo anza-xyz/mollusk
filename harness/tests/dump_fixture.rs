@@ -112,8 +112,8 @@ impl<'a> TestSetup<'a> {
             &fixture.input.feature_set.runtime_features(),
             self.mollusk.feature_set(),
         );
-        assert_eq!(fixture.input.sysvars.clock, self.mollusk.sysvars.clock);
-        assert_eq!(fixture.input.sysvars.rent, self.mollusk.sysvars.rent);
+        assert_eq!(fixture.input.sysvars.clock, self.mollusk.sysvars().clock);
+        assert_eq!(fixture.input.sysvars.rent, self.mollusk.sysvars().rent);
         assert_eq!(fixture.input.program_id, self.instruction.program_id);
         assert_eq!(
             fixture.input.instruction_accounts,
@@ -139,7 +139,7 @@ impl<'a> TestSetup<'a> {
         );
         assert_eq!(
             fixture.input.slot_context.slot,
-            self.mollusk.sysvars.clock.slot,
+            self.mollusk.sysvars().clock.slot,
         );
         compare_svm_feature_sets(
             &fixture.input.epoch_context.feature_set.runtime_features(),
