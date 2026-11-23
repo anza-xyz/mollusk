@@ -59,6 +59,10 @@ enum SubCommand {
         /// Protobuf layout to use when executing the fixture.
         #[arg(long, default_value = "mollusk")]
         proto: ProtoLayout,
+        /// Enable rent exemption checks on the resulting accounts. A fixture
+        /// that fails them is reported as a failure. Disabled by default.
+        #[arg(long)]
+        rent_exempt_checks: bool,
         /// Enable verbose mode for fixture effects. Does not enable program
         /// logs. Disabled by default.
         #[arg(short, long)]
@@ -109,6 +113,10 @@ enum SubCommand {
         /// Protobuf layout to use when executing the fixture.
         #[arg(long, default_value = "mollusk")]
         proto: ProtoLayout,
+        /// Enable rent exemption checks on the resulting accounts. A fixture
+        /// that fails them is reported as a failure. Disabled by default.
+        #[arg(long)]
+        rent_exempt_checks: bool,
         /// Enable verbose mode for fixture effects. Does not enable program
         /// logs. Disabled by default.
         #[arg(short, long)]
@@ -146,9 +154,10 @@ fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std:
     Ok(result)
 }
 
-fn new_mollusk() -> Mollusk {
+fn new_mollusk(rent_exempt_checks: bool) -> Mollusk {
     let mut mollusk = Mollusk::default();
-    mollusk.config.rent_exempt_checks = false;
+    mollusk.config.panic = false;
+    mollusk.config.rent_exempt_checks = rent_exempt_checks;
     mollusk
 }
 
@@ -176,9 +185,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             inputs_only,
             program_logs,
             proto,
+            rent_exempt_checks,
             verbose,
         } => {
-            let mut mollusk = new_mollusk();
+            let mut mollusk = new_mollusk(rent_exempt_checks);
             apply_program_load_args(&mut mollusk, &program_load_args);
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
@@ -219,15 +229,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ignore_compute_units,
             program_logs,
             proto,
+            rent_exempt_checks,
             verbose,
         } => {
             // First, set up a Mollusk instance with the ground truth program.
-            let mut mollusk_ground = new_mollusk();
+            let mut mollusk_ground = new_mollusk(rent_exempt_checks);
             apply_program_load_args(&mut mollusk_ground, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_ground, &elf_path_source, &program_id);
 
             // Next, set up a Mollusk instance with the test program.
-            let mut mollusk_test = new_mollusk();
+            let mut mollusk_test = new_mollusk(rent_exempt_checks);
             apply_program_load_args(&mut mollusk_test, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_test, &elf_path_target, &program_id);
 
@@ -269,7 +280,10 @@ mod tests {
             proto::{AcctState, InstrAcct, InstrContext, InstrEffects, InstrFixture},
             Fixture,
         },
+        solana_program_error::ProgramError,
     };
+
+    const TRANSFER_AMOUNT: u64 = 2_000;
 
     fn system_account(address: u8, lamports: u64) -> AcctState {
         AcctState {
@@ -280,16 +294,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn executes_fixture_that_leaves_an_account_below_rent_exemption() {
-        let mut mollusk = new_mollusk();
-        let minimum = mollusk.sysvars.rent.minimum_balance(0);
-
-        let transfer_amount = 2_000u64;
+    fn transfer_below_rent_exemption(minimum: u64) -> Fixture {
         let mut data = 2u32.to_le_bytes().to_vec();
-        data.extend_from_slice(&transfer_amount.to_le_bytes());
+        data.extend_from_slice(&TRANSFER_AMOUNT.to_le_bytes());
 
-        let fixture = Fixture::from(InstrFixture {
+        Fixture::from(InstrFixture {
             input: Some(InstrContext {
                 program_id: solana_sdk_ids::system_program::id().to_bytes().to_vec(),
                 instr_accounts: vec![
@@ -312,14 +321,33 @@ mod tests {
                 ..Default::default()
             }),
             output: Some(InstrEffects::default()),
-        });
+        })
+    }
 
-        let result = mollusk.process_fixture(&fixture);
+    #[test]
+    fn executes_fixture_that_leaves_an_account_below_rent_exemption() {
+        let mut mollusk = new_mollusk(false);
+        let minimum = mollusk.sysvars.rent.minimum_balance(0);
+
+        let result = mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
 
         assert_eq!(result.program_result, ProgramResult::Success);
         assert_eq!(
             result.resulting_accounts[0].1.lamports,
-            minimum + 1_000 - transfer_amount
+            minimum + 1_000 - TRANSFER_AMOUNT
+        );
+    }
+
+    #[test]
+    fn reports_rent_exemption_failure_when_checks_are_enabled() {
+        let mut mollusk = new_mollusk(true);
+        let minimum = mollusk.sysvars.rent.minimum_balance(0);
+
+        let result = mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
+
+        assert_eq!(
+            result.program_result,
+            ProgramResult::Failure(ProgramError::AccountNotRentExempt)
         );
     }
 }
