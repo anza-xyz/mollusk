@@ -515,10 +515,6 @@ const DEFAULT_CLOCK_SLOT: u64 = 1;
 pub(crate) const DEFAULT_LOADER_KEY: Pubkey = solana_sdk_ids::bpf_loader_upgradeable::id();
 
 /// The Mollusk API, providing a simple interface for testing Solana programs.
-///
-/// All fields can be manipulated through a handful of helper methods, but
-/// users can also directly access and modify most of them if they desire more
-/// control.
 pub struct Mollusk {
     pub config: Config,
     compute_budget: ComputeBudget,
