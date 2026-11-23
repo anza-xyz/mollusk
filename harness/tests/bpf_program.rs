@@ -45,7 +45,10 @@ fn test_write_data() {
         mollusk.process_and_validate_instruction(
             &account_not_signer_ix,
             &[(key, account.clone())],
-            &[Check::err(ProgramError::MissingRequiredSignature)],
+            &[
+                Check::err(ProgramError::MissingRequiredSignature),
+                Check::instruction_err(InstructionError::MissingRequiredSignature),
+            ],
         );
     }
 
