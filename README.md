@@ -34,6 +34,9 @@ a handful of helpers.
 - [Inner Instructions Tracking](#inner-instructions-tracking)
 - [Register tracing](#register-tracing)
 - [Interactive Debugging](#interactive-debugging)
+- [Replaying Historical Transactions](#replaying-historical-transactions)
+  - [Caching the Context](#caching-the-context)
+  - [Activating Features for the Candidate](#activating-features-for-the-candidate)
 
 ## Single Instructions
 
@@ -954,3 +957,114 @@ memory, and metadata across a CPI.
   run.
 - **Step with `step`, `si`, and breakpoints.** `next` (step over) currently
   runs the program to completion, and `bt` only shows the current frame.
+
+## Replaying Historical Transactions
+
+The `mollusk-svm-replay` crate re-executes a transaction that already landed
+on-chain, first against its historical program bytes and then with one of its
+programs swapped for a candidate build. This makes it possible to check a new
+build of a program against real traffic.
+
+Replay happens in two phases:
+
+1. **Sanity check:** the transaction is replayed against its historical
+   program bytes and must reproduce the execution result recorded in the
+   ledger. A mismatch means the captured state does not reflect the cluster's,
+   and the replay is aborted.
+2. **Candidate run:** the transaction is replayed again with the candidate
+   program bytes, and its execution result is compared against the recorded
+   one.
+
+A `ReplayContext` holds everything a replay needs: the message, its loaded
+lookup table addresses, the pre-execution account state, the active feature
+set and reserved account keys, the epoch stakes, the fee, and the recorded
+result. Contexts can be built by hand, or loaded from an Agave ledger directory
+with the `ledger` feature.
+
+```rust
+use mollusk_svm_replay::{ledger::LedgerConfig, ReplayContext, Replayer};
+
+let context = ReplayContext::from_ledger(&ledger_path, &signature, &LedgerConfig::default())?;
+let report = Replayer::new(context)?.verify(&program_id, &candidate_elf)?;
+
+assert!(report.candidate_matches());
+```
+
+Loading from a ledger requires a genesis, a snapshot archive at or below
+the transaction's parent slot, and every block from the snapshot up to the
+transaction's own. The bank is loaded from the snapshot, the ledger is replayed
+up to the parent slot, and the transactions preceding the target in its block
+are executed, so the captured state is exactly what the transaction observed.
+
+By default the genesis (`genesis.bin`) and the unpacked blockstore (`rocksdb/`)
+are read from the ledger directory. The genesis can live elsewhere with
+`--genesis` (a `genesis.bin` file or a directory containing one), and a
+blockstore downloaded as a `rocksdb.tar.zst` archive is unpacked in place
+automatically on first use.
+
+The same workflow is available from the CLI, behind the `replay` feature:
+
+```
+cargo install --path cli --features replay
+mollusk replay \
+    --ledger <LEDGER_DIR> \
+    --signature <SIGNATURE> \
+    --program-id <PROGRAM_ID> \
+    --elf <CANDIDATE.so> \
+    [--genesis <GENESIS_BIN_OR_DIR>] \
+    [--snapshot-archives-dir <DIR>] \
+    [--work-dir <DIR>] \
+    [--program-logs]
+```
+
+`--program-logs` emits the replayed program's logs to stderr (it honors
+`RUST_LOG` when set).
+
+Things to know:
+
+* The `ledger` feature depends on `solana-ledger`, which builds against Anza's
+  RocksDB fork. Crates depending on it must apply the same `[patch.crates-io]`
+  as Mollusk's root `Cargo.toml`.
+* Only execution results are compared. The baseline and candidate
+  `TransactionResult`s, including compute units and resulting accounts, are
+  available in the report but not validated.
+* Fees are deducted from the fee payer before execution, as the runtime does.
+  Durable nonce transactions are not supported.
+* Only the candidate's executable is swapped. The program's accounts keep their
+  historical contents.
+
+### Caching the Context
+
+Building a context from a ledger is the slow part: it loads a snapshot and
+replays the ledger up to the transaction's slot, which can take minutes.
+`--save-context <FILE>` writes the built context alongside the replay, and
+`--context <FILE>` loads it back instead of touching the ledger, so iterating on
+a candidate ELF runs in seconds. (`--context` is mutually exclusive with
+`--ledger`/`--signature`.)
+
+```
+# First run: build from the ledger and cache the context.
+mollusk replay --ledger <DIR> --signature <SIG> \
+    --program-id <ID> --elf <CANDIDATE.so> --save-context context.bin
+
+# Later runs: skip the ledger entirely.
+mollusk replay --context context.bin --program-id <ID> --elf <CANDIDATE.so>
+```
+
+`--dump-context` prints the reconstructed pre-state (each message account's
+owner and size) and the transaction's instructions, then continues. It is handy
+when a sanity check fails: an account the message references but the context does
+not hold is flagged, which is a common cause of an `InvalidAccountOwner`.
+
+### Activating Features for the Candidate
+
+The feature set comes from the ledger: it is exactly what the runtime had active
+at the transaction's slot. To test a candidate against features that were not
+yet active, activate them for the candidate run with
+`Replayer::activate_candidate_features`, or `--activate-feature <FEATURE_ID>`
+(repeatable) on the CLI. The sanity check always uses the historical feature
+set, so it still has to reproduce the recorded result.
+
+The candidate's reserved account keys and compute budget are re-derived from
+the activated features. One-time effects the runtime applies when a feature
+activates, such as migrating a builtin to a BPF program, are not emulated.

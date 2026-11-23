@@ -2,6 +2,8 @@
 
 mod add_program;
 mod config;
+#[cfg(feature = "replay")]
+mod replay;
 mod runner;
 
 use {
@@ -117,6 +119,11 @@ enum SubCommand {
         #[command(flatten)]
         program_load_args: ProgramLoadArgs,
     },
+    /// Replay a transaction from an Agave ledger, first against its historical
+    /// program bytes and then with a program swapped for a candidate ELF, and
+    /// compare the execution results with the recorded one.
+    #[cfg(feature = "replay")]
+    Replay(replay::ReplayArgs),
 }
 
 #[derive(Parser)]
@@ -250,6 +257,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .run_all(Some(&mut mollusk_ground), &mut mollusk_test, &fixtures)?
         }
+        #[cfg(feature = "replay")]
+        SubCommand::Replay(args) => replay::run(args)?,
     }
     Ok(())
 }

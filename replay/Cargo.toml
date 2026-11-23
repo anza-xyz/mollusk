@@ -1,0 +1,70 @@
+[package]
+name = "mollusk-svm-replay"
+description = "Replay historical transactions against user-provided program bytes."
+documentation = "https://docs.rs/mollusk-svm-replay"
+authors = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+license-file = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[features]
+default = []
+# Build replay contexts directly from an Agave ledger directory. Requires the
+# workspace's RocksDB patch (see the root `Cargo.toml`).
+ledger = [
+    "dep:agave-snapshots",
+    "dep:solana-accounts-db",
+    "dep:solana-entry",
+    "dep:solana-genesis-config",
+    "dep:solana-genesis-utils",
+    "dep:solana-leader-schedule",
+    "dep:solana-ledger",
+    "dep:solana-runtime",
+    "dep:solana-shred-version",
+    "dep:solana-signature",
+    "dep:solana-transaction",
+    "dep:solana-transaction-status",
+    "dep:solana-unified-scheduler-pool",
+]
+
+[dependencies]
+agave-feature-set = { workspace = true, features = ["agave-unstable-api"] }
+agave-reserved-account-keys = { workspace = true, features = ["agave-unstable-api"] }
+agave-snapshots = { workspace = true, features = ["agave-unstable-api"], optional = true }
+bincode = { workspace = true }
+mollusk-svm = { workspace = true, features = ["all-builtins", "precompiles"] }
+serde = { workspace = true }
+solana-account = { workspace = true, features = ["serde"] }
+solana-accounts-db = { workspace = true, features = ["agave-unstable-api"], optional = true }
+solana-clock = { workspace = true }
+solana-compute-budget = { workspace = true, features = ["agave-unstable-api"] }
+solana-compute-budget-instruction = { workspace = true, features = ["agave-unstable-api"] }
+solana-entry = { workspace = true, features = ["agave-unstable-api"], optional = true }
+solana-genesis-config = { workspace = true, optional = true }
+solana-genesis-utils = { workspace = true, features = ["agave-unstable-api"], optional = true }
+solana-leader-schedule = { workspace = true, features = ["agave-unstable-api"], optional = true }
+solana-ledger = { workspace = true, features = ["agave-unstable-api"], optional = true }
+solana-loader-v3-interface = { workspace = true, features = ["serde"] }
+solana-message = { workspace = true, features = ["serde"] }
+solana-program-runtime = { workspace = true, features = ["agave-unstable-api"] }
+solana-pubkey = { workspace = true }
+solana-runtime = { workspace = true, features = ["agave-unstable-api"], optional = true }
+solana-sdk-ids = { workspace = true }
+solana-shred-version = { workspace = true, optional = true }
+solana-signature = { workspace = true, optional = true }
+solana-svm-transaction = { workspace = true }
+solana-sysvar = { workspace = true }
+solana-sysvar-id = { workspace = true }
+solana-transaction = { workspace = true, optional = true }
+solana-transaction-error = { workspace = true, features = ["serde"] }
+solana-transaction-status = { workspace = true, features = ["agave-unstable-api"], optional = true }
+solana-unified-scheduler-pool = { workspace = true, features = ["agave-unstable-api"], optional = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+mollusk-svm = { workspace = true, features = ["all-builtins", "precompiles"] }
+solana-instruction = { workspace = true }
+solana-instruction-error = { workspace = true }
+solana-system-interface = { workspace = true, features = ["bincode"] }

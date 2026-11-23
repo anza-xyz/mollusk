@@ -37,23 +37,23 @@ pub fn compile_accounts_with_payer<'a>(
         accounts.insert(0, payer_account);
     }
 
-    let transaction_accounts = build_transaction_accounts(
-        &sanitized_message,
-        &accounts,
-        instructions,
-        fallback_accounts,
-    );
+    let transaction_accounts =
+        build_transaction_accounts(&sanitized_message, &accounts, fallback_accounts);
 
     (sanitized_message, transaction_accounts)
 }
 
-fn build_transaction_accounts(
+/// Build the transaction accounts for a message, in the order of its account
+/// keys.
+pub fn build_transaction_accounts(
     message: &SanitizedMessage,
     accounts: &[&(Pubkey, Account)],
-    all_instructions: &[Instruction],
     fallback_accounts: &HashMap<Pubkey, Account>,
 ) -> Vec<(Pubkey, AccountSharedData)> {
-    let program_ids: HashSet<Pubkey> = all_instructions.iter().map(|ix| ix.program_id).collect();
+    let program_ids: HashSet<&Pubkey> = message
+        .program_instructions_iter()
+        .map(|(program_id, _)| program_id)
+        .collect();
 
     message
         .account_keys()

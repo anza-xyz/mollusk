@@ -1261,12 +1261,59 @@ impl Mollusk {
                 payer,
             );
 
-        let mut transaction_context =
-            self.create_transaction_context(transaction_accounts, instructions.len());
+        self.process_compiled_message(&sanitized_message, transaction_accounts, accounts)
+    }
+
+    /// Process a pre-built message using a single shared transaction context.
+    ///
+    /// Unlike `process_transaction_instructions`, the message is executed
+    /// as-is. Its account key order, signer and writable flags, and any
+    /// addresses loaded from lookup tables are preserved, which makes this
+    /// suitable for replaying transactions that already landed on-chain.
+    ///
+    /// Every account key in the message must be provided in `accounts`,
+    /// except for program accounts, which fall back to a stub, and the
+    /// Instructions sysvar, which is built from the message.
+    ///
+    /// Fees are not charged and the fee payer is not validated.
+    ///
+    /// The returned result is a `TransactionResult`, with the same semantics as
+    /// `process_transaction_instructions`.
+    pub fn process_sanitized_message(
+        &self,
+        message: &SanitizedMessage,
+        accounts: &[(Pubkey, Account)],
+    ) -> TransactionResult {
+        let fallback_accounts = self.get_account_fallbacks(
+            message
+                .program_instructions_iter()
+                .map(|(program_id, _)| program_id),
+            accounts,
+        );
+
+        let transaction_accounts = crate::compile_accounts::build_transaction_accounts(
+            message,
+            &accounts.iter().collect::<Vec<_>>(),
+            &fallback_accounts,
+        );
+
+        self.process_compiled_message(message, transaction_accounts, accounts)
+    }
+
+    fn process_compiled_message(
+        &self,
+        sanitized_message: &SanitizedMessage,
+        transaction_accounts: Vec<(Pubkey, AccountSharedData)>,
+        accounts: &[(Pubkey, Account)],
+    ) -> TransactionResult {
+        let mut transaction_context = self.create_transaction_context(
+            transaction_accounts,
+            sanitized_message.instructions().len(),
+        );
         let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
 
         let message_result = self.process_transaction_message(
-            &sanitized_message,
+            sanitized_message,
             &mut transaction_context,
             &sysvar_cache,
         );

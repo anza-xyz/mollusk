@@ -8,6 +8,18 @@ license-file ={ workspace = true }
 edition = { workspace = true }
 version = { workspace = true }
 
+[features]
+default = []
+# The `replay` subcommand, which replays transactions from an Agave ledger.
+# Requires the workspace's RocksDB patch (see the root `Cargo.toml`).
+replay = [
+    "dep:mollusk-svm-replay",
+    "dep:solana-account",
+    "dep:solana-signature",
+    "dep:tar",
+    "dep:zstd",
+]
+
 [dependencies]
 chrono = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
@@ -18,10 +30,15 @@ mollusk-svm-bencher = { workspace = true }
 mollusk-svm-fuzz-fixture = { workspace = true }
 mollusk-svm-fuzz-fixture-firedancer = { workspace = true }
 mollusk-svm = { workspace = true, features = ["fuzz", "fuzz-fd", "serde"] }
+mollusk-svm-replay = { workspace = true, features = ["ledger"], optional = true }
+solana-account = { workspace = true, optional = true }
 solana-logger = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-sdk-ids = { workspace = true }
+solana-signature = { workspace = true, optional = true }
+tar = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["full"] }
+zstd = { workspace = true, optional = true }
 
 [[bin]]
 name = "mollusk"

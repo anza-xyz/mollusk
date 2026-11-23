@@ -1,6 +1,9 @@
 //! Extension-aware account builders for SPL Token-2022 (`extensions` feature).
 
-use {crate::rent_exempt_account, solana_account::Account};
+use {
+    crate::rent_exempt_account, solana_account::Account,
+    spl_token_2022_interface::extension::account_len::try_for_each_required_init_account_extension,
+};
 pub use {
     spl_token_2022_interface::{
         extension::{
@@ -343,10 +346,9 @@ pub fn required_account_extensions_for_mint(
     mint_account_data: &[u8],
 ) -> Vec<TokenAccountExtension> {
     let state = StateWithExtensions::<Mint>::unpack(mint_account_data).unwrap();
-    let mint_extension_types = state.get_extension_types().unwrap();
-    ExtensionType::get_required_init_account_extensions(&mint_extension_types)
-        .iter()
-        .map(|extension_type| match extension_type {
+    let mut required_extensions = Vec::new();
+    try_for_each_required_init_account_extension(state.get_tlv_data(), |extension_type| {
+        required_extensions.push(match extension_type {
             ExtensionType::TransferFeeAmount => {
                 TokenAccountExtension::TransferFeeAmount(TransferFeeAmount::default())
             }
@@ -357,8 +359,11 @@ pub fn required_account_extensions_for_mint(
             }
             ExtensionType::PausableAccount => TokenAccountExtension::PausableAccount,
             _ => panic!("unsupported required extension: {extension_type:?}"),
-        })
-        .collect()
+        });
+        Ok(())
+    })
+    .unwrap();
+    required_extensions
 }
 
 #[cfg(test)]
