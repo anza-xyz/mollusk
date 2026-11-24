@@ -60,7 +60,7 @@ fn test_multi_program_transaction() {
     let target = Pubkey::new_unique();
     let data = &[42; 8];
     let space = data.len();
-    let lamports = mollusk.sysvars().rent.minimum_balance(space);
+    let lamports = mollusk.rent().minimum_balance(space);
 
     let ix_transfer = solana_system_interface::instruction::transfer(&payer, &target, lamports);
     let ix_allocate = solana_system_interface::instruction::allocate(&target, space as u64);

@@ -37,17 +37,17 @@ impl From<&Sysvars> for FuzzSysvars {
 
 impl From<&FuzzSysvars> for Sysvars {
     fn from(input: &FuzzSysvars) -> Self {
-        let slot_hashes = SlotHashes::new(&input.slot_hashes);
-        Self {
-            clock: input.clock.clone(),
-            epoch_rewards: input.epoch_rewards.clone(),
-            epoch_schedule: input.epoch_schedule.clone(),
-            last_restart_slot: LastRestartSlot::default(),
-            rent: input.rent.clone(),
-            slot_hashes,
-            stake_history: input.stake_history.clone(),
-            recent_blockhashes: input.recent_blockhashes.clone(),
-        }
+        let mut sysvars = Self::default();
+        sysvars.clock = input.clock.clone();
+        sysvars.epoch_rewards = input.epoch_rewards.clone();
+        sysvars.epoch_schedule = input.epoch_schedule.clone();
+        sysvars.last_restart_slot = LastRestartSlot::default();
+        sysvars.rent = input.rent.clone();
+        sysvars.slot_hashes = SlotHashes::new(&input.slot_hashes);
+        sysvars.stake_history = input.stake_history.clone();
+        sysvars.recent_blockhashes = input.recent_blockhashes.clone();
+        sysvars.rebuild_cache();
+        sysvars
     }
 }
 

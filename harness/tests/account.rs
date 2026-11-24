@@ -43,7 +43,7 @@ fn test_rent_exemption() {
     let sender = Pubkey::new_unique();
     let recipient = Pubkey::new_unique();
     let space = 256usize;
-    let rent_exempt_minimum = mollusk.sysvars().rent.minimum_balance(space);
+    let rent_exempt_minimum = mollusk.rent().minimum_balance(space);
     let transfer_amount = 42_000u64;
 
     mollusk.process_and_validate_instruction(

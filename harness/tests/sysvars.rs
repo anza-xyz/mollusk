@@ -73,7 +73,7 @@ fn executed_slot(
 fn test_set_sysvars_updates_executed_clock() {
     let (mut mollusk, seen_slot) = setup();
     let (instruction, accounts) = transfer();
-    let initial_slot = mollusk.sysvars().clock.slot;
+    let initial_slot = mollusk.clock().slot;
     assert_eq!(
         executed_slot(&mollusk, &seen_slot, &instruction, &accounts),
         initial_slot
@@ -96,7 +96,7 @@ fn test_warp_to_slot_updates_executed_clock() {
 
     mollusk.warp_to_slot(1_000);
 
-    assert_eq!(mollusk.sysvars().clock.slot, 1_000);
+    assert_eq!(mollusk.clock().slot, 1_000);
     assert_eq!(
         executed_slot(&mollusk, &seen_slot, &instruction, &accounts),
         1_000
@@ -107,7 +107,7 @@ fn test_warp_to_slot_updates_executed_clock() {
 fn test_sysvar_account_overrides_cached_clock() {
     let (mollusk, seen_slot) = setup();
     let (instruction, mut accounts) = transfer();
-    let cached_slot = mollusk.sysvars().clock.slot;
+    let cached_slot = mollusk.clock().slot;
 
     // A clock account passed with the instruction takes precedence.
     let mut sysvars = mollusk.sysvars().clone();

@@ -16,6 +16,7 @@ use {
         self, last_restart_slot::LastRestartSlot, recent_blockhashes::RecentBlockhashes,
     },
     solana_sysvar_id::SysvarId,
+    std::borrow::Cow,
 };
 
 // Agave's sysvar cache is difficult to work with, so Mollusk offers a wrapper
@@ -30,6 +31,11 @@ pub struct Sysvars {
     pub slot_hashes: SlotHashes,
     pub stake_history: StakeHistory,
     pub recent_blockhashes: RecentBlockhashes,
+    /// These sysvars in the form the runtime reads them. `Mollusk` keeps its
+    /// own sysvars' cache up to date: it's rebuilt by `warp_to_slot` and by
+    /// `Mollusk::set_sysvars`, which also covers changes made through the
+    /// public fields.
+    cache: SysvarCache,
 }
 
 // `SlotHashes` doesn't implement `Clone`, so this can't be derived.
@@ -44,6 +50,7 @@ impl Clone for Sysvars {
             slot_hashes: SlotHashes::new(&self.slot_hashes),
             stake_history: self.stake_history.clone(),
             recent_blockhashes: self.recent_blockhashes.clone(),
+            cache: self.cache.clone(),
         }
     }
 }
@@ -65,7 +72,7 @@ impl Default for Sysvars {
         let mut stake_history = StakeHistory::default();
         stake_history.add(clock.epoch, StakeHistoryEntry::default());
 
-        Self {
+        let mut sysvars = Self {
             clock,
             epoch_rewards,
             epoch_schedule,
@@ -74,7 +81,10 @@ impl Default for Sysvars {
             slot_hashes,
             stake_history,
             recent_blockhashes: RecentBlockhashes::default(),
-        }
+            cache: SysvarCache::default(),
+        };
+        sysvars.rebuild_cache();
+        sysvars
     }
 }
 
@@ -227,6 +237,22 @@ impl Sysvars {
         ]
     }
 
+    /// Rebuild the cache from the current sysvars.
+    pub(crate) fn rebuild_cache(&mut self) {
+        self.cache = SysvarCache::from(&*self);
+    }
+
+    /// The sysvar cache to process instructions with. Sysvar accounts passed
+    /// in `accounts` take precedence over these sysvars, so those calls get a
+    /// cache built for them.
+    pub(crate) fn sysvar_cache_for(&self, accounts: &[(Pubkey, Account)]) -> Cow<'_, SysvarCache> {
+        if contains_sysvar_account(accounts) {
+            Cow::Owned(self.setup_sysvar_cache(accounts))
+        } else {
+            Cow::Borrowed(&self.cache)
+        }
+    }
+
     /// Warp the test environment to a slot by updating sysvars.
     pub fn warp_to_slot(&mut self, slot: Slot) {
         let slot_delta = slot.saturating_sub(self.clock.slot);
@@ -268,6 +294,8 @@ impl Sysvars {
                 self.slot_hashes.add(slot, Hash::default());
             }
         }
+
+        self.rebuild_cache();
     }
 
     pub(crate) fn setup_sysvar_cache(&self, accounts: &[(Pubkey, Account)]) -> SysvarCache {
@@ -314,7 +342,7 @@ impl Sysvars {
 
 /// Whether `accounts` contains any sysvar the runtime's sysvar cache reads.
 /// Their data takes precedence over [`Sysvars`] when building the cache.
-pub(crate) fn contains_sysvar_account(accounts: &[(Pubkey, Account)]) -> bool {
+fn contains_sysvar_account(accounts: &[(Pubkey, Account)]) -> bool {
     // Let the sysvar cache ask for each sysvar it reads, so this matches
     // exactly the accounts `setup_sysvar_cache` would use.
     let mut found = false;
@@ -478,6 +506,7 @@ mod tests {
             slot_hashes,
             stake_history,
             recent_blockhashes: RecentBlockhashes::default(),
+            ..Default::default()
         };
 
         let sysvar_cache: SysvarCache = (&sysvars).into();
