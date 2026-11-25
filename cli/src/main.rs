@@ -43,6 +43,10 @@ enum SubCommand {
         /// Note this flag is ignored if `cus_report` is not set.
         #[arg(long)]
         cus_report_table_header: Option<String>,
+        /// Disable rent exemption checks on the resulting accounts. Mollusk
+        /// enables them by default.
+        #[arg(long)]
+        disable_rent_exempt_checks: bool,
         /// Skip comparing compute unit consumption, but compare everything
         /// else.
         ///
@@ -53,16 +57,16 @@ enum SubCommand {
         /// Just execute the fixture without any validation.
         #[arg(short, long)]
         inputs_only: bool,
+        /// Report a fixture that fails a harness check, such as the rent
+        /// exemption check, as a failure instead of panicking.
+        #[arg(long)]
+        no_panic: bool,
         /// Enable emission of program logs to stdout. Disabled by default.
         #[arg(long)]
         program_logs: bool,
         /// Protobuf layout to use when executing the fixture.
         #[arg(long, default_value = "mollusk")]
         proto: ProtoLayout,
-        /// Enable rent exemption checks on the resulting accounts. A fixture
-        /// that fails them is reported as a failure. Disabled by default.
-        #[arg(long)]
-        rent_exempt_checks: bool,
         /// Enable verbose mode for fixture effects. Does not enable program
         /// logs. Disabled by default.
         #[arg(short, long)]
@@ -100,6 +104,10 @@ enum SubCommand {
         /// Note this flag is ignored if `cus_report` is not set.
         #[arg(long)]
         cus_report_table_header: Option<String>,
+        /// Disable rent exemption checks on the resulting accounts. Mollusk
+        /// enables them by default.
+        #[arg(long)]
+        disable_rent_exempt_checks: bool,
         /// Skip comparing compute unit consumption, but compare everything
         /// else.
         ///
@@ -107,16 +115,16 @@ enum SubCommand {
         /// config file.
         #[arg(long)]
         ignore_compute_units: bool,
+        /// Report a fixture that fails a harness check, such as the rent
+        /// exemption check, as a failure instead of panicking.
+        #[arg(long)]
+        no_panic: bool,
         /// Enable emission of program logs to stdout. Disabled by default.
         #[arg(long)]
         program_logs: bool,
         /// Protobuf layout to use when executing the fixture.
         #[arg(long, default_value = "mollusk")]
         proto: ProtoLayout,
-        /// Enable rent exemption checks on the resulting accounts. A fixture
-        /// that fails them is reported as a failure. Disabled by default.
-        #[arg(long)]
-        rent_exempt_checks: bool,
         /// Enable verbose mode for fixture effects. Does not enable program
         /// logs. Disabled by default.
         #[arg(short, long)]
@@ -154,10 +162,10 @@ fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std:
     Ok(result)
 }
 
-fn new_mollusk(rent_exempt_checks: bool) -> Mollusk {
+fn new_mollusk(disable_rent_exempt_checks: bool, no_panic: bool) -> Mollusk {
     let mut mollusk = Mollusk::default();
-    mollusk.config.panic = false;
-    mollusk.config.rent_exempt_checks = rent_exempt_checks;
+    mollusk.config.panic = !no_panic;
+    mollusk.config.rent_exempt_checks = !disable_rent_exempt_checks;
     mollusk
 }
 
@@ -181,14 +189,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             program_load_args,
             cus_report,
             cus_report_table_header,
+            disable_rent_exempt_checks,
             ignore_compute_units,
             inputs_only,
+            no_panic,
             program_logs,
             proto,
-            rent_exempt_checks,
             verbose,
         } => {
-            let mut mollusk = new_mollusk(rent_exempt_checks);
+            let mut mollusk = new_mollusk(disable_rent_exempt_checks, no_panic);
             apply_program_load_args(&mut mollusk, &program_load_args);
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
@@ -226,19 +235,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             program_load_args,
             cus_report,
             cus_report_table_header,
+            disable_rent_exempt_checks,
             ignore_compute_units,
+            no_panic,
             program_logs,
             proto,
-            rent_exempt_checks,
             verbose,
         } => {
             // First, set up a Mollusk instance with the ground truth program.
-            let mut mollusk_ground = new_mollusk(rent_exempt_checks);
+            let mut mollusk_ground = new_mollusk(disable_rent_exempt_checks, no_panic);
             apply_program_load_args(&mut mollusk_ground, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_ground, &elf_path_source, &program_id);
 
             // Next, set up a Mollusk instance with the test program.
-            let mut mollusk_test = new_mollusk(rent_exempt_checks);
+            let mut mollusk_test = new_mollusk(disable_rent_exempt_checks, no_panic);
             apply_program_load_args(&mut mollusk_test, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_test, &elf_path_target, &program_id);
 
@@ -325,8 +335,30 @@ mod tests {
     }
 
     #[test]
-    fn executes_fixture_that_leaves_an_account_below_rent_exemption() {
-        let mut mollusk = new_mollusk(false);
+    #[should_panic(expected = "CHECK FAILED: rent")]
+    fn panics_on_rent_exemption_failure_by_default() {
+        let mut mollusk = new_mollusk(false, false);
+        let minimum = mollusk.sysvars.rent.minimum_balance(0);
+
+        mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
+    }
+
+    #[test]
+    fn reports_rent_exemption_failure_with_no_panic() {
+        let mut mollusk = new_mollusk(false, true);
+        let minimum = mollusk.sysvars.rent.minimum_balance(0);
+
+        let result = mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
+
+        assert_eq!(
+            result.program_result,
+            ProgramResult::Failure(ProgramError::AccountNotRentExempt)
+        );
+    }
+
+    #[test]
+    fn executes_fixture_with_rent_exempt_checks_disabled() {
+        let mut mollusk = new_mollusk(true, false);
         let minimum = mollusk.sysvars.rent.minimum_balance(0);
 
         let result = mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
@@ -335,19 +367,6 @@ mod tests {
         assert_eq!(
             result.resulting_accounts[0].1.lamports,
             minimum + 1_000 - TRANSFER_AMOUNT
-        );
-    }
-
-    #[test]
-    fn reports_rent_exemption_failure_when_checks_are_enabled() {
-        let mut mollusk = new_mollusk(true);
-        let minimum = mollusk.sysvars.rent.minimum_balance(0);
-
-        let result = mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
-
-        assert_eq!(
-            result.program_result,
-            ProgramResult::Failure(ProgramError::AccountNotRentExempt)
         );
     }
 }
