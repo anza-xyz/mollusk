@@ -32,22 +32,6 @@ pub struct Sysvars {
     pub recent_blockhashes: RecentBlockhashes,
 }
 
-// `SlotHashes` doesn't implement `Clone`, so this can't be derived.
-impl Clone for Sysvars {
-    fn clone(&self) -> Self {
-        Self {
-            clock: self.clock.clone(),
-            epoch_rewards: self.epoch_rewards.clone(),
-            epoch_schedule: self.epoch_schedule.clone(),
-            last_restart_slot: self.last_restart_slot.clone(),
-            rent: self.rent.clone(),
-            slot_hashes: SlotHashes::new(&self.slot_hashes),
-            stake_history: self.stake_history.clone(),
-            recent_blockhashes: self.recent_blockhashes.clone(),
-        }
-    }
-}
-
 impl Default for Sysvars {
     fn default() -> Self {
         let clock = Clock::default();

@@ -1,7 +1,7 @@
 #![cfg(feature = "invocation-inspect-callback")]
 
 use {
-    mollusk_svm::{InvocationInspectCallback, Mollusk},
+    mollusk_svm::{sysvar::Sysvars, InvocationInspectCallback, Mollusk},
     solana_account::Account,
     solana_instruction::Instruction,
     solana_program_runtime::invoke_context::InvokeContext,
@@ -70,7 +70,7 @@ fn executed_slot(
 }
 
 #[test]
-fn test_set_sysvars_updates_executed_clock() {
+fn test_sysvars_mut_updates_executed_clock() {
     let (mut mollusk, seen_slot) = setup();
     let (instruction, accounts) = transfer();
     let initial_slot = mollusk.clock().slot;
@@ -79,9 +79,7 @@ fn test_set_sysvars_updates_executed_clock() {
         initial_slot
     );
 
-    let mut sysvars = mollusk.sysvars().clone();
-    sysvars.clock.slot = initial_slot + 42;
-    mollusk.set_sysvars(sysvars);
+    mollusk.sysvars_mut().clock.slot = initial_slot + 42;
 
     assert_eq!(
         executed_slot(&mollusk, &seen_slot, &instruction, &accounts),
@@ -90,9 +88,26 @@ fn test_set_sysvars_updates_executed_clock() {
 }
 
 #[test]
+fn test_replacing_sysvars_updates_executed_clock() {
+    let (mut mollusk, seen_slot) = setup();
+    let (instruction, accounts) = transfer();
+    executed_slot(&mollusk, &seen_slot, &instruction, &accounts);
+
+    let mut sysvars = Sysvars::default();
+    sysvars.clock.slot = 123;
+    *mollusk.sysvars_mut() = sysvars;
+
+    assert_eq!(
+        executed_slot(&mollusk, &seen_slot, &instruction, &accounts),
+        123
+    );
+}
+
+#[test]
 fn test_warp_to_slot_updates_executed_clock() {
     let (mut mollusk, seen_slot) = setup();
     let (instruction, accounts) = transfer();
+    executed_slot(&mollusk, &seen_slot, &instruction, &accounts);
 
     mollusk.warp_to_slot(1_000);
 
@@ -110,7 +125,7 @@ fn test_sysvar_account_overrides_cached_clock() {
     let cached_slot = mollusk.clock().slot;
 
     // A clock account passed with the instruction takes precedence.
-    let mut sysvars = mollusk.sysvars().clone();
+    let mut sysvars = Sysvars::default();
     sysvars.clock.slot = cached_slot + 7;
     accounts.push(sysvars.keyed_account_for_clock_sysvar());
     assert_eq!(

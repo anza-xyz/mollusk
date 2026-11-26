@@ -502,7 +502,7 @@ use {
     solana_transaction_error::TransactionError,
     std::{
         borrow::Cow,
-        cell::RefCell,
+        cell::{OnceCell, RefCell},
         collections::{HashMap, HashSet},
         iter::once,
         rc::Rc,
@@ -526,9 +526,9 @@ pub struct Mollusk {
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
     sysvars: Sysvars,
-    /// `sysvars` in the form the runtime reads them, rebuilt whenever they
-    /// change.
-    sysvar_cache: SysvarCache,
+    /// `sysvars` in the form the runtime reads them. Built on first use and
+    /// cleared by `sysvars_mut`.
+    sysvar_cache: OnceCell<SysvarCache>,
 
     /// The callback which can be used to inspect invoke_context
     /// and extract low-level information such as bpf traces, transaction
@@ -584,7 +584,6 @@ impl Mollusk {
 
         let mut sysvars = Sysvars::default();
         sysvars.clock.slot = DEFAULT_CLOCK_SLOT;
-        let sysvar_cache = SysvarCache::from(&sysvars);
 
         #[allow(unused_mut)]
         let mut me = Self {
@@ -595,7 +594,7 @@ impl Mollusk {
             logger: None,
             program_cache,
             sysvars,
-            sysvar_cache,
+            sysvar_cache: OnceCell::new(),
 
             #[cfg(feature = "invocation-inspect-callback")]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
@@ -752,13 +751,13 @@ impl Mollusk {
         &self.sysvars
     }
 
-    /// Set the sysvars.
+    /// Mutable access to the sysvars, for changing one or replacing them all.
     ///
     /// The sysvars are cached in the form the runtime reads them, so this
-    /// rebuilds that cache.
-    pub fn set_sysvars(&mut self, sysvars: Sysvars) {
-        self.sysvars = sysvars;
-        self.rebuild_sysvar_cache();
+    /// clears that cache. It's rebuilt by the next instruction processed.
+    pub fn sysvars_mut(&mut self) -> &mut Sysvars {
+        self.sysvar_cache.take();
+        &mut self.sysvars
     }
 
     /// The `Clock` sysvar instructions are processed with.
@@ -771,10 +770,6 @@ impl Mollusk {
         &self.sysvars.rent
     }
 
-    fn rebuild_sysvar_cache(&mut self) {
-        self.sysvar_cache = SysvarCache::from(&self.sysvars);
-    }
-
     /// The sysvar cache to process instructions with. Sysvar accounts passed
     /// in `accounts` take precedence over `self.sysvars`, so those calls get a
     /// cache built for them.
@@ -782,14 +777,16 @@ impl Mollusk {
         if crate::sysvar::contains_sysvar_account(accounts) {
             Cow::Owned(self.sysvars.setup_sysvar_cache(accounts))
         } else {
-            Cow::Borrowed(&self.sysvar_cache)
+            Cow::Borrowed(
+                self.sysvar_cache
+                    .get_or_init(|| SysvarCache::from(&self.sysvars)),
+            )
         }
     }
 
     /// Warp the test environment to a slot by updating sysvars.
     pub fn warp_to_slot(&mut self, slot: u64) {
-        self.sysvars.warp_to_slot(slot);
-        self.rebuild_sysvar_cache();
+        self.sysvars_mut().warp_to_slot(slot);
         #[cfg(feature = "fuzz-fd")]
         {
             self.slot = slot;
@@ -1554,7 +1551,7 @@ impl Mollusk {
             sysvars,
         } = fuzz::mollusk::parse_fixture_context(&fixture.input);
         self.set_compute_budget_and_feature_set(compute_budget, feature_set);
-        self.set_sysvars(sysvars);
+        *self.sysvars_mut() = sysvars;
         self.process_instruction(&instruction, &accounts)
     }
 
