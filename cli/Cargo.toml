@@ -23,9 +23,6 @@ solana-pubkey = { workspace = true }
 solana-sdk-ids = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 
-[dev-dependencies]
-solana-program-error = { workspace = true }
-
 [[bin]]
 name = "mollusk"
 path = "src/main.rs"

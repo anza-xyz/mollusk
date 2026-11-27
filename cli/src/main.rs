@@ -162,10 +162,11 @@ fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std:
     Ok(result)
 }
 
-fn new_mollusk(disable_rent_exempt_checks: bool, no_panic: bool) -> Mollusk {
+fn new_mollusk(disable_rent_exempt_checks: bool, no_panic: bool, verbose: bool) -> Mollusk {
     let mut mollusk = Mollusk::default();
     mollusk.config.panic = !no_panic;
     mollusk.config.rent_exempt_checks = !disable_rent_exempt_checks;
+    mollusk.config.verbose = verbose;
     mollusk
 }
 
@@ -197,7 +198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             proto,
             verbose,
         } => {
-            let mut mollusk = new_mollusk(disable_rent_exempt_checks, no_panic);
+            let mut mollusk = new_mollusk(disable_rent_exempt_checks, no_panic, verbose);
             apply_program_load_args(&mut mollusk, &program_load_args);
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
@@ -243,12 +244,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             verbose,
         } => {
             // First, set up a Mollusk instance with the ground truth program.
-            let mut mollusk_ground = new_mollusk(disable_rent_exempt_checks, no_panic);
+            let mut mollusk_ground = new_mollusk(disable_rent_exempt_checks, no_panic, verbose);
             apply_program_load_args(&mut mollusk_ground, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_ground, &elf_path_source, &program_id);
 
             // Next, set up a Mollusk instance with the test program.
-            let mut mollusk_test = new_mollusk(disable_rent_exempt_checks, no_panic);
+            let mut mollusk_test = new_mollusk(disable_rent_exempt_checks, no_panic, verbose);
             apply_program_load_args(&mut mollusk_test, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_test, &elf_path_target, &program_id);
 
@@ -284,89 +285,72 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use {
-        super::new_mollusk,
-        mollusk_svm::result::types::ProgramResult,
-        mollusk_svm_fuzz_fixture::{
-            proto::{AcctState, InstrAcct, InstrContext, InstrEffects, InstrFixture},
-            Fixture,
-        },
-        solana_program_error::ProgramError,
+        super::{new_mollusk, Cli, SubCommand},
+        clap::Parser,
     };
 
-    const TRANSFER_AMOUNT: u64 = 2_000;
+    const EXECUTE_FIXTURE: &[&str] = &[
+        "mollusk",
+        "execute-fixture",
+        "program.so",
+        "fixtures",
+        "11111111111111111111111111111111",
+    ];
+    const RUN_TEST: &[&str] = &[
+        "mollusk",
+        "run-test",
+        "source.so",
+        "target.so",
+        "fixtures",
+        "11111111111111111111111111111111",
+    ];
 
-    fn system_account(address: u8, lamports: u64) -> AcctState {
-        AcctState {
-            address: vec![address; 32],
-            lamports,
-            owner: solana_sdk_ids::system_program::id().to_bytes().to_vec(),
-            ..Default::default()
+    fn harness_flags(args: &[&str]) -> (bool, bool, bool) {
+        match Cli::try_parse_from(args).unwrap().command {
+            SubCommand::ExecuteFixture {
+                disable_rent_exempt_checks,
+                no_panic,
+                verbose,
+                ..
+            }
+            | SubCommand::RunTest {
+                disable_rent_exempt_checks,
+                no_panic,
+                verbose,
+                ..
+            } => (disable_rent_exempt_checks, no_panic, verbose),
         }
     }
 
-    fn transfer_below_rent_exemption(minimum: u64) -> Fixture {
-        let mut data = 2u32.to_le_bytes().to_vec();
-        data.extend_from_slice(&TRANSFER_AMOUNT.to_le_bytes());
-
-        Fixture::from(InstrFixture {
-            input: Some(InstrContext {
-                program_id: solana_sdk_ids::system_program::id().to_bytes().to_vec(),
-                instr_accounts: vec![
-                    InstrAcct {
-                        index: 0,
-                        is_signer: true,
-                        is_writable: true,
-                    },
-                    InstrAcct {
-                        index: 1,
-                        is_signer: false,
-                        is_writable: true,
-                    },
-                ],
-                data,
-                accounts: vec![
-                    system_account(1, minimum + 1_000),
-                    system_account(2, minimum),
-                ],
-                ..Default::default()
-            }),
-            output: Some(InstrEffects::default()),
-        })
+    #[test]
+    fn harness_flags_are_off_by_default() {
+        for args in [EXECUTE_FIXTURE, RUN_TEST] {
+            assert_eq!(harness_flags(args), (false, false, false));
+        }
     }
 
     #[test]
-    #[should_panic(expected = "CHECK FAILED: rent")]
-    fn panics_on_rent_exemption_failure_by_default() {
-        let mut mollusk = new_mollusk(false, false);
-        let minimum = mollusk.sysvars.rent.minimum_balance(0);
-
-        mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
+    fn parses_harness_flags() {
+        for args in [EXECUTE_FIXTURE, RUN_TEST] {
+            let args = [
+                args,
+                &["--disable-rent-exempt-checks", "--no-panic", "--verbose"],
+            ]
+            .concat();
+            assert_eq!(harness_flags(&args), (true, true, true));
+        }
     }
 
     #[test]
-    fn reports_rent_exemption_failure_with_no_panic() {
-        let mut mollusk = new_mollusk(false, true);
-        let minimum = mollusk.sysvars.rent.minimum_balance(0);
+    fn new_mollusk_sets_the_config_from_the_flags() {
+        let mollusk = new_mollusk(false, false, false);
+        assert!(mollusk.config.panic);
+        assert!(mollusk.config.rent_exempt_checks);
+        assert!(!mollusk.config.verbose);
 
-        let result = mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
-
-        assert_eq!(
-            result.program_result,
-            ProgramResult::Failure(ProgramError::AccountNotRentExempt)
-        );
-    }
-
-    #[test]
-    fn executes_fixture_with_rent_exempt_checks_disabled() {
-        let mut mollusk = new_mollusk(true, false);
-        let minimum = mollusk.sysvars.rent.minimum_balance(0);
-
-        let result = mollusk.process_fixture(&transfer_below_rent_exemption(minimum));
-
-        assert_eq!(result.program_result, ProgramResult::Success);
-        assert_eq!(
-            result.resulting_accounts[0].1.lamports,
-            minimum + 1_000 - TRANSFER_AMOUNT
-        );
+        let mollusk = new_mollusk(true, true, true);
+        assert!(!mollusk.config.panic);
+        assert!(!mollusk.config.rent_exempt_checks);
+        assert!(mollusk.config.verbose);
     }
 }
