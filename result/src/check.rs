@@ -199,7 +199,10 @@ fn run_checks(
                 pass &= compare!(c, "execution_time", check_time, actual_time);
             }
             CheckType::ProgramResult(check_program_result) => {
-                let check_result = check_program_result;
+                let check_result = match check_program_result {
+                    ProgramResult::UnknownError(err) => &Err(err.clone()).into(),
+                    result => result,
+                };
                 let actual_result = program_result;
                 pass &= compare!(c, "program_result", check_result, actual_result);
             }
