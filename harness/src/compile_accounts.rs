@@ -7,13 +7,13 @@ use {
     solana_instruction::Instruction,
     solana_message::{LegacyMessage, Message, SanitizedMessage},
     solana_pubkey::Pubkey,
-    std::collections::{HashMap, HashSet},
+    std::collections::HashSet,
 };
 
 pub fn compile_accounts<'a>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    fallback_accounts: &HashMap<Pubkey, Account>,
+    fallback_accounts: &[(Pubkey, Account)],
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
     compile_accounts_with_payer(instructions, accounts, fallback_accounts, None)
 }
@@ -21,7 +21,7 @@ pub fn compile_accounts<'a>(
 pub fn compile_accounts_with_payer<'a>(
     instructions: &[Instruction],
     accounts: impl Iterator<Item = &'a (Pubkey, Account)>,
-    fallback_accounts: &HashMap<Pubkey, Account>,
+    fallback_accounts: &[(Pubkey, Account)],
     payer: Option<&Pubkey>,
 ) -> (SanitizedMessage, Vec<(Pubkey, AccountSharedData)>) {
     let message = Message::new(instructions, payer);
@@ -51,19 +51,17 @@ fn build_transaction_accounts(
     message: &SanitizedMessage,
     accounts: &[&(Pubkey, Account)],
     all_instructions: &[Instruction],
-    fallback_accounts: &HashMap<Pubkey, Account>,
+    fallback_accounts: &[(Pubkey, Account)],
 ) -> Vec<(Pubkey, AccountSharedData)> {
-    let program_ids: HashSet<Pubkey> = all_instructions.iter().map(|ix| ix.program_id).collect();
-
     message
         .account_keys()
         .iter()
         .map(|key| {
-            if program_ids.contains(key) {
+            if all_instructions.iter().any(|ix| ix.program_id == *key) {
                 if let Some(provided_account) = accounts.iter().find(|(k, _)| k == key) {
                     return (*key, AccountSharedData::from(provided_account.1.clone()));
                 }
-                if let Some(fallback) = fallback_accounts.get(key) {
+                if let Some((_, fallback)) = fallback_accounts.iter().find(|(k, _)| k == key) {
                     return (*key, AccountSharedData::from(fallback.clone()));
                 }
                 // This shouldn't happen if fallbacks are set up correctly.
@@ -87,8 +85,9 @@ fn build_transaction_accounts(
                 .map(|(_, a)| AccountSharedData::from(a.clone()))
                 .or_else(|| {
                     fallback_accounts
-                        .get(key)
-                        .map(|a| AccountSharedData::from(a.clone()))
+                        .iter()
+                        .find(|(k, _)| k == key)
+                        .map(|(_, a)| AccountSharedData::from(a.clone()))
                 })
                 .or_panic_with(MolluskError::AccountMissing(key));
 
