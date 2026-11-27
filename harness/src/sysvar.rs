@@ -296,6 +296,18 @@ impl Sysvars {
     }
 }
 
+/// Whether `accounts` contains any sysvar the runtime's sysvar cache reads.
+/// Their data takes precedence over [`Sysvars`] when building the cache.
+pub(crate) fn contains_sysvar_account(accounts: &[(Pubkey, Account)]) -> bool {
+    // Let the sysvar cache ask for each sysvar it reads, so this matches
+    // exactly the accounts `setup_sysvar_cache` would use.
+    let mut found = false;
+    SysvarCache::default().fill_missing_entries(|pubkey, _| {
+        found |= accounts.iter().any(|(key, _)| key == pubkey);
+    });
+    found
+}
+
 impl From<&Sysvars> for SysvarCache {
     fn from(mollusk_cache: &Sysvars) -> Self {
         let mut sysvar_cache = SysvarCache::default();

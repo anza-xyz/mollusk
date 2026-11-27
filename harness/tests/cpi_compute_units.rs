@@ -35,7 +35,7 @@ fn setup() -> Setup {
     );
 
     let space = 5;
-    let lamports = mollusk.sysvars.rent.minimum_balance(space);
+    let lamports = mollusk.rent().minimum_balance(space);
     let key = Pubkey::new_unique();
 
     let accounts = vec![

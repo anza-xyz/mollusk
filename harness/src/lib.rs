@@ -479,6 +479,7 @@ use {
         Check, Config, InstructionResult,
     },
     solana_account::{Account, AccountSharedData, ReadableAccount},
+    solana_clock::Clock,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
@@ -490,6 +491,7 @@ use {
         sysvar_cache::SysvarCache,
     },
     solana_pubkey::Pubkey,
+    solana_rent::Rent,
     solana_svm_feature_set::SVMFeatureSet,
     solana_svm_log_collector::LogCollector,
     solana_svm_timings::ExecuteTimings,
@@ -499,7 +501,8 @@ use {
     },
     solana_transaction_error::TransactionError,
     std::{
-        cell::RefCell,
+        borrow::Cow,
+        cell::{OnceCell, RefCell},
         collections::{HashMap, HashSet},
         iter::once,
         rc::Rc,
@@ -522,7 +525,10 @@ pub struct Mollusk {
     feature_set: SVMFeatureSet,
     pub logger: Option<Rc<RefCell<LogCollector>>>,
     pub program_cache: ProgramCache,
-    pub sysvars: Sysvars,
+    sysvars: Sysvars,
+    /// `sysvars` in the form the runtime reads them. Built on first use and
+    /// cleared by `sysvars_mut`.
+    sysvar_cache: OnceCell<SysvarCache>,
 
     /// The callback which can be used to inspect invoke_context
     /// and extract low-level information such as bpf traces, transaction
@@ -588,6 +594,7 @@ impl Mollusk {
             logger: None,
             program_cache,
             sysvars,
+            sysvar_cache: OnceCell::new(),
 
             #[cfg(feature = "invocation-inspect-callback")]
             invocation_inspect_callback: Box::new(EmptyInvocationInspectCallback {}),
@@ -739,9 +746,47 @@ impl Mollusk {
             .rebuild_environment(&self.feature_set, &self.compute_budget);
     }
 
+    /// The sysvars instructions are processed with.
+    pub fn sysvars(&self) -> &Sysvars {
+        &self.sysvars
+    }
+
+    /// Mutable access to the sysvars, for changing one or replacing them all.
+    ///
+    /// The sysvars are cached in the form the runtime reads them, so this
+    /// clears that cache. It's rebuilt by the next instruction processed.
+    pub fn sysvars_mut(&mut self) -> &mut Sysvars {
+        self.sysvar_cache.take();
+        &mut self.sysvars
+    }
+
+    /// The `Clock` sysvar instructions are processed with.
+    pub fn clock(&self) -> &Clock {
+        &self.sysvars.clock
+    }
+
+    /// The `Rent` sysvar instructions are processed with.
+    pub fn rent(&self) -> &Rent {
+        &self.sysvars.rent
+    }
+
+    /// The sysvar cache to process instructions with. Sysvar accounts passed
+    /// in `accounts` take precedence over `self.sysvars`, so those calls get a
+    /// cache built for them.
+    fn sysvar_cache_for(&self, accounts: &[(Pubkey, Account)]) -> Cow<'_, SysvarCache> {
+        if crate::sysvar::contains_sysvar_account(accounts) {
+            Cow::Owned(self.sysvars.setup_sysvar_cache(accounts))
+        } else {
+            Cow::Borrowed(
+                self.sysvar_cache
+                    .get_or_init(|| SysvarCache::from(&self.sysvars)),
+            )
+        }
+    }
+
     /// Warp the test environment to a slot by updating sysvars.
     pub fn warp_to_slot(&mut self, slot: u64) {
-        self.sysvars.warp_to_slot(slot);
+        self.sysvars_mut().warp_to_slot(slot);
         #[cfg(feature = "fuzz-fd")]
         {
             self.slot = slot;
@@ -1122,7 +1167,7 @@ impl Mollusk {
         );
 
         let mut transaction_context = self.create_transaction_context(transaction_accounts, 1);
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+        let sysvar_cache = self.sysvar_cache_for(accounts);
 
         let message_result = self.process_transaction_message(
             &sanitized_message,
@@ -1235,7 +1280,7 @@ impl Mollusk {
         let fallback_accounts =
             self.get_account_fallbacks(instructions.iter().map(|ix| &ix.program_id), accounts);
 
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+        let sysvar_cache = self.sysvar_cache_for(accounts);
 
         for instruction in instructions.iter() {
             let this_result = self.process_instruction_chain_element(
@@ -1294,7 +1339,7 @@ impl Mollusk {
 
         let mut transaction_context =
             self.create_transaction_context(transaction_accounts, instructions.len());
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+        let sysvar_cache = self.sysvar_cache_for(accounts);
 
         let message_result = self.process_transaction_message(
             &sanitized_message,
@@ -1424,7 +1469,7 @@ impl Mollusk {
         let fallback_accounts =
             self.get_account_fallbacks(instructions.iter().map(|(ix, _)| &ix.program_id), accounts);
 
-        let sysvar_cache = self.sysvars.setup_sysvar_cache(accounts);
+        let sysvar_cache = self.sysvar_cache_for(accounts);
 
         for (instruction, checks) in instructions.iter() {
             let this_result = self.process_instruction_chain_element(
@@ -1506,7 +1551,7 @@ impl Mollusk {
             sysvars,
         } = fuzz::mollusk::parse_fixture_context(&fixture.input);
         self.set_compute_budget_and_feature_set(compute_budget, feature_set);
-        self.sysvars = sysvars;
+        *self.sysvars_mut() = sysvars;
         self.process_instruction(&instruction, &accounts)
     }
 
