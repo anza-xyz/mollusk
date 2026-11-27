@@ -814,8 +814,8 @@ impl Mollusk {
 
         // Top-level target programs.
         all_program_ids.for_each(|program_id| {
-            if !accounts.iter().any(|(key, _)| key == program_id)
-                && !fallbacks.iter().any(|(key, _)| key == program_id)
+            if !fallbacks.iter().any(|(key, _)| key == program_id)
+                && !accounts.iter().any(|(key, _)| key == program_id)
             {
                 // Fallback to a stub.
                 fallbacks.push((
