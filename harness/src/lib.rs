@@ -503,7 +503,7 @@ use {
     std::{
         borrow::Cow,
         cell::{OnceCell, RefCell},
-        collections::{HashMap, HashSet},
+        collections::HashSet,
         iter::once,
         rc::Rc,
     },
@@ -809,24 +809,23 @@ impl Mollusk {
         &self,
         all_program_ids: impl Iterator<Item = &'a Pubkey>,
         accounts: &[(Pubkey, Account)],
-    ) -> HashMap<Pubkey, Account> {
-        // Use a HashSet for fast lookups.
-        let account_keys: HashSet<&Pubkey> = accounts.iter().map(|(key, _)| key).collect();
-
-        let mut fallbacks = HashMap::new();
+    ) -> Vec<(Pubkey, Account)> {
+        let mut fallbacks = Vec::new();
 
         // Top-level target programs.
         all_program_ids.for_each(|program_id| {
-            if !account_keys.contains(program_id) {
+            if !fallbacks.iter().any(|(key, _)| key == program_id)
+                && !accounts.iter().any(|(key, _)| key == program_id)
+            {
                 // Fallback to a stub.
-                fallbacks.insert(
+                fallbacks.push((
                     *program_id,
                     Account {
                         owner: self.get_loader_key(program_id),
                         executable: true,
                         ..Default::default()
                     },
-                );
+                ));
             }
         });
 
@@ -1070,7 +1069,7 @@ impl Mollusk {
         &self,
         instruction: &Instruction,
         accounts: &[(Pubkey, Account)],
-        fallback_accounts: &HashMap<Pubkey, Account>,
+        fallback_accounts: &[(Pubkey, Account)],
         sysvar_cache: &SysvarCache,
     ) -> InstructionResult {
         let (sanitized_message, transaction_accounts) = crate::compile_accounts::compile_accounts(
