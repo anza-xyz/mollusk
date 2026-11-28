@@ -66,6 +66,13 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             bls12_381_additional_pair_cost,
             big_modular_exponentiation_base_cost,
             big_modular_exponentiation_cost_divisor,
+            secp256r1_add_cost,
+            secp256r1_subtract_cost,
+            secp256r1_multiply_cost,
+            secp256r1_msm_base_cost,
+            secp256r1_msm_incremental_cost,
+            secp256r1_validate_cost,
+            secp256r1_decompress_cost,
         } = value;
 
         Self {
@@ -127,6 +134,13 @@ impl From<ProtoComputeBudget> for ComputeBudget {
             bls12_381_g2_validate_cost,
             bls12_381_one_pair_cost,
             bls12_381_additional_pair_cost,
+            secp256r1_add_cost,
+            secp256r1_subtract_cost,
+            secp256r1_multiply_cost,
+            secp256r1_msm_base_cost,
+            secp256r1_msm_incremental_cost,
+            secp256r1_validate_cost,
+            secp256r1_decompress_cost,
         }
     }
 }
@@ -192,6 +206,13 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             bls12_381_g2_validate_cost,
             bls12_381_one_pair_cost,
             bls12_381_additional_pair_cost,
+            secp256r1_add_cost,
+            secp256r1_subtract_cost,
+            secp256r1_multiply_cost,
+            secp256r1_msm_base_cost,
+            secp256r1_msm_incremental_cost,
+            secp256r1_validate_cost,
+            secp256r1_decompress_cost,
         } = value;
 
         Self {
@@ -253,6 +274,13 @@ impl From<ComputeBudget> for ProtoComputeBudget {
             bls12_381_additional_pair_cost,
             big_modular_exponentiation_base_cost,
             big_modular_exponentiation_cost_divisor,
+            secp256r1_add_cost,
+            secp256r1_subtract_cost,
+            secp256r1_multiply_cost,
+            secp256r1_msm_base_cost,
+            secp256r1_msm_incremental_cost,
+            secp256r1_validate_cost,
+            secp256r1_decompress_cost,
         }
     }
 }
@@ -384,4 +412,11 @@ pub(crate) fn hash_proto_compute_budget(hasher: &mut Hasher, compute_budget: &Pr
             .big_modular_exponentiation_cost_divisor
             .to_le_bytes(),
     );
+    hasher.hash(&compute_budget.secp256r1_add_cost.to_le_bytes());
+    hasher.hash(&compute_budget.secp256r1_subtract_cost.to_le_bytes());
+    hasher.hash(&compute_budget.secp256r1_multiply_cost.to_le_bytes());
+    hasher.hash(&compute_budget.secp256r1_msm_base_cost.to_le_bytes());
+    hasher.hash(&compute_budget.secp256r1_msm_incremental_cost.to_le_bytes());
+    hasher.hash(&compute_budget.secp256r1_validate_cost.to_le_bytes());
+    hasher.hash(&compute_budget.secp256r1_decompress_cost.to_le_bytes());
 }

@@ -63,4 +63,11 @@ message ComputeBudget {
     uint64 bls12_381_additional_pair_cost = 60;
     uint64 big_modular_exponentiation_base_cost = 61;
     uint64 big_modular_exponentiation_cost_divisor = 62;
+    uint64 secp256r1_add_cost = 63;
+    uint64 secp256r1_subtract_cost = 64;
+    uint64 secp256r1_multiply_cost = 65;
+    uint64 secp256r1_msm_base_cost = 66;
+    uint64 secp256r1_msm_incremental_cost = 67;
+    uint64 secp256r1_validate_cost = 68;
+    uint64 secp256r1_decompress_cost = 69;
 }

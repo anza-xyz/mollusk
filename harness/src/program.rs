@@ -5,13 +5,17 @@ use {
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_loader_v3_interface::state::UpgradeableLoaderState,
     solana_program_runtime::{
-        invoke_context::{BuiltinFunctionRegisterer, InvokeContext},
+        invoke_context::{BuiltinFunctionRegisterer, Executable, InvokeContext},
         loaded_programs::{ProgramCacheForTxBatch, ProgramRuntimeEnvironment},
-        program_cache_entry::{ProgramCacheEntry, DELAY_VISIBILITY_SLOT_OFFSET},
+        program_cache_entry::{
+            ProgramCacheEntry, ProgramCacheEntryOwner, ProgramCacheEntryType,
+            DELAY_VISIBILITY_SLOT_OFFSET,
+        },
         program_metrics::LoadProgramMetrics,
         solana_sbpf::{
             elf::ElfError,
             program::{BuiltinFunctionDefinition, BuiltinProgram},
+            verifier::RequisiteVerifier,
         },
     },
     solana_pubkey::Pubkey,
@@ -79,6 +83,10 @@ pub struct ProgramCache {
     // The function registry (syscalls) to use for verifying and loading
     // program ELFs.
     program_runtime_environment: ProgramRuntimeEnvironment,
+    // When set, programs are loaded without JIT compilation so they execute in
+    // the interpreter, which is required for the sBPF register tracer to record
+    // anything. See `add_program`.
+    enable_register_tracing: bool,
 }
 
 impl ProgramCache {
@@ -103,6 +111,7 @@ impl ProgramCache {
                 /* debugging_features */ enable_register_tracing,
             )
             .unwrap(),
+            enable_register_tracing,
         };
         #[cfg(feature = "cpi-compute-units")]
         {
@@ -179,20 +188,45 @@ impl ProgramCache {
     /// Add a program to the cache.
     pub fn add_program(&mut self, program_id: &Pubkey, loader_key: &Pubkey, elf: &[u8]) {
         let environment = ProgramRuntimeEnvironment::from(self.clone_program_runtime_environment());
-        self.replenish(
-            *program_id,
-            Arc::new(
-                ProgramCacheEntry::load(
-                    loader_key,
-                    environment,
-                    0,
-                    elf,
-                    &mut LoadProgramMetrics::default(),
-                )
-                .unwrap(),
-            ),
-            Some(elf),
-        );
+        let entry = if self.enable_register_tracing {
+            // The sBPF register tracer only records state from the interpreter,
+            // and the VM only falls back to the interpreter when the program is
+            // not JIT-compiled. So when register tracing is enabled, load and
+            // verify the program but skip JIT compilation.
+            Self::load_entry_without_jit(loader_key, environment, elf)
+        } else {
+            ProgramCacheEntry::load(
+                loader_key,
+                environment,
+                0,
+                elf,
+                &mut LoadProgramMetrics::default(),
+            )
+            .unwrap()
+        };
+        self.replenish(*program_id, Arc::new(entry), Some(elf));
+    }
+
+    /// Load and verify a program without JIT-compiling it.
+    ///
+    /// Mirrors [`ProgramCacheEntry::load`] but omits the `jit_compile` step so
+    /// the program executes in the interpreter (see `add_program`). The
+    /// resulting [`ProgramCacheEntryType::Loaded`] entry is valid whether or
+    /// not it has been JIT-compiled.
+    fn load_entry_without_jit(
+        loader_key: &Pubkey,
+        environment: ProgramRuntimeEnvironment,
+        elf: &[u8],
+    ) -> ProgramCacheEntry {
+        // `environment` derefs to the `Arc<BuiltinProgram>` the loader expects.
+        let executable = Executable::load(elf, Arc::clone(&*environment)).unwrap();
+        executable.verify::<RequisiteVerifier>().unwrap();
+        ProgramCacheEntry {
+            program: ProgramCacheEntryType::Loaded(executable),
+            account_owner: ProgramCacheEntryOwner::try_from(loader_key).unwrap(),
+            deployment_slot: 0,
+            ..Default::default()
+        }
     }
 
     /// Load a program from the cache.
