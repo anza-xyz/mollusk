@@ -43,6 +43,10 @@ enum SubCommand {
         /// Note this flag is ignored if `cus_report` is not set.
         #[arg(long)]
         cus_report_table_header: Option<String>,
+        /// Disable rent exemption checks on the resulting accounts. Mollusk
+        /// enables them by default.
+        #[arg(long)]
+        disable_rent_exempt_checks: bool,
         /// Skip comparing compute unit consumption, but compare everything
         /// else.
         ///
@@ -53,6 +57,10 @@ enum SubCommand {
         /// Just execute the fixture without any validation.
         #[arg(short, long)]
         inputs_only: bool,
+        /// Report a fixture that fails a harness check, such as the rent
+        /// exemption check, as a failure instead of panicking.
+        #[arg(long)]
+        no_panic: bool,
         /// Enable emission of program logs to stdout. Disabled by default.
         #[arg(long)]
         program_logs: bool,
@@ -96,6 +104,10 @@ enum SubCommand {
         /// Note this flag is ignored if `cus_report` is not set.
         #[arg(long)]
         cus_report_table_header: Option<String>,
+        /// Disable rent exemption checks on the resulting accounts. Mollusk
+        /// enables them by default.
+        #[arg(long)]
+        disable_rent_exempt_checks: bool,
         /// Skip comparing compute unit consumption, but compare everything
         /// else.
         ///
@@ -103,6 +115,10 @@ enum SubCommand {
         /// config file.
         #[arg(long)]
         ignore_compute_units: bool,
+        /// Report a fixture that fails a harness check, such as the rent
+        /// exemption check, as a failure instead of panicking.
+        #[arg(long)]
+        no_panic: bool,
         /// Enable emission of program logs to stdout. Disabled by default.
         #[arg(long)]
         program_logs: bool,
@@ -146,6 +162,14 @@ fn search_paths(path: &str, extension: &str) -> Result<Vec<String>, Box<dyn std:
     Ok(result)
 }
 
+fn new_mollusk(disable_rent_exempt_checks: bool, no_panic: bool, verbose: bool) -> Mollusk {
+    let mut mollusk = Mollusk::default();
+    mollusk.config.panic = !no_panic;
+    mollusk.config.rent_exempt_checks = !disable_rent_exempt_checks;
+    mollusk.config.verbose = verbose;
+    mollusk
+}
+
 fn add_elf_to_mollusk(mollusk: &mut Mollusk, elf_path: &str, program_id: &Pubkey) {
     let elf = mollusk_svm::file::read_file(elf_path);
     mollusk.add_program_with_loader_and_elf(
@@ -166,13 +190,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             program_load_args,
             cus_report,
             cus_report_table_header,
+            disable_rent_exempt_checks,
             ignore_compute_units,
             inputs_only,
+            no_panic,
             program_logs,
             proto,
             verbose,
         } => {
-            let mut mollusk = Mollusk::default();
+            let mut mollusk = new_mollusk(disable_rent_exempt_checks, no_panic, verbose);
             apply_program_load_args(&mut mollusk, &program_load_args);
             add_elf_to_mollusk(&mut mollusk, &elf_path, &program_id);
 
@@ -210,18 +236,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             program_load_args,
             cus_report,
             cus_report_table_header,
+            disable_rent_exempt_checks,
             ignore_compute_units,
+            no_panic,
             program_logs,
             proto,
             verbose,
         } => {
             // First, set up a Mollusk instance with the ground truth program.
-            let mut mollusk_ground = Mollusk::default();
+            let mut mollusk_ground = new_mollusk(disable_rent_exempt_checks, no_panic, verbose);
             apply_program_load_args(&mut mollusk_ground, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_ground, &elf_path_source, &program_id);
 
             // Next, set up a Mollusk instance with the test program.
-            let mut mollusk_test = Mollusk::default();
+            let mut mollusk_test = new_mollusk(disable_rent_exempt_checks, no_panic, verbose);
             apply_program_load_args(&mut mollusk_test, &program_load_args);
             add_elf_to_mollusk(&mut mollusk_test, &elf_path_target, &program_id);
 
@@ -252,4 +280,77 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{new_mollusk, Cli, SubCommand},
+        clap::Parser,
+    };
+
+    const EXECUTE_FIXTURE: &[&str] = &[
+        "mollusk",
+        "execute-fixture",
+        "program.so",
+        "fixtures",
+        "11111111111111111111111111111111",
+    ];
+    const RUN_TEST: &[&str] = &[
+        "mollusk",
+        "run-test",
+        "source.so",
+        "target.so",
+        "fixtures",
+        "11111111111111111111111111111111",
+    ];
+
+    fn harness_flags(args: &[&str]) -> (bool, bool, bool) {
+        match Cli::try_parse_from(args).unwrap().command {
+            SubCommand::ExecuteFixture {
+                disable_rent_exempt_checks,
+                no_panic,
+                verbose,
+                ..
+            }
+            | SubCommand::RunTest {
+                disable_rent_exempt_checks,
+                no_panic,
+                verbose,
+                ..
+            } => (disable_rent_exempt_checks, no_panic, verbose),
+        }
+    }
+
+    #[test]
+    fn harness_flags_are_off_by_default() {
+        for args in [EXECUTE_FIXTURE, RUN_TEST] {
+            assert_eq!(harness_flags(args), (false, false, false));
+        }
+    }
+
+    #[test]
+    fn parses_harness_flags() {
+        for args in [EXECUTE_FIXTURE, RUN_TEST] {
+            let args = [
+                args,
+                &["--disable-rent-exempt-checks", "--no-panic", "--verbose"],
+            ]
+            .concat();
+            assert_eq!(harness_flags(&args), (true, true, true));
+        }
+    }
+
+    #[test]
+    fn new_mollusk_sets_the_config_from_the_flags() {
+        let mollusk = new_mollusk(false, false, false);
+        assert!(mollusk.config.panic);
+        assert!(mollusk.config.rent_exempt_checks);
+        assert!(!mollusk.config.verbose);
+
+        let mollusk = new_mollusk(true, true, true);
+        assert!(!mollusk.config.panic);
+        assert!(!mollusk.config.rent_exempt_checks);
+        assert!(mollusk.config.verbose);
+    }
 }
